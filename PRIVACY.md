@@ -5,7 +5,7 @@
 ## Three Pillars
 
 ### 1. Local Verification (No Phone Home)
-All cryptographic verification happens inside the user's browser. The truth lives in the digital signature, not in a server query. When you drop a PDF into `<attestto-verify>`, it never leaves your device.
+All cryptographic verification happens inside the user's browser. The truth lives in the digital signature, not in a server query. When you drop a PDF into `<attestto-verify>`, it never leaves your device. The forensic security scanner (JavaScript detection, embedded files, auto-actions) runs entirely on local bytes — no signatures, hashes, or scan results are sent to any external service or cloud antivirus.
 
 ### 2. Selective Disclosure
 DID-based signatures and SD-JWTs allow proving attributes without revealing full identity. You can prove "valid driver's license" or "over 18" by sending only the cryptographic proof of that fact — no name, address, or ID number required.

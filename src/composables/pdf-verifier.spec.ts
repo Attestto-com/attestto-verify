@@ -107,6 +107,86 @@ describe('pdf-verifier', () => {
         expect(sig.signDate).toMatch(/^\d{4}/)
       }
     })
+
+    it('sets verification level to detected (v1)', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+
+      const result = await verifyPdf(file)
+
+      const sig = result.signatures[0]
+      expect(sig.level).toBe('detected')
+    })
+
+    it('extracts SubFilter from signature dictionary', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+
+      const result = await verifyPdf(file)
+
+      const sig = result.signatures[0]
+      // Our reference PDF uses adbe.pkcs7.detached
+      expect(sig.subFilter).toBe('adbe.pkcs7.detached')
+    })
+
+    it('has null DID/LEI/org fields in v1 (populated in v2)', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+
+      const result = await verifyPdf(file)
+
+      const sig = result.signatures[0]
+      expect(sig.did).toBeNull()
+      expect(sig.lei).toBeNull()
+      expect(sig.organization).toBeNull()
+    })
+  })
+
+  describe('forensic audit — security scan', () => {
+    it('extracts PDF version from header', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+      const result = await verifyPdf(file)
+
+      expect(result.audit).toBeDefined()
+      expect(result.audit!.pdfVersion).toMatch(/^\d+\.\d+$/)
+    })
+
+    it('detects no JavaScript in clean PDF', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+      const result = await verifyPdf(file)
+
+      expect(result.audit!.hasJavaScript).toBe(false)
+      expect(result.audit!.javaScriptCount).toBe(0)
+    })
+
+    it('detects no OpenAction in clean PDF', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+      const result = await verifyPdf(file)
+
+      expect(result.audit!.hasOpenAction).toBe(false)
+    })
+
+    it('extracts ByteRange arrays from signatures', async () => {
+      const bytes = await readFile(REFERENCE_PDF)
+      const file = new File([bytes], 'pades-reference_digitally_signed.pdf')
+      const result = await verifyPdf(file)
+
+      expect(result.audit!.byteRanges.length).toBeGreaterThanOrEqual(1)
+      const br = result.audit!.byteRanges[0]
+      expect(br).toHaveLength(4)
+      expect(br[0]).toBe(0) // First segment always starts at 0
+      expect(br.every((n) => typeof n === 'number' && n >= 0)).toBe(true)
+    })
+
+    it('returns null audit for non-PDF files', async () => {
+      const file = new File(['hello world'], 'readme.txt')
+      const result = await verifyPdf(file)
+
+      expect(result.audit).toBeNull()
+    })
   })
 
   describe('non-signed PDF', () => {

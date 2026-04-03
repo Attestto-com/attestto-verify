@@ -22,6 +22,44 @@ export interface PdfSignatureInfo {
   location: string | null
   contactInfo: string | null
   signDate: string | null
+  /** Verification level achieved — v1 = 'detected', v2 will upgrade */
+  level: 'detected' | 'parsed' | 'signed' | 'trusted' | 'qualified'
+  /** DID URI extracted from cert SubjectAltName (v2) */
+  did: string | null
+  /** LEI code from cert serialNumber (v2) */
+  lei: string | null
+  /** Organization from cert O field (v2) */
+  organization: string | null
+  /** SubFilter from PDF signature dictionary */
+  subFilter: string | null
+}
+
+/** Forensic audit data extracted from raw PDF bytes — zero network calls */
+export interface PdfAuditInfo {
+  /** PDF version from header (e.g. "1.7", "2.0") */
+  pdfVersion: string | null
+  /** Number of pages */
+  pageCount: number | null
+  /** Encryption detected */
+  encrypted: boolean
+  /** Encryption algorithm if detected */
+  encryptionAlgorithm: string | null
+  /** JavaScript objects found (/JS or /JavaScript) */
+  hasJavaScript: boolean
+  /** Count of JS objects */
+  javaScriptCount: number
+  /** Auto-open actions (/OpenAction) */
+  hasOpenAction: boolean
+  /** Embedded files (/EmbeddedFile) */
+  embeddedFileCount: number
+  /** External links (URI actions) */
+  externalLinkCount: number
+  /** ByteRange arrays from signature dictionaries */
+  byteRanges: number[][]
+  /** Has LTV data (/DSS dictionary) for offline revocation */
+  hasLtvData: boolean
+  /** Linearized (web-optimized) */
+  linearized: boolean
 }
 
 export interface PdfVerificationResult {
@@ -31,6 +69,8 @@ export interface PdfVerificationResult {
   isPdf: boolean
   metadata: PdfMetadata | null
   signatures: PdfSignatureInfo[]
+  /** Forensic audit — security scan results */
+  audit: PdfAuditInfo | null
 }
 
 /** Compute SHA-256 hash of raw bytes */
@@ -120,6 +160,13 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       return dict.substring(start, end)
     }
 
+    // Extract /SubFilter as a name object (e.g. /SubFilter /adbe.pkcs7.detached)
+    const getNameField = (key: string): string | null => {
+      const re = new RegExp(`\\/${key}\\s*\\/([\\w.]+)`)
+      const m = re.exec(dict)
+      return m ? m[1] : null
+    }
+
     const name = getField('Name') || 'Unknown Signer'
     sigs.push({
       name,
@@ -127,10 +174,90 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       location: getField('Location'),
       contactInfo: getField('ContactInfo'),
       signDate: getField('M') ? formatPdfDate(getField('M')!) : null,
+      level: 'detected', // v1 = byte scan only; v2 (ATT-209) will upgrade to 'signed'/'trusted'
+      did: null,          // v2: extracted from cert SubjectAltName
+      lei: null,          // v2: extracted from cert serialNumber
+      organization: null, // v2: extracted from cert O field
+      subFilter: getNameField('SubFilter'),
     })
   }
 
   return sigs
+}
+
+/**
+ * Forensic security scan — extracts audit-relevant properties from raw PDF bytes.
+ * Zero dependencies, zero network calls. Runs in < 1ms for typical documents.
+ */
+function scanPdfAudit(bytes: Uint8Array, text: string): PdfAuditInfo {
+  // PDF version from header (%PDF-X.Y)
+  const versionMatch = text.match(/%PDF-(\d+\.\d+)/)
+  const pdfVersion = versionMatch ? versionMatch[1] : null
+
+  // Page count from /Type /Page (not /Pages)
+  const pageMatches = text.match(/\/Type\s*\/Page\b(?!s)/g)
+  const pageCount = pageMatches ? pageMatches.length : null
+
+  // Encryption detection (/Encrypt dictionary reference)
+  const encrypted = /\/Encrypt\s/.test(text)
+  let encryptionAlgorithm: string | null = null
+  if (encrypted) {
+    if (/\/AESV3\b/.test(text)) encryptionAlgorithm = 'AES-256'
+    else if (/\/AESV2\b/.test(text)) encryptionAlgorithm = 'AES-128'
+    else if (/\/V\s+4\b/.test(text)) encryptionAlgorithm = 'AES-128'
+    else if (/\/V\s+[12]\b/.test(text)) encryptionAlgorithm = 'RC4'
+    else encryptionAlgorithm = 'Unknown'
+  }
+
+  // JavaScript detection (/JS or /JavaScript)
+  const jsMatches = text.match(/\/JS\s|\/JavaScript\s/g)
+  const hasJavaScript = (jsMatches?.length ?? 0) > 0
+  const javaScriptCount = jsMatches?.length ?? 0
+
+  // OpenAction detection
+  const hasOpenAction = /\/OpenAction\s/.test(text)
+
+  // Embedded files
+  const embeddedMatches = text.match(/\/EmbeddedFile\b/g)
+  const embeddedFileCount = embeddedMatches?.length ?? 0
+
+  // External links (URI actions)
+  const uriMatches = text.match(/\/URI\s*\(/g)
+  const externalLinkCount = uriMatches?.length ?? 0
+
+  // ByteRange arrays from signatures
+  const byteRanges: number[][] = []
+  const brPattern = /\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/g
+  let brMatch: RegExpExecArray | null
+  while ((brMatch = brPattern.exec(text)) !== null) {
+    byteRanges.push([
+      parseInt(brMatch[1]),
+      parseInt(brMatch[2]),
+      parseInt(brMatch[3]),
+      parseInt(brMatch[4]),
+    ])
+  }
+
+  // LTV data (/DSS dictionary)
+  const hasLtvData = /\/DSS\s*<</.test(text)
+
+  // Linearized (web-optimized)
+  const linearized = /\/Linearized\s/.test(text)
+
+  return {
+    pdfVersion,
+    pageCount,
+    encrypted,
+    encryptionAlgorithm,
+    hasJavaScript,
+    javaScriptCount,
+    hasOpenAction,
+    embeddedFileCount,
+    externalLinkCount,
+    byteRanges,
+    hasLtvData,
+    linearized,
+  }
 }
 
 /** Full client-side PDF verification */
@@ -141,10 +268,17 @@ export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
 
   let metadata: PdfMetadata | null = null
   let signatures: PdfSignatureInfo[] = []
+  let audit: PdfAuditInfo | null = null
 
   if (isPdf) {
+    const pdfBytes = new Uint8Array(buffer)
+    const pdfText = new TextDecoder('latin1').decode(pdfBytes)
+
     // Extract signatures from raw bytes (no external dependency)
-    signatures = extractSignaturesFromBytes(new Uint8Array(buffer))
+    signatures = extractSignaturesFromBytes(pdfBytes)
+
+    // Forensic security scan
+    audit = scanPdfAudit(pdfBytes, pdfText)
 
     // Try pdfjs-dist for metadata (lazy-loaded)
     try {
@@ -181,5 +315,6 @@ export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
     isPdf,
     metadata,
     signatures,
+    audit,
   }
 }

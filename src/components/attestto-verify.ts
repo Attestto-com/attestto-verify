@@ -13,12 +13,17 @@ import { sharedStyles } from '../styles/shared.js'
  *   <attestto-verify allow-plugins theme="dark" root-ca="Attestto-Root-2026"></attestto-verify>
  *
  * CSS Parts (for external styling without breaking shadow DOM):
- *   ::part(drop-zone)    — the file drop area
- *   ::part(result-card)  — the verification results container
- *   ::part(hash-display) — the SHA-256 hash display
- *   ::part(sig-card)     — each signature card
- *   ::part(badge)        — status badges (Signed, None, Valid, Failed)
- *   ::part(button)       — action buttons
+ *   ::part(drop-zone)      — the file drop area
+ *   ::part(result-card)    — the verification results container
+ *   ::part(hash-display)   — the SHA-256 hash display
+ *   ::part(sig-card)       — each signature card
+ *   ::part(status-badge)   — verification level badge (detected/verified/trusted/qualified)
+ *   ::part(signer-name)    — the signer's display name
+ *   ::part(did-link)       — the DID URI (clickable, resolves to DID Document)
+ *   ::part(vlei-badge)     — vLEI corporate identity container (GLEIF logo + LEI + role)
+ *   ::part(corporate-info) — organization info row (non-vLEI)
+ *   ::part(trust-level)    — the level hint text explaining verification depth
+ *   ::part(button)         — action buttons
  *
  * Events (composed, cross shadow DOM):
  *   verification-started  — { fileName, fileSize }
@@ -157,14 +162,186 @@ export class AttesttoVerify extends LitElement {
         text-transform: uppercase;
       }
 
+      /* ── Verification Level Badges ─────────────────────────── */
+      .badge-detected {
+        background: var(--attestto-warning-bg, #fef3c7);
+        color: var(--attestto-warning, #d97706);
+      }
+
+      .badge-parsed,
       .badge-signed {
         background: var(--attestto-success-bg, #dcfce7);
         color: var(--attestto-success, #16a34a);
       }
 
+      .badge-trusted {
+        background: var(--attestto-info-bg, #dbeafe);
+        color: var(--attestto-info, #2563eb);
+      }
+
+      .badge-qualified {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        color: #92400e;
+        border: 1px solid #f59e0b;
+      }
+
       .badge-none {
-        background: var(--attestto-warning-bg, #fef3c7);
+        background: var(--attestto-muted-bg, #f1f5f9);
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      .badge-valid {
+        background: var(--attestto-success-bg, #dcfce7);
+        color: var(--attestto-success, #16a34a);
+      }
+
+      .badge-failed {
+        background: var(--attestto-error-bg, #fee2e2);
+        color: var(--attestto-error, #dc2626);
+      }
+
+      /* ── DID & Corporate Identity Rows ─────────────────────── */
+      .signer-did {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+        color: var(--attestto-primary, #6366f1);
+        margin-top: 0.35rem;
+        cursor: pointer;
+        word-break: break-all;
+      }
+
+      .signer-did:hover {
+        text-decoration: underline;
+      }
+
+      .corporate-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--attestto-bg-code, #f1f5f9);
+        border-radius: 6px;
+        font-size: 0.82rem;
+      }
+
+      .corporate-row .gleif-icon {
+        font-weight: 700;
+        font-size: 0.7rem;
+        padding: 0.1rem 0.35rem;
+        border-radius: 3px;
+        background: #1e40af;
+        color: white;
+        letter-spacing: 0.03em;
+      }
+
+      .level-hint {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+        margin-top: 0.25rem;
+        font-style: italic;
+      }
+
+      .sub-filter-tag {
+        font-size: 0.68rem;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        color: var(--attestto-text-muted, #64748b);
+        padding: 0.1rem 0.4rem;
+        background: var(--attestto-bg-code, #f1f5f9);
+        border-radius: 3px;
+      }
+
+      /* ── Forensic Audit Section ────────────────────────────── */
+      details[part~="audit-section"] {
+        margin-top: 1.25rem;
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      details[part~="audit-section"] summary {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--attestto-text-muted, #64748b);
+        background: var(--attestto-bg-code, #f1f5f9);
+        user-select: none;
+        list-style: none;
+      }
+
+      details[part~="audit-section"] summary::before {
+        content: '▶ ';
+        font-size: 0.7rem;
+        transition: transform 0.15s;
+        display: inline-block;
+      }
+
+      details[open][part~="audit-section"] summary::before {
+        transform: rotate(90deg);
+      }
+
+      .audit-grid {
+        padding: 1rem;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .audit-group {
+        border-bottom: 1px solid var(--attestto-border, #e2e8f0);
+        padding-bottom: 0.75rem;
+      }
+
+      .audit-group:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .audit-group-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--attestto-text-muted, #64748b);
+        margin-bottom: 0.5rem;
+      }
+
+      .audit-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        padding: 0.25rem 0;
+      }
+
+      .audit-item strong {
+        min-width: 120px;
+        color: var(--attestto-text-muted, #64748b);
+        font-weight: 500;
+      }
+
+      .audit-item code {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        background: var(--attestto-bg-code, #f1f5f9);
+      }
+
+      .audit-safe {
+        color: var(--attestto-success, #16a34a);
+      }
+
+      .audit-warn {
         color: var(--attestto-warning, #d97706);
+      }
+
+      .audit-danger {
+        color: var(--attestto-error, #dc2626);
+      }
+
+      .audit-info {
+        color: var(--attestto-info, #2563eb);
       }
 
       .section-title {
@@ -286,9 +463,36 @@ export class AttesttoVerify extends LitElement {
                   (sig) => html`
                     <div class="sig-card" part="sig-card">
                       <div class="sig-name">
-                        <span class="badge badge-signed">Signed</span>
-                        ${sig.name}
+                        <span class="badge badge-${sig.level}" part="status-badge trust-level">
+                          ${this.badgeLabel(sig.level)}
+                        </span>
+                        <span part="signer-name">${sig.name}</span>
+                        ${sig.subFilter
+                          ? html`<span class="sub-filter-tag">${sig.subFilter}</span>`
+                          : ''}
                       </div>
+
+                      ${sig.did
+                        ? html`<div class="signer-did" part="did-link" title="Decentralized Identifier">${sig.did}</div>`
+                        : ''}
+
+                      ${sig.lei
+                        ? html`
+                            <div class="corporate-row" part="vlei-badge">
+                              <span class="gleif-icon">GLEIF</span>
+                              <span>${sig.organization ?? 'Organization'} &middot; LEI: ${sig.lei}</span>
+                            </div>
+                          `
+                        : sig.organization
+                          ? html`
+                              <div class="corporate-row" part="corporate-info">
+                                <span>${sig.organization}</span>
+                              </div>
+                            `
+                          : ''}
+
+                      <div class="level-hint" part="trust-level">${this.levelHint(sig.level)}</div>
+
                       <div class="meta-grid">
                         ${sig.reason ? html`<span class="meta-label">Reason</span><span>${sig.reason}</span>` : ''}
                         ${sig.location ? html`<span class="meta-label">Location</span><span>${sig.location}</span>` : ''}
@@ -317,11 +521,103 @@ export class AttesttoVerify extends LitElement {
                 <div class="meta-grid">
                   ${r.metadata.title ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>` : ''}
                   ${r.metadata.author ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>` : ''}
+                  ${r.metadata.subject ? html`<span class="meta-label">Subject</span><span>${r.metadata.subject}</span>` : ''}
                   ${r.metadata.creator ? html`<span class="meta-label">Creator</span><span>${r.metadata.creator}</span>` : ''}
                   ${r.metadata.producer ? html`<span class="meta-label">Producer</span><span>${r.metadata.producer}</span>` : ''}
                   ${r.metadata.creationDate ? html`<span class="meta-label">Created</span><span>${r.metadata.creationDate}</span>` : ''}
                   ${r.metadata.modDate ? html`<span class="meta-label">Modified</span><span>${r.metadata.modDate}</span>` : ''}
                 </div>
+              `
+            : ''}
+
+          ${r.isPdf && r.audit
+            ? html`
+                <details part="audit-section">
+                  <summary part="audit-summary">Technical Audit &amp; Security Scan</summary>
+                  <div class="audit-grid" part="audit-grid">
+
+                    <div class="audit-group">
+                      <div class="audit-group-title">Document Properties</div>
+                      <div class="audit-item">
+                        <strong>PDF Version</strong>
+                        <code>${r.audit.pdfVersion ?? 'Unknown'}</code>
+                      </div>
+                      ${r.audit.pageCount !== null ? html`
+                        <div class="audit-item">
+                          <strong>Pages</strong>
+                          <code>${r.audit.pageCount}</code>
+                        </div>
+                      ` : ''}
+                      <div class="audit-item">
+                        <strong>Linearized</strong>
+                        <code>${r.audit.linearized ? 'Yes (web-optimized)' : 'No'}</code>
+                      </div>
+                      <div class="audit-item">
+                        <strong>Encryption</strong>
+                        <code class="${r.audit.encrypted ? 'audit-info' : ''}">
+                          ${r.audit.encrypted
+                            ? `Yes (${r.audit.encryptionAlgorithm})`
+                            : 'None'}
+                        </code>
+                      </div>
+                    </div>
+
+                    <div class="audit-group">
+                      <div class="audit-group-title">Security Scan</div>
+                      <div class="audit-item">
+                        <strong>JavaScript</strong>
+                        <code class="${r.audit.hasJavaScript ? 'audit-danger' : 'audit-safe'}">
+                          ${r.audit.hasJavaScript
+                            ? `${r.audit.javaScriptCount} script(s) detected`
+                            : 'None found (safe)'}
+                        </code>
+                      </div>
+                      <div class="audit-item">
+                        <strong>Auto Actions</strong>
+                        <code class="${r.audit.hasOpenAction ? 'audit-warn' : 'audit-safe'}">
+                          ${r.audit.hasOpenAction
+                            ? 'OpenAction detected'
+                            : 'None (safe)'}
+                        </code>
+                      </div>
+                      <div class="audit-item">
+                        <strong>Embedded Files</strong>
+                        <code class="${r.audit.embeddedFileCount > 0 ? 'audit-warn' : 'audit-safe'}">
+                          ${r.audit.embeddedFileCount > 0
+                            ? `${r.audit.embeddedFileCount} file(s)`
+                            : 'None'}
+                        </code>
+                      </div>
+                      <div class="audit-item">
+                        <strong>External Links</strong>
+                        <code>${r.audit.externalLinkCount > 0
+                          ? `${r.audit.externalLinkCount} URI(s)`
+                          : 'None'}</code>
+                      </div>
+                    </div>
+
+                    ${r.audit.byteRanges.length > 0 ? html`
+                      <div class="audit-group">
+                        <div class="audit-group-title">Signature Integrity (ByteRange)</div>
+                        ${r.audit.byteRanges.map((br, i) => html`
+                          <div class="audit-item">
+                            <strong>Sig ${i + 1}</strong>
+                            <code>[${br.join(', ')}]</code>
+                          </div>
+                        `)}
+                        <div class="audit-item">
+                          <strong>LTV Data</strong>
+                          <code class="${r.audit.hasLtvData ? 'audit-safe' : 'audit-info'}">
+                            ${r.audit.hasLtvData
+                              ? 'Present (/DSS — offline revocation)'
+                              : 'Not embedded (requires online check)'}
+                          </code>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                  </div>
+                </details>
               `
             : ''}
 
@@ -333,7 +629,7 @@ export class AttesttoVerify extends LitElement {
                     ([name, result]) => html`
                       <div class="sig-card" part="sig-card">
                         <div class="sig-name">
-                          <span class="badge ${result.valid ? 'badge-signed' : 'badge-none'}">
+                          <span class="badge ${result.valid ? 'badge-valid' : 'badge-failed'}">
                             ${result.valid ? 'Valid' : 'Failed'}
                           </span>
                           ${attesttoPlugins.get(name)?.label ?? name}
@@ -454,6 +750,28 @@ export class AttesttoVerify extends LitElement {
   private reset() {
     this.result = null
     this.pluginResults = null
+  }
+
+  private badgeLabel(level: string): string {
+    const labels: Record<string, string> = {
+      detected: 'Detected',
+      parsed: 'Parsed',
+      signed: 'Verified',
+      trusted: 'Trusted',
+      qualified: 'Qualified',
+    }
+    return labels[level] ?? 'Unknown'
+  }
+
+  private levelHint(level: string): string {
+    const hints: Record<string, string> = {
+      detected: 'Signature structure found — cryptographic verification pending (v2)',
+      parsed: 'Signature decoded — awaiting chain validation',
+      signed: 'Cryptographically valid — signature math verified',
+      trusted: 'Chain reaches a recognized Certificate Authority',
+      qualified: 'Qualified corporate identity — GLEIF vLEI verified',
+    }
+    return hints[level] ?? ''
   }
 
   private formatSize(bytes: number): string {
