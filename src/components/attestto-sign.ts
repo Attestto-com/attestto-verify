@@ -228,8 +228,7 @@ export class AttesttoSign extends LitElement {
   @state() private selectedWallet: WalletAnnouncement | null = null
   @state() private signing = false
   @state() private signed = false
-  @state() private signedBlobUrl: string | null = null
-  @state() private signedFileName: string | null = null
+  @state() private signedCredential: Record<string, unknown> | null = null
   @state() private error: string | null = null
 
   override connectedCallback() {
@@ -352,9 +351,13 @@ export class AttesttoSign extends LitElement {
               </button>
             `
           : html`
-              <a class="download-link" href=${this.signedBlobUrl!} download=${this.signedFileName!}>
-                Download Signed Receipt
-              </a>
+              <div class="download-link" style="cursor: default;">
+                Signed — credential stored in your wallet
+              </div>
+              <button
+                style="display: block; margin: 0.5rem auto 0; background: none; border: none; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.75rem; text-decoration: underline;"
+                @click=${this.exportCredential}
+              >Export credential (JSON)</button>
             `}
 
         <div style="text-align: center; margin-top: 0.75rem">
@@ -457,31 +460,42 @@ export class AttesttoSign extends LitElement {
         return
       }
 
-      const receipt = {
-        version: '1.0',
-        document: {
-          fileName: this.file.name,
-          hash: contentHash,
-          hashAlgorithm: 'SHA-256',
-          size: this.file.size,
+      // Build the signing VC (Verifiable Credential)
+      const credential = {
+        '@context': [
+          'https://www.w3.org/2018/credentials/v1',
+          'https://attestto.com/contexts/document-signature/v1',
+        ],
+        type: ['VerifiableCredential', 'DocumentSignatureCredential'],
+        issuer: response.did,
+        issuanceDate: response.timestamp,
+        credentialSubject: {
+          type: 'DocumentSignature',
+          document: {
+            fileName: this.file.name,
+            hash: contentHash,
+            hashAlgorithm: 'SHA-256',
+            size: this.file.size,
+          },
+          verifyUrl: `https://verify.attestto.com/d/${contentHash}`,
         },
-        signature: {
-          did: response.did,
-          signature: response.signature,
-          publicKeyJwk: response.publicKeyJwk,
-          timestamp: response.timestamp,
+        proof: {
+          type: 'EcdsaSecp256r1Signature2019',
+          created: response.timestamp,
+          verificationMethod: response.did,
+          proofValue: response.signature,
+          jws: response.signature,
         },
-        wallet: {
-          name: this.selectedWallet.name,
-          did: this.selectedWallet.did,
-          protocols: this.selectedWallet.protocols,
-        },
-        verifyUrl: `https://verify.attestto.com/d/${contentHash}`,
       }
 
-      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' })
-      this.signedBlobUrl = URL.createObjectURL(blob)
-      this.signedFileName = this.file.name.replace(/\.pdf$/i, '.attestto-receipt.json')
+      // Push VC to the wallet for storage
+      window.postMessage({
+        type: 'ATTESTTO_VC_STORE',
+        credential,
+      }, '*')
+
+      // Keep a reference for the export fallback
+      this.signedCredential = credential
       this.signed = true
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'Signing failed'
@@ -536,13 +550,22 @@ export class AttesttoSign extends LitElement {
     })
   }
 
+  private exportCredential() {
+    if (!this.signedCredential) return
+    const blob = new Blob([JSON.stringify(this.signedCredential, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = this.file?.name.replace(/\.pdf$/i, '.vc.json') ?? 'credential.vc.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   private reset() {
-    if (this.signedBlobUrl) URL.revokeObjectURL(this.signedBlobUrl)
     this.file = null
     this.signed = false
     this.signing = false
-    this.signedBlobUrl = null
-    this.signedFileName = null
+    this.signedCredential = null
     this.error = null
   }
 
