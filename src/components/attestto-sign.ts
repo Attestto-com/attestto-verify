@@ -251,10 +251,40 @@ export class AttesttoSign extends LitElement {
   // ── Wallet Detection ────────────────────────────────────────────────
 
   private detectWallet() {
-    // Check for Attestto ID extension via DOM attribute
-    this.walletDetected = document.documentElement.hasAttribute('data-attestto-id-extension')
+    // Method 1: Check for DOM attribute (legacy)
+    if (document.documentElement.hasAttribute('data-attestto-id-extension')) {
+      this.walletDetected = true
+      return
+    }
 
-    // Also listen for late injection
+    // Method 2: Listen for attestto-id-ready event (may have already fired)
+    window.addEventListener('attestto-id-ready', () => {
+      this.walletDetected = true
+    }, { once: true })
+
+    // Method 3: Wallet Adapter discovery protocol (nonce-based handshake)
+    // The extension's registerWallet() listens for credential-wallet:discover
+    // and responds with credential-wallet:announce
+    const nonce = crypto.randomUUID()
+
+    const announceHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.nonce === nonce && detail?.wallet) {
+        this.walletDetected = true
+        window.removeEventListener('credential-wallet:announce', announceHandler)
+      }
+    }
+    window.addEventListener('credential-wallet:announce', announceHandler)
+    window.dispatchEvent(new CustomEvent('credential-wallet:discover', {
+      detail: { nonce },
+    }))
+
+    // Clean up announce listener after 3s if no response
+    setTimeout(() => {
+      window.removeEventListener('credential-wallet:announce', announceHandler)
+    }, 3000)
+
+    // Method 4: MutationObserver fallback for late injection
     const observer = new MutationObserver(() => {
       if (document.documentElement.hasAttribute('data-attestto-id-extension')) {
         this.walletDetected = true
