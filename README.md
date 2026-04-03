@@ -59,10 +59,24 @@ Drop a document to verify its integrity, digital signatures, and security proper
 
 ### `<attestto-sign>`
 
-Sign documents with your DID via the Attestto ID browser extension.
+Sign documents with any DID wallet or a browser-generated key. Uses [@attestto/id-wallet-adapter](https://github.com/Attestto-com/id-wallet-adapter) for universal wallet discovery.
 
 ```html
 <attestto-sign></attestto-sign>
+```
+
+**Signing:** Uses WebCrypto ECDSA P-256 to produce a self-issued `did:key` signature. The output is a W3C `DocumentSignatureCredential` (Verifiable Credential) containing the document hash, signer's DID, and cryptographic proof. Wallet-backed DID signing is on the roadmap.
+
+### Signing Composable
+
+All signing logic lives in `src/composables/document-signer.ts` — the component is UI only. v2 changes touch one file.
+
+```typescript
+import { hashFile, signWithWallet, signWithBrowserKey } from '@attestto/verify'
+
+const hash = await hashFile(file)
+const result = await signWithBrowserKey(file, hash)
+console.log(result.credential) // W3C VC
 ```
 
 ## CSS Parts
@@ -164,12 +178,27 @@ All scanning runs on local bytes. No data is sent to any external service.
 - Forensic scanner is 100% local
 - See [PRIVACY.md](./PRIVACY.md) for the full manifesto
 
+## Debug Logging
+
+Silent by default. Enable structured logging from the console:
+
+```js
+Attestto.debug = true
+```
+
+Logs are color-coded, numbered by step, and persist across page reloads (localStorage). Scopes: `sign`, `verify`, `plugin`, `wallet`.
+
+## Developer Docs
+
+Interactive documentation with live playground at [verify.attestto.com/docs](https://verify.attestto.com/docs) — drop a real PDF, see the components work, view the source code.
+
 ## Development
 
 ```bash
 pnpm install
 pnpm dev          # Dev server
 pnpm test         # Run tests (19 passing)
+pnpm format       # Prettier
 pnpm build        # Production build
 ```
 

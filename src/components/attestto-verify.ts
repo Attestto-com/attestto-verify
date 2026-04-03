@@ -54,7 +54,7 @@ export class AttesttoVerify extends LitElement {
 
       .drop-zone:hover,
       .drop-zone.dragging {
-        border-color: var(--attestto-primary, #594FD3);
+        border-color: var(--attestto-primary, #594fd3);
         background: var(--attestto-bg-hover, #eef2ff);
       }
 
@@ -204,7 +204,7 @@ export class AttesttoVerify extends LitElement {
       .signer-did {
         font-family: 'SF Mono', 'Fira Code', monospace;
         font-size: 0.78rem;
-        color: var(--attestto-primary, #594FD3);
+        color: var(--attestto-primary, #594fd3);
         margin-top: 0.35rem;
         cursor: pointer;
         word-break: break-all;
@@ -252,14 +252,14 @@ export class AttesttoVerify extends LitElement {
       }
 
       /* ── Forensic Audit Section ────────────────────────────── */
-      details[part~="audit-section"] {
+      details[part~='audit-section'] {
         margin-top: 1.25rem;
         border: 1px solid var(--attestto-border, #e2e8f0);
         border-radius: 8px;
         overflow: hidden;
       }
 
-      details[part~="audit-section"] summary {
+      details[part~='audit-section'] summary {
         padding: 0.75rem 1rem;
         cursor: pointer;
         font-size: 0.85rem;
@@ -270,14 +270,14 @@ export class AttesttoVerify extends LitElement {
         list-style: none;
       }
 
-      details[part~="audit-section"] summary::before {
+      details[part~='audit-section'] summary::before {
         content: '▶ ';
         font-size: 0.7rem;
         transition: transform 0.15s;
         display: inline-block;
       }
 
-      details[open][part~="audit-section"] summary::before {
+      details[open][part~='audit-section'] summary::before {
         transform: rotate(90deg);
       }
 
@@ -373,10 +373,20 @@ export class AttesttoVerify extends LitElement {
       }
 
       @keyframes fadeInOut {
-        0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
-        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        85% { opacity: 1; }
-        100% { opacity: 0; }
+        0% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(10px);
+        }
+        15% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+        85% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
       }
 
       .loading {
@@ -391,13 +401,15 @@ export class AttesttoVerify extends LitElement {
         width: 1rem;
         height: 1rem;
         border: 2px solid var(--attestto-border, #e2e8f0);
-        border-top-color: var(--attestto-primary, #594FD3);
+        border-top-color: var(--attestto-primary, #594fd3);
         border-radius: 50%;
         animation: spin 0.6s linear infinite;
       }
 
       @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
     `,
   ]
@@ -421,7 +433,8 @@ export class AttesttoVerify extends LitElement {
   private renderDropZone() {
     return html`
       <div
-        class="drop-zone ${this.dragging ? 'dragging' : ''}" part="drop-zone"
+        class="drop-zone ${this.dragging ? 'dragging' : ''}"
+        part="drop-zone"
         @click=${this.openFilePicker}
         @dragover=${this.onDragOver}
         @dragleave=${this.onDragLeave}
@@ -431,9 +444,7 @@ export class AttesttoVerify extends LitElement {
         <div class="drop-zone-text">
           ${this.dragging ? 'Drop file here' : 'Drop a document to verify'}
         </div>
-        <div class="drop-zone-hint">
-          PDF, Word, or any file — never leaves your device
-        </div>
+        <div class="drop-zone-hint">PDF, Word, or any file — never leaves your device</div>
         <input type="file" @change=${this.onFileSelect} accept=".pdf,.doc,.docx,.txt,.json" />
       </div>
     `
@@ -446,13 +457,20 @@ export class AttesttoVerify extends LitElement {
         <div class="result-card" part="result-card">
           <div class="result-header">
             📄 ${r.fileName}
-            <span style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)">
+            <span
+              style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)"
+            >
               ${this.formatSize(r.fileSize)}
             </span>
           </div>
 
           <div class="hash-label">SHA-256 Hash</div>
-          <div class="hash-display" part="hash-display" @click=${this.copyHash} title="Click to copy">
+          <div
+            class="hash-display"
+            part="hash-display"
+            @click=${this.copyHash}
+            title="Click to copy"
+          >
             ${r.hash}
           </div>
 
@@ -473,14 +491,22 @@ export class AttesttoVerify extends LitElement {
                       </div>
 
                       ${sig.did
-                        ? html`<div class="signer-did" part="did-link" title="Decentralized Identifier">${sig.did}</div>`
+                        ? html`<div
+                            class="signer-did"
+                            part="did-link"
+                            title="Decentralized Identifier"
+                          >
+                            ${sig.did}
+                          </div>`
                         : ''}
-
                       ${sig.lei
                         ? html`
                             <div class="corporate-row" part="vlei-badge">
                               <span class="gleif-icon">GLEIF</span>
-                              <span>${sig.organization ?? 'Organization'} &middot; LEI: ${sig.lei}</span>
+                              <span
+                                >${sig.organization ?? 'Organization'} &middot; LEI:
+                                ${sig.lei}</span
+                              >
                             </div>
                           `
                         : sig.organization
@@ -494,13 +520,23 @@ export class AttesttoVerify extends LitElement {
                       <div class="level-hint" part="trust-level">${this.levelHint(sig.level)}</div>
 
                       <div class="meta-grid">
-                        ${sig.reason ? html`<span class="meta-label">Reason</span><span>${sig.reason}</span>` : ''}
-                        ${sig.location ? html`<span class="meta-label">Location</span><span>${sig.location}</span>` : ''}
-                        ${sig.contactInfo ? html`<span class="meta-label">Contact</span><span>${sig.contactInfo}</span>` : ''}
-                        ${sig.signDate ? html`<span class="meta-label">Signed</span><span>${sig.signDate}</span>` : ''}
+                        ${sig.reason
+                          ? html`<span class="meta-label">Reason</span><span>${sig.reason}</span>`
+                          : ''}
+                        ${sig.location
+                          ? html`<span class="meta-label">Location</span
+                              ><span>${sig.location}</span>`
+                          : ''}
+                        ${sig.contactInfo
+                          ? html`<span class="meta-label">Contact</span
+                              ><span>${sig.contactInfo}</span>`
+                          : ''}
+                        ${sig.signDate
+                          ? html`<span class="meta-label">Signed</span><span>${sig.signDate}</span>`
+                          : ''}
                       </div>
                     </div>
-                  `
+                  `,
                 )}
               `
             : r.isPdf
@@ -514,40 +550,58 @@ export class AttesttoVerify extends LitElement {
                   </div>
                 `
               : ''}
-
           ${r.isPdf && r.metadata
             ? html`
                 <div class="section-title">Document Metadata</div>
                 <div class="meta-grid">
-                  ${r.metadata.title ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>` : ''}
-                  ${r.metadata.author ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>` : ''}
-                  ${r.metadata.subject ? html`<span class="meta-label">Subject</span><span>${r.metadata.subject}</span>` : ''}
-                  ${r.metadata.creator ? html`<span class="meta-label">Creator</span><span>${r.metadata.creator}</span>` : ''}
-                  ${r.metadata.producer ? html`<span class="meta-label">Producer</span><span>${r.metadata.producer}</span>` : ''}
-                  ${r.metadata.creationDate ? html`<span class="meta-label">Created</span><span>${r.metadata.creationDate}</span>` : ''}
-                  ${r.metadata.modDate ? html`<span class="meta-label">Modified</span><span>${r.metadata.modDate}</span>` : ''}
+                  ${r.metadata.title
+                    ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>`
+                    : ''}
+                  ${r.metadata.author
+                    ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>`
+                    : ''}
+                  ${r.metadata.subject
+                    ? html`<span class="meta-label">Subject</span
+                        ><span>${r.metadata.subject}</span>`
+                    : ''}
+                  ${r.metadata.creator
+                    ? html`<span class="meta-label">Creator</span
+                        ><span>${r.metadata.creator}</span>`
+                    : ''}
+                  ${r.metadata.producer
+                    ? html`<span class="meta-label">Producer</span
+                        ><span>${r.metadata.producer}</span>`
+                    : ''}
+                  ${r.metadata.creationDate
+                    ? html`<span class="meta-label">Created</span
+                        ><span>${r.metadata.creationDate}</span>`
+                    : ''}
+                  ${r.metadata.modDate
+                    ? html`<span class="meta-label">Modified</span
+                        ><span>${r.metadata.modDate}</span>`
+                    : ''}
                 </div>
               `
             : ''}
-
           ${r.isPdf && r.audit
             ? html`
                 <details part="audit-section">
                   <summary part="audit-summary">Technical Audit &amp; Security Scan</summary>
                   <div class="audit-grid" part="audit-grid">
-
                     <div class="audit-group">
                       <div class="audit-group-title">Document Properties</div>
                       <div class="audit-item">
                         <strong>PDF Version</strong>
                         <code>${r.audit.pdfVersion ?? 'Unknown'}</code>
                       </div>
-                      ${r.audit.pageCount !== null ? html`
-                        <div class="audit-item">
-                          <strong>Pages</strong>
-                          <code>${r.audit.pageCount}</code>
-                        </div>
-                      ` : ''}
+                      ${r.audit.pageCount !== null
+                        ? html`
+                            <div class="audit-item">
+                              <strong>Pages</strong>
+                              <code>${r.audit.pageCount}</code>
+                            </div>
+                          `
+                        : ''}
                       <div class="audit-item">
                         <strong>Linearized</strong>
                         <code>${r.audit.linearized ? 'Yes (web-optimized)' : 'No'}</code>
@@ -555,9 +609,7 @@ export class AttesttoVerify extends LitElement {
                       <div class="audit-item">
                         <strong>Encryption</strong>
                         <code class="${r.audit.encrypted ? 'audit-info' : ''}">
-                          ${r.audit.encrypted
-                            ? `Yes (${r.audit.encryptionAlgorithm})`
-                            : 'None'}
+                          ${r.audit.encrypted ? `Yes (${r.audit.encryptionAlgorithm})` : 'None'}
                         </code>
                       </div>
                     </div>
@@ -575,14 +627,14 @@ export class AttesttoVerify extends LitElement {
                       <div class="audit-item">
                         <strong>Auto Actions</strong>
                         <code class="${r.audit.hasOpenAction ? 'audit-warn' : 'audit-safe'}">
-                          ${r.audit.hasOpenAction
-                            ? 'OpenAction detected'
-                            : 'None (safe)'}
+                          ${r.audit.hasOpenAction ? 'OpenAction detected' : 'None (safe)'}
                         </code>
                       </div>
                       <div class="audit-item">
                         <strong>Embedded Files</strong>
-                        <code class="${r.audit.embeddedFileCount > 0 ? 'audit-warn' : 'audit-safe'}">
+                        <code
+                          class="${r.audit.embeddedFileCount > 0 ? 'audit-warn' : 'audit-safe'}"
+                        >
                           ${r.audit.embeddedFileCount > 0
                             ? `${r.audit.embeddedFileCount} file(s)`
                             : 'None'}
@@ -590,37 +642,41 @@ export class AttesttoVerify extends LitElement {
                       </div>
                       <div class="audit-item">
                         <strong>External Links</strong>
-                        <code>${r.audit.externalLinkCount > 0
-                          ? `${r.audit.externalLinkCount} URI(s)`
-                          : 'None'}</code>
+                        <code
+                          >${r.audit.externalLinkCount > 0
+                            ? `${r.audit.externalLinkCount} URI(s)`
+                            : 'None'}</code
+                        >
                       </div>
                     </div>
 
-                    ${r.audit.byteRanges.length > 0 ? html`
-                      <div class="audit-group">
-                        <div class="audit-group-title">Signature Integrity (ByteRange)</div>
-                        ${r.audit.byteRanges.map((br, i) => html`
-                          <div class="audit-item">
-                            <strong>Sig ${i + 1}</strong>
-                            <code>[${br.join(', ')}]</code>
+                    ${r.audit.byteRanges.length > 0
+                      ? html`
+                          <div class="audit-group">
+                            <div class="audit-group-title">Signature Integrity (ByteRange)</div>
+                            ${r.audit.byteRanges.map(
+                              (br, i) => html`
+                                <div class="audit-item">
+                                  <strong>Sig ${i + 1}</strong>
+                                  <code>[${br.join(', ')}]</code>
+                                </div>
+                              `,
+                            )}
+                            <div class="audit-item">
+                              <strong>LTV Data</strong>
+                              <code class="${r.audit.hasLtvData ? 'audit-safe' : 'audit-info'}">
+                                ${r.audit.hasLtvData
+                                  ? 'Present (/DSS — offline revocation)'
+                                  : 'Not embedded (requires online check)'}
+                              </code>
+                            </div>
                           </div>
-                        `)}
-                        <div class="audit-item">
-                          <strong>LTV Data</strong>
-                          <code class="${r.audit.hasLtvData ? 'audit-safe' : 'audit-info'}">
-                            ${r.audit.hasLtvData
-                              ? 'Present (/DSS — offline revocation)'
-                              : 'Not embedded (requires online check)'}
-                          </code>
-                        </div>
-                      </div>
-                    ` : ''}
-
+                        `
+                      : ''}
                   </div>
                 </details>
               `
             : ''}
-
           ${this.pluginResults && this.pluginResults.size > 0
             ? html`
                 <div class="section-title">Extended Verification</div>
@@ -634,9 +690,15 @@ export class AttesttoVerify extends LitElement {
                           </span>
                           ${attesttoPlugins.get(name)?.label ?? name}
                         </div>
-                        ${result.error ? html`<div style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem">${result.error}</div>` : ''}
+                        ${result.error
+                          ? html`<div
+                              style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem"
+                            >
+                              ${result.error}
+                            </div>`
+                          : ''}
                       </div>
-                    `
+                    `,
                   )}
                 </div>
               `
@@ -703,7 +765,7 @@ export class AttesttoVerify extends LitElement {
         detail: { fileName: file.name, fileSize: file.size },
         composed: true,
         bubbles: true,
-      })
+      }),
     )
 
     try {
@@ -729,7 +791,7 @@ export class AttesttoVerify extends LitElement {
           },
           composed: true,
           bubbles: true,
-        })
+        }),
       )
     } finally {
       this.verifying = false
@@ -741,7 +803,9 @@ export class AttesttoVerify extends LitElement {
     try {
       await navigator.clipboard.writeText(this.result.hash)
       this.showCopied = true
-      setTimeout(() => { this.showCopied = false }, 1500)
+      setTimeout(() => {
+        this.showCopied = false
+      }, 1500)
     } catch {
       // Clipboard API not available
     }

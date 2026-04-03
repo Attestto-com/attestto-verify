@@ -82,7 +82,7 @@ export interface CryptoPlugin extends PluginBase {
     signatureBytes: Uint8Array,
     dataHash: Uint8Array,
     publicKey: CryptoKey | Uint8Array,
-    algorithm: string
+    algorithm: string,
   ) => Promise<VerificationResult>
 }
 
@@ -140,7 +140,7 @@ class PluginRegistry {
           detail: { name: plugin.name, type: plugin.type },
           composed: true,
           bubbles: true,
-        })
+        }),
       )
     }
   }
@@ -165,7 +165,7 @@ class PluginRegistry {
   /** Get parsers that handle a specific file extension */
   getParsersForExtension(ext: string): ParserPlugin[] {
     return this.getByType<ParserPlugin>('parser').filter((p) =>
-      p.supportedExtensions.includes(ext.toLowerCase())
+      p.supportedExtensions.includes(ext.toLowerCase()),
     )
   }
 
@@ -176,7 +176,7 @@ class PluginRegistry {
    */
   async runVerifiers(
     hash: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<Map<string, VerificationResult>> {
     const results = new Map<string, VerificationResult>()
     const verifiers = this.getByType<VerifierPlugin>('verifier')
@@ -185,7 +185,7 @@ class PluginRegistry {
       verifiers.map(async (v) => {
         const result = await v.check(hash, metadata)
         return { name: v.name, result }
-      })
+      }),
     )
 
     for (const outcome of settled) {
@@ -212,9 +212,7 @@ class PluginRegistry {
       return { trusted: false, trustLevel: 'unknown' }
     }
 
-    const results = await Promise.allSettled(
-      trustPlugins.map((p) => p.isTrusted(certChain))
-    )
+    const results = await Promise.allSettled(trustPlugins.map((p) => p.isTrusted(certChain)))
 
     // Return the highest trust level found
     const trustOrder: TrustResult['trustLevel'][] = [
@@ -246,7 +244,9 @@ export const attesttoPlugins = new PluginRegistry()
 // ── Global API (for CDN/script-tag users) ────────────────────────────
 
 if (typeof window !== 'undefined') {
-  const global = window as unknown as { Attestto?: { registerPlugin: (p: Plugin) => void; plugins: PluginRegistry } }
+  const global = window as unknown as {
+    Attestto?: { registerPlugin: (p: Plugin) => void; plugins: PluginRegistry }
+  }
   if (!global.Attestto) {
     global.Attestto = {
       registerPlugin: (plugin: Plugin) => attesttoPlugins.register(plugin),

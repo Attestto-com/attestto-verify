@@ -21,6 +21,10 @@
  *   window.Attestto.registerPlugin(myPlugin)
  */
 
+// Initialize global Attestto namespace (debug toggle, plugin registration)
+import { initGlobal } from './logger.js'
+initGlobal()
+
 export { AttesttoVerify } from './components/attestto-verify.js'
 export { AttesttoSign } from './components/attestto-sign.js'
 
@@ -38,6 +42,17 @@ export type {
   TrustResult,
   ExtractedSignature,
 } from './plugins/registry.js'
+
+// Signing composable
+export {
+  hashFile,
+  signWithWallet,
+  signWithBrowserKey,
+  getBrowserKeyPair,
+  buildCredential,
+  exportCredentialAsJson,
+} from './composables/document-signer.js'
+export type { DocumentSignatureCredential, SignResult } from './composables/document-signer.js'
 
 // Built-in plugins
 export { didVerifierPlugin, createDidVerifier } from './plugins/did-verifier.js'

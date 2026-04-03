@@ -6,6 +6,10 @@
  * the device.
  */
 
+import { logger } from '../logger.js'
+
+const log = logger.verify
+
 export interface PdfMetadata {
   title: string | null
   author: string | null
@@ -117,9 +121,15 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
     let dictStart = match.index
     let depth = 0
     for (let i = match.index; i >= 0; i--) {
-      if (text[i] === '>' && text[i - 1] === '>') { depth++; i-- }
+      if (text[i] === '>' && text[i - 1] === '>') {
+        depth++
+        i--
+      }
       if (text[i] === '<' && text[i - 1] === '<') {
-        if (depth === 0) { dictStart = i - 1; break }
+        if (depth === 0) {
+          dictStart = i - 1
+          break
+        }
         depth--
         i--
       }
@@ -129,10 +139,16 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
     let dictEnd = text.length
     depth = 0
     for (let i = dictStart; i < text.length - 1; i++) {
-      if (text[i] === '<' && text[i + 1] === '<') { depth++; i++ }
+      if (text[i] === '<' && text[i + 1] === '<') {
+        depth++
+        i++
+      }
       if (text[i] === '>' && text[i + 1] === '>') {
         depth--
-        if (depth === 0) { dictEnd = i + 2; break }
+        if (depth === 0) {
+          dictEnd = i + 2
+          break
+        }
         i++
       }
     }
@@ -175,8 +191,8 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       contactInfo: getField('ContactInfo'),
       signDate: getField('M') ? formatPdfDate(getField('M')!) : null,
       level: 'detected', // v1 = byte scan only; v2 (ATT-209) will upgrade to 'signed'/'trusted'
-      did: null,          // v2: extracted from cert SubjectAltName
-      lei: null,          // v2: extracted from cert serialNumber
+      did: null, // v2: extracted from cert SubjectAltName
+      lei: null, // v2: extracted from cert serialNumber
       organization: null, // v2: extracted from cert O field
       subFilter: getNameField('SubFilter'),
     })
@@ -262,8 +278,10 @@ function scanPdfAudit(bytes: Uint8Array, text: string): PdfAuditInfo {
 
 /** Full client-side PDF verification */
 export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
+  log.info(`[1/4] Reading "${file.name}" (${file.size} bytes)`)
   const buffer = await file.arrayBuffer()
   const hash = await computeHash(buffer)
+  log.info(`[2/4] SHA-256: ${hash}`)
   const isPdf = file.name.toLowerCase().endsWith('.pdf')
 
   let metadata: PdfMetadata | null = null
@@ -276,16 +294,22 @@ export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
 
     // Extract signatures from raw bytes (no external dependency)
     signatures = extractSignaturesFromBytes(pdfBytes)
+    log.info(
+      `[3/4] PAdES scan: ${signatures.length} signature${signatures.length !== 1 ? 's' : ''} found${signatures.length > 0 ? ' — ' + signatures.map((s) => s.name).join(', ') : ''}`,
+    )
 
     // Forensic security scan
     audit = scanPdfAudit(pdfBytes, pdfText)
+    log.info(
+      `[3/4] Forensic audit: PDF ${audit.pdfVersion || '?'}, JS=${audit.hasJavaScript ? 'YES' : 'no'}, OpenAction=${audit.hasOpenAction ? 'YES' : 'no'}, Encrypted=${audit.encrypted ? 'YES' : 'no'}`,
+    )
 
     // Try pdfjs-dist for metadata (lazy-loaded)
     try {
       const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist')
       GlobalWorkerOptions.workerSrc = new URL(
         'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
+        import.meta.url,
       ).toString()
 
       const pdf = await getDocument({ data: buffer }).promise
@@ -307,6 +331,10 @@ export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
       // pdfjs-dist not available — signatures still extracted from raw bytes
     }
   }
+
+  log.event(
+    `[4/4] Verification complete — ${signatures.length} signature(s), ${audit?.hasJavaScript ? 'JS detected' : 'clean'}`,
+  )
 
   return {
     fileName: file.name,

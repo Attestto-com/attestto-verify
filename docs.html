@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attestto Verify — Developer Documentation</title>
+    <meta name="description" content="Developer documentation for @attestto/verify web components. Embed document verification and DID signing in any site." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --brand: #594FD3;
+        --brand-hover: #7B72ED;
+        --bg: #0f0f1a;
+        --bg-card: #151525;
+        --bg-sidebar: #0c0c18;
+        --bg-code: #1a1a2e;
+        --bg-code-line: #1e1e32;
+        --border: #1e293b;
+        --border-light: #334155;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --text-dim: #64748b;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      /* ── Layout ─────────────────────────────────────── */
+      .docs-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 100vh;
+      }
+
+      /* ── Sidebar ────────────────────────────────────── */
+      .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border);
+        padding: 1.5rem 0;
+      }
+
+      .sidebar-logo {
+        display: block;
+        padding: 0 1.25rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1rem;
+      }
+
+      .sidebar-logo img { height: 22px; }
+
+      .sidebar-label {
+        padding: 0.5rem 1.25rem 0.25rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .sidebar a {
+        display: block;
+        padding: 0.4rem 1.25rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        border-left: 2px solid transparent;
+        transition: all 0.12s;
+      }
+
+      .sidebar a:hover {
+        color: var(--text);
+        background: rgba(89, 79, 211, 0.06);
+      }
+
+      .sidebar a.active {
+        color: var(--brand);
+        border-left-color: var(--brand);
+        background: rgba(89, 79, 211, 0.08);
+      }
+
+      .sidebar-badge {
+        display: inline-block;
+        font-size: 0.6rem;
+        font-weight: 700;
+        background: var(--brand);
+        color: white;
+        padding: 0.1rem 0.35rem;
+        border-radius: 3px;
+        margin-left: 0.35rem;
+        vertical-align: middle;
+      }
+
+      /* ── Top Bar (sticky) ─────────────────────────────── */
+      .docs-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.6rem 2rem;
+        background: rgba(15, 15, 26, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .docs-topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      .docs-topbar-logo img { height: 20px; }
+
+      .docs-topbar-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        padding-left: 1.25rem;
+        border-left: 1px solid var(--border);
+      }
+
+      .docs-topbar-nav {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      .docs-topbar-nav a {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.12s;
+      }
+
+      .docs-topbar-nav a:hover { color: var(--text); }
+
+      .docs-topbar-debug {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: var(--text-dim);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.12s;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .docs-topbar-debug:hover {
+        color: var(--brand);
+        border-color: var(--brand);
+      }
+
+      .docs-topbar-debug.active {
+        color: #4ade80;
+        border-color: #4ade80;
+      }
+
+      .debug-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ef4444;
+        flex-shrink: 0;
+        animation: pulse-red 1.8s ease-in-out infinite;
+      }
+
+      .docs-topbar-debug.active .debug-dot {
+        background: #4ade80;
+        animation: pulse-green 1.2s ease-in-out infinite;
+      }
+
+      @keyframes pulse-red {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+        50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+      }
+
+      @keyframes pulse-green {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+        50% { box-shadow: 0 0 0 5px rgba(74, 222, 128, 0); }
+      }
+
+      /* ── Content ────────────────────────────────────── */
+      .content {
+        max-width: 1200px;
+        padding: 3rem 4rem;
+      }
+
+      .content h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+      }
+
+      .content h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-top: 3.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid var(--border);
+        letter-spacing: -0.01em;
+      }
+
+      .content h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 2rem;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+
+      .content p {
+        color: var(--text-muted);
+        margin-bottom: 1.25rem;
+        font-size: 0.95rem;
+        line-height: 1.75;
+        max-width: 720px;
+      }
+
+      .content a {
+        color: var(--brand);
+        text-decoration: none;
+      }
+
+      .content a:hover { text-decoration: underline; }
+
+      .hero-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        background: rgba(89, 79, 211, 0.12);
+        color: var(--brand);
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(89, 79, 211, 0.2);
+      }
+
+      .hero-sub {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        margin-bottom: 2.5rem;
+        line-height: 1.65;
+        max-width: 640px;
+      }
+
+      /* ── Code Blocks ────────────────────────────────── */
+      .code-block {
+        position: relative;
+        background: var(--bg-code);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+      }
+
+      .code-block-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid var(--border);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        font-family: var(--mono);
+        letter-spacing: 0.03em;
+      }
+
+      .code-block-copy {
+        background: none;
+        border: 1px solid var(--border-light);
+        color: var(--text-dim);
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        cursor: pointer;
+        font-family: var(--mono);
+        transition: all 0.12s;
+      }
+
+      .code-block-copy:hover {
+        color: var(--text);
+        border-color: var(--brand);
+      }
+
+      .code-block pre {
+        padding: 1.25rem 1.5rem;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.75;
+        overflow-x: auto;
+        color: var(--text);
+      }
+
+      /* Syntax colors (One Dark) */
+      .c-kw { color: #c678dd; }    /* keyword: import, const, function */
+      .c-str { color: #98c379; }   /* string */
+      .c-tag { color: #e06c75; }   /* HTML tag */
+      .c-attr { color: #d19a66; }  /* attribute */
+      .c-cm { color: #5c6370; font-style: italic; }  /* comment */
+      .c-fn { color: #61afef; }    /* function name */
+      .c-typ { color: #e5c07b; }   /* type */
+      .c-num { color: #d19a66; }   /* number */
+      .c-op { color: #56b6c2; }    /* operator */
+      .c-br { color: #abb2bf; }    /* bracket */
+
+      /* ── Inline Code ────────────────────────────────── */
+      code {
+        font-family: var(--mono);
+        font-size: 0.82em;
+        background: var(--bg-code);
+        border: 1px solid var(--border);
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        color: #e06c75;
+      }
+
+      /* ── Tables ─────────────────────────────────────── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+        font-size: 0.88rem;
+      }
+
+      th {
+        text-align: left;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 2px solid var(--border);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      td {
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      td code {
+        font-size: 0.78em;
+        white-space: nowrap;
+      }
+
+      tr:hover td { background: rgba(255,255,255,0.015); }
+
+      /* ── Callouts ───────────────────────────────────── */
+      .callout {
+        display: flex;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+      .callout-info {
+        background: rgba(89, 79, 211, 0.08);
+        border: 1px solid rgba(89, 79, 211, 0.15);
+        color: var(--text-muted);
+      }
+
+      .callout-privacy {
+        background: rgba(74, 222, 128, 0.06);
+        border: 1px solid rgba(74, 222, 128, 0.12);
+        color: var(--text-muted);
+      }
+
+      /* ── Step Cards ─────────────────────────────────── */
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 1.5rem;
+      }
+
+      .step {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .step:last-child { border-bottom: none; }
+
+      .step-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--brand);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      .step-body { flex: 1; }
+      .step-body strong { color: var(--text); }
+      .step-body p { margin: 0; }
+
+      /* ── Props/API Tables ────────────────────────────── */
+      .api-name {
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        color: #e06c75;
+        font-weight: 600;
+      }
+
+      .api-type {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: #e5c07b;
+      }
+
+      .api-default {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--text-dim);
+      }
+
+      /* ── Verification Levels ────────────────────────── */
+      .levels {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .level-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+      }
+
+      .level-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        flex-shrink: 0;
+        width: 80px;
+        text-align: center;
+      }
+
+      .level-detected { background: #422006; color: #fbbf24; }
+      .level-signed { background: #052e16; color: #4ade80; }
+      .level-trusted { background: #172554; color: #60a5fa; }
+      .level-qualified { background: linear-gradient(135deg, #422006, #1e1b4b); color: #fbbf24; }
+
+      .level-desc { font-size: 0.82rem; color: var(--text-muted); }
+
+      /* ── Plugin Architecture Diagram ─────────────────── */
+      .arch-flow {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        padding: 1rem 0;
+      }
+
+      .arch-box {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .arch-file { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); }
+      .arch-plugin { background: rgba(89, 79, 211, 0.1); border: 1px solid rgba(89, 79, 211, 0.2); color: var(--brand); }
+      .arch-result { background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.15); color: var(--success); }
+
+      .arch-arrow {
+        color: var(--text-dim);
+        font-size: 1.2rem;
+        padding: 0 0.5rem;
+        flex-shrink: 0;
+      }
+
+      /* ── Footer ─────────────────────────────────────── */
+      .docs-footer {
+        padding: 2rem 0;
+        margin-top: 3rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.78rem;
+        color: var(--text-dim);
+      }
+
+      .docs-footer a { color: var(--brand); }
+
+      /* ── Live Playground ──────────────────────────────── */
+      .playground {
+        margin-bottom: 3rem;
+      }
+
+      .playground-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+
+      .playground-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .playground-tabs {
+        display: flex;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .playground-tab {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-family: var(--mono);
+        transition: all 0.12s;
+      }
+
+      .playground-tab:hover { color: var(--text); }
+
+      .playground-tab.active {
+        background: var(--brand);
+        color: white;
+      }
+
+      .playground-container {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .playground-preview {
+        padding: 3rem 2rem;
+        background: var(--bg-card);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        position: relative;
+        min-height: 380px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .playground-preview::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 50%, rgba(89, 79, 211, 0.04) 0%, transparent 50%),
+          radial-gradient(circle at 80% 80%, rgba(89, 79, 211, 0.03) 0%, transparent 50%);
+        pointer-events: none;
+      }
+
+      .playground-preview attestto-verify,
+      .playground-preview attestto-sign {
+        width: 100%;
+        max-width: 720px;
+        --attestto-text: #e2e8f0;
+        --attestto-text-muted: #94a3b8;
+        --attestto-primary: #594FD3;
+        --attestto-primary-hover: #7B72ED;
+        --attestto-success: #4ade80;
+        --attestto-success-bg: #052e16;
+        --attestto-warning: #fbbf24;
+        --attestto-warning-bg: #422006;
+        --attestto-border: #334155;
+        --attestto-bg: #1e293b;
+        --attestto-bg-hover: #1e1b4b;
+        --attestto-bg-card: #0f172a;
+        --attestto-bg-code: #1e293b;
+        --attestto-bg-code-hover: #334155;
+        --attestto-muted-bg: #1e293b;
+        --attestto-info: #60a5fa;
+        --attestto-info-bg: #172554;
+      }
+
+      .playground-badge {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--brand);
+        background: rgba(89, 79, 211, 0.1);
+        border: 1px solid rgba(89, 79, 211, 0.15);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        z-index: 1;
+      }
+
+      /* ── Code Drawer ────────────────────────────────── */
+      .playground-drawer-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.6rem;
+        background: rgba(255,255,255,0.02);
+        border: none;
+        border-top: 1px solid var(--border);
+        color: var(--text-dim);
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-family: var(--mono);
+        cursor: pointer;
+        transition: all 0.15s;
+        letter-spacing: 0.03em;
+      }
+
+      .playground-drawer-toggle:hover {
+        color: var(--brand);
+        background: rgba(89, 79, 211, 0.04);
+      }
+
+      .playground-drawer-toggle .chevron {
+        transition: transform 0.25s ease;
+        font-size: 0.65rem;
+      }
+
+      .playground-drawer-toggle.open .chevron {
+        transform: rotate(180deg);
+      }
+
+      .playground-drawer {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--bg-code);
+        border-top: 1px solid var(--border);
+      }
+
+      .playground-drawer.open {
+        max-height: 600px;
+      }
+
+      .playground-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.6rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        font-family: var(--mono);
+      }
+
+      .playground-drawer pre {
+        padding: 1.25rem 1.5rem;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.75;
+        overflow: auto;
+        margin: 0;
+      }
+
+      .playground-drawer .line-num {
+        color: #3d4556;
+        user-select: none;
+        display: inline-block;
+        width: 2ch;
+        text-align: right;
+        margin-right: 1.5rem;
+      }
+
+      .playground-pane-preview { display: none; }
+      .playground-pane-preview.active { display: block; }
+      .playground-pane-code { display: none; }
+      .playground-pane-code.active { display: block; }
+
+      /* ── Responsive ─────────────────────────────────── */
+      @media (max-width: 768px) {
+        .docs-layout { grid-template-columns: 1fr; }
+        .sidebar { display: none; }
+        .content { padding: 2rem 1.25rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── Sticky Top Bar ───────────────────────────── -->
+    <div class="docs-topbar">
+      <div class="docs-topbar-left">
+        <a href="/" class="docs-topbar-logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <span class="docs-topbar-title">Developer Documentation</span>
+      </div>
+      <div class="docs-topbar-nav">
+        <a href="/">Verify</a>
+        <a href="/docs.html">Docs</a>
+        <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
+        <span id="topbar-wallet" style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono);"></span>
+        <button class="docs-topbar-debug" id="debug-toggle"><span class="debug-dot"></span><span class="debug-label">Debug OFF</span></button>
+      </div>
+    </div>
+
+    <div class="docs-layout">
+      <!-- ── Sidebar ─────────────────────────────────── -->
+      <nav class="sidebar">
+        <div class="sidebar-label" style="margin-top: 0.5rem;">Try It</div>
+        <a href="#playground" class="active">Live Playground</a>
+
+        <div class="sidebar-label">Getting Started</div>
+        <a href="#quick-start">Quick Start</a>
+        <a href="#installation">Installation</a>
+        <a href="#frameworks">Frameworks</a>
+
+        <div class="sidebar-label">Components</div>
+        <a href="#verify-component">&lt;attestto-verify&gt;</a>
+        <a href="#sign-component">&lt;attestto-sign&gt;</a>
+
+        <div class="sidebar-label">Customization</div>
+        <a href="#theming">Theming</a>
+        <a href="#css-parts">CSS Parts</a>
+        <a href="#events">Events</a>
+
+        <div class="sidebar-label">Architecture</div>
+        <a href="#plugins">Plugin System</a>
+        <a href="#result-schema">Result Schema</a>
+        <a href="#trust-levels">Trust Levels</a>
+        <a href="#forensic-audit">Forensic Audit</a>
+
+        <div class="sidebar-label">Reference</div>
+        <a href="#wallet-adapter">Wallet Adapter</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#license">License</a>
+
+        <div style="padding: 1rem 1.25rem; margin-top: auto;">
+          <a href="https://github.com/attestto/verify" target="_blank" style="border: none; color: var(--text-dim); font-size: 0.78rem;">GitHub &rarr;</a>
+        </div>
+      </nav>
+
+      <!-- ── Content ─────────────────────────────────── -->
+      <main class="content">
+        <!-- Hero -->
+        <div class="hero-badge">Open Source &middot; Apache 2.0</div>
+        <h1>@attestto/verify</h1>
+        <p class="hero-sub">
+          Web Components for document verification and DID signing.<br />
+          Drop into any site — no framework, no backend, no data transmitted.
+        </p>
+
+        <div class="callout callout-privacy">
+          <span class="callout-icon">&#x1f512;</span>
+          <div>
+            <strong>Privacy guarantee:</strong> Your documents never leave your device.
+            All verification is 100% client-side. No analytics, no tracking, no phone home.
+          </div>
+        </div>
+
+        <!-- Live Playground -->
+        <h2 id="playground">Live Playground</h2>
+        <p>These are the actual components running below — drop a real PDF to see them work.</p>
+
+        <div class="playground">
+          <div class="playground-header">
+            <span class="playground-title">Interactive Preview</span>
+            <div class="playground-tabs">
+              <button class="playground-tab active" data-pg="verify">Verify</button>
+              <button class="playground-tab" data-pg="sign">Sign</button>
+            </div>
+          </div>
+
+          <div class="playground-container">
+            <!-- Preview area — full width, component centered -->
+            <div class="playground-preview">
+              <span class="playground-badge">Live Component</span>
+              <div class="playground-pane-preview active" id="pg-verify-preview">
+                <attestto-verify></attestto-verify>
+              </div>
+              <div class="playground-pane-preview" id="pg-sign-preview">
+                <attestto-sign></attestto-sign>
+              </div>
+            </div>
+
+            <!-- Drawer toggle -->
+            <button class="playground-drawer-toggle" id="drawer-toggle">
+              <span>&lt;/&gt; View Code</span>
+              <span class="chevron">&#9660;</span>
+            </button>
+
+            <!-- Code drawer — slides open -->
+            <div class="playground-drawer" id="drawer">
+              <div class="playground-pane-code active" id="pg-verify-code">
+                <div class="playground-drawer-header">
+                  <span>index.html &mdash; 3 lines to embed</span>
+                  <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><span class="line-num"> 1</span><span class="c-tag">&lt;!DOCTYPE html&gt;</span>
+<span class="line-num"> 2</span><span class="c-tag">&lt;html</span> <span class="c-attr">lang</span>=<span class="c-str">"en"</span><span class="c-tag">&gt;</span>
+<span class="line-num"> 3</span><span class="c-tag">&lt;head&gt;</span>
+<span class="line-num"> 4</span>  <span class="c-tag">&lt;script</span> <span class="c-attr">type</span>=<span class="c-str">"module"</span>
+<span class="line-num"> 5</span>    <span class="c-attr">src</span>=<span class="c-str">"https://unpkg.com/@attestto/verify"</span>
+<span class="line-num"> 6</span>  <span class="c-tag">&gt;&lt;/script&gt;</span>
+<span class="line-num"> 7</span><span class="c-tag">&lt;/head&gt;</span>
+<span class="line-num"> 8</span><span class="c-tag">&lt;body&gt;</span>
+<span class="line-num"> 9</span>
+<span class="line-num">10</span>  <span class="c-cm">&lt;!-- That's it. Drop this anywhere. --&gt;</span>
+<span class="line-num">11</span>  <span class="c-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
+<span class="line-num">12</span>
+<span class="line-num">13</span><span class="c-tag">&lt;/body&gt;</span>
+<span class="line-num">14</span><span class="c-tag">&lt;/html&gt;</span></pre>
+              </div>
+
+              <div class="playground-pane-code" id="pg-sign-code">
+                <div class="playground-drawer-header">
+                  <span>sign.html &mdash; DID wallet signing</span>
+                  <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><span class="line-num"> 1</span><span class="c-tag">&lt;!DOCTYPE html&gt;</span>
+<span class="line-num"> 2</span><span class="c-tag">&lt;html</span> <span class="c-attr">lang</span>=<span class="c-str">"en"</span><span class="c-tag">&gt;</span>
+<span class="line-num"> 3</span><span class="c-tag">&lt;head&gt;</span>
+<span class="line-num"> 4</span>  <span class="c-tag">&lt;script</span> <span class="c-attr">type</span>=<span class="c-str">"module"</span>
+<span class="line-num"> 5</span>    <span class="c-attr">src</span>=<span class="c-str">"https://unpkg.com/@attestto/verify"</span>
+<span class="line-num"> 6</span>  <span class="c-tag">&gt;&lt;/script&gt;</span>
+<span class="line-num"> 7</span><span class="c-tag">&lt;/head&gt;</span>
+<span class="line-num"> 8</span><span class="c-tag">&lt;body&gt;</span>
+<span class="line-num"> 9</span>
+<span class="line-num">10</span>  <span class="c-cm">&lt;!-- Sign with any DID wallet --&gt;</span>
+<span class="line-num">11</span>  <span class="c-tag">&lt;attestto-sign&gt;&lt;/attestto-sign&gt;</span>
+<span class="line-num">12</span>
+<span class="line-num">13</span>  <span class="c-cm">&lt;!-- Listen for signed credentials --&gt;</span>
+<span class="line-num">14</span>  <span class="c-tag">&lt;script&gt;</span>
+<span class="line-num">15</span>  window.<span class="c-fn">addEventListener</span>(<span class="c-str">'message'</span>, e <span class="c-op">=&gt;</span> <span class="c-br">{</span>
+<span class="line-num">16</span>    <span class="c-kw">if</span> (e.data?.type <span class="c-op">===</span> <span class="c-str">'ATTESTTO_VC_STORE'</span>)
+<span class="line-num">17</span>      console.<span class="c-fn">log</span>(<span class="c-str">'VC:'</span>, e.data.credential)
+<span class="line-num">18</span>  <span class="c-br">}</span>)
+<span class="line-num">19</span>  <span class="c-tag">&lt;/script&gt;</span>
+<span class="line-num">20</span>
+<span class="line-num">21</span><span class="c-tag">&lt;/body&gt;</span>
+<span class="line-num">22</span><span class="c-tag">&lt;/html&gt;</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Start -->
+        <h2 id="quick-start">Quick Start</h2>
+        <p>Add document verification to your site in 30 seconds:</p>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>HTML</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-cm">&lt;!-- Add to any HTML page --&gt;</span>
+<span class="c-tag">&lt;script</span> <span class="c-attr">type</span>=<span class="c-str">"module"</span> <span class="c-attr">src</span>=<span class="c-str">"https://unpkg.com/@attestto/verify"</span><span class="c-tag">&gt;&lt;/script&gt;</span>
+
+<span class="c-cm">&lt;!-- Verify documents --&gt;</span>
+<span class="c-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
+
+<span class="c-cm">&lt;!-- Sign with DID wallet --&gt;</span>
+<span class="c-tag">&lt;attestto-sign&gt;&lt;/attestto-sign&gt;</span></pre>
+        </div>
+
+        <p>That's it. Both components are self-contained with Shadow DOM — no CSS conflicts, no global state.</p>
+
+        <!-- Installation -->
+        <h2 id="installation">Installation</h2>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>Terminal</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-cm"># npm</span>
+npm install <span class="c-str">@attestto/verify</span>
+
+<span class="c-cm"># pnpm</span>
+pnpm add <span class="c-str">@attestto/verify</span>
+
+<span class="c-cm"># yarn</span>
+yarn add <span class="c-str">@attestto/verify</span></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>JavaScript</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-cm">// Import all components</span>
+<span class="c-kw">import</span> <span class="c-str">'@attestto/verify'</span>
+
+<span class="c-cm">// Or import individually</span>
+<span class="c-kw">import</span> <span class="c-str">'@attestto/verify/verify'</span>
+<span class="c-kw">import</span> <span class="c-str">'@attestto/verify/sign'</span></pre>
+        </div>
+
+        <!-- Frameworks -->
+        <h2 id="frameworks">Framework Integration</h2>
+        <p>Web Components are a <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Components" target="_blank">W3C standard</a> — they work natively in every framework.</p>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>React</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">import</span> <span class="c-str">'@attestto/verify'</span>
+
+<span class="c-kw">function</span> <span class="c-fn">App</span><span class="c-br">()</span> <span class="c-br">{</span>
+  <span class="c-kw">return</span> <span class="c-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
+<span class="c-br">}</span></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>Vue</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-tag">&lt;script</span> <span class="c-attr">setup</span><span class="c-tag">&gt;</span>
+<span class="c-kw">import</span> <span class="c-str">'@attestto/verify'</span>
+<span class="c-tag">&lt;/script&gt;</span>
+
+<span class="c-tag">&lt;template&gt;</span>
+  <span class="c-tag">&lt;attestto-verify /&gt;</span>
+<span class="c-tag">&lt;/template&gt;</span></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>Svelte</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-tag">&lt;script&gt;</span>
+  <span class="c-kw">import</span> <span class="c-str">'@attestto/verify'</span>
+<span class="c-tag">&lt;/script&gt;</span>
+
+<span class="c-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></pre>
+        </div>
+
+        <!-- Verify Component -->
+        <h2 id="verify-component">&lt;attestto-verify&gt;</h2>
+        <p>Drop-in document verification. Extracts SHA-256 hash, detects PAdES digital signatures, runs forensic security audit. All client-side.</p>
+
+        <h3>Attributes</h3>
+        <table>
+          <thead>
+            <tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="api-name">hash</span></td>
+              <td><span class="api-type">string</span></td>
+              <td><span class="api-default">—</span></td>
+              <td>Pre-computed hash to verify against</td>
+            </tr>
+            <tr>
+              <td><span class="api-name">allow-plugins</span></td>
+              <td><span class="api-type">boolean</span></td>
+              <td><span class="api-default">false</span></td>
+              <td>Enable the plugin pipeline</td>
+            </tr>
+            <tr>
+              <td><span class="api-name">theme</span></td>
+              <td><span class="api-type">"light" | "dark"</span></td>
+              <td><span class="api-default">"light"</span></td>
+              <td>Color theme</td>
+            </tr>
+            <tr>
+              <td><span class="api-name">root-ca</span></td>
+              <td><span class="api-type">string</span></td>
+              <td><span class="api-default">—</span></td>
+              <td>Expected root CA name for trust validation</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>What It Does</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <p><strong>Hash:</strong> Computes SHA-256 of the entire file</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <p><strong>Signatures:</strong> Byte-scans for PAdES/PKCS#7 signature dictionaries</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <p><strong>Forensic Audit:</strong> Checks for JavaScript, OpenAction, embedded files, ByteRange gaps, LTV data, encryption</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <p><strong>Plugins:</strong> Runs registered verifier plugins (DID resolver, trust registry, etc.)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sign Component -->
+        <h2 id="sign-component">&lt;attestto-sign&gt;</h2>
+        <p>Sign documents with any DID wallet. Uses <code>@attestto/id-wallet-adapter</code> for universal wallet discovery — any extension that calls <code>registerWallet()</code> will appear automatically.</p>
+
+        <h3>Sign Flow</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <p><strong>Discover:</strong> Finds installed credential wallets via <code>discoverWallets()</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <p><strong>Select:</strong> Auto-connects if one wallet, shows picker if multiple</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <p><strong>Drop PDF:</strong> Computes SHA-256 hash of the document</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <p><strong>Sign:</strong> Sends hash to wallet via <code>requestSignature()</code> — wallet shows consent popup</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <p><strong>Store:</strong> Signed VC (<code>DocumentSignatureCredential</code>) is pushed to the wallet for storage</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">&#x1f4a1;</span>
+          <div>
+            <strong>Output is a Verifiable Credential,</strong> not a file download.
+            The signed VC lives in the user's wallet and can be presented to any verifier.
+            An "Export JSON" fallback is available.
+          </div>
+        </div>
+
+        <!-- Theming -->
+        <h2 id="theming">Theming</h2>
+        <p>Override CSS custom properties on the component to match your brand. Both components use the same token set:</p>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>CSS</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-tag">attestto-verify</span><span class="c-br">,</span>
+<span class="c-tag">attestto-sign</span> <span class="c-br">{</span>
+  <span class="c-cm">/* Colors */</span>
+  <span class="c-attr">--attestto-primary</span>: <span class="c-str">#594FD3</span>;
+  <span class="c-attr">--attestto-primary-hover</span>: <span class="c-str">#7B72ED</span>;
+  <span class="c-attr">--attestto-text</span>: <span class="c-str">#1a1a2e</span>;
+  <span class="c-attr">--attestto-text-muted</span>: <span class="c-str">#64748b</span>;
+  <span class="c-attr">--attestto-bg</span>: <span class="c-str">#f8fafc</span>;
+  <span class="c-attr">--attestto-bg-card</span>: <span class="c-str">#ffffff</span>;
+  <span class="c-attr">--attestto-border</span>: <span class="c-str">#e2e8f0</span>;
+  <span class="c-attr">--attestto-success</span>: <span class="c-str">#16a34a</span>;
+  <span class="c-attr">--attestto-warning</span>: <span class="c-str">#d97706</span>;
+
+  <span class="c-cm">/* Typography */</span>
+  <span class="c-attr">--attestto-font</span>: <span class="c-str">system-ui, sans-serif</span>;
+<span class="c-br">}</span></pre>
+        </div>
+
+        <!-- CSS Parts -->
+        <h2 id="css-parts">CSS Parts</h2>
+        <p>Style internal elements without breaking Shadow DOM encapsulation using <code>::part()</code>:</p>
+
+        <table>
+          <thead>
+            <tr><th>Part</th><th>Element</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>::part(drop-zone)</code></td><td>File drop area</td></tr>
+            <tr><td><code>::part(result-card)</code></td><td>Verification results container</td></tr>
+            <tr><td><code>::part(hash-display)</code></td><td>SHA-256 hash display</td></tr>
+            <tr><td><code>::part(sig-card)</code></td><td>Each signature card</td></tr>
+            <tr><td><code>::part(status-badge)</code></td><td>Verification level badge</td></tr>
+            <tr><td><code>::part(signer-name)</code></td><td>Signer's display name</td></tr>
+            <tr><td><code>::part(did-link)</code></td><td>DID URI (clickable)</td></tr>
+            <tr><td><code>::part(vlei-badge)</code></td><td>vLEI corporate identity badge</td></tr>
+            <tr><td><code>::part(corporate-info)</code></td><td>Organization info row</td></tr>
+            <tr><td><code>::part(trust-level)</code></td><td>Verification depth hint</td></tr>
+            <tr><td><code>::part(audit-section)</code></td><td>Forensic audit container</td></tr>
+            <tr><td><code>::part(button)</code></td><td>Action buttons</td></tr>
+            <tr><td><code>::part(wallet-card)</code></td><td>Connected wallet card (sign)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>CSS — Example</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-cm">/* Make the drop zone match your brand */</span>
+<span class="c-tag">attestto-verify</span><span class="c-op">::</span><span class="c-fn">part</span><span class="c-br">(</span><span class="c-attr">drop-zone</span><span class="c-br">)</span> <span class="c-br">{</span>
+  <span class="c-attr">border-color</span>: <span class="c-str">#your-brand-color</span>;
+  <span class="c-attr">border-radius</span>: <span class="c-num">16px</span>;
+<span class="c-br">}</span>
+
+<span class="c-cm">/* Style the trust badge */</span>
+<span class="c-tag">attestto-verify</span><span class="c-op">::</span><span class="c-fn">part</span><span class="c-br">(</span><span class="c-attr">status-badge</span><span class="c-br">)</span> <span class="c-br">{</span>
+  <span class="c-attr">font-size</span>: <span class="c-num">0.9rem</span>;
+  <span class="c-attr">text-transform</span>: uppercase;
+<span class="c-br">}</span></pre>
+        </div>
+
+        <!-- Events -->
+        <h2 id="events">Events</h2>
+        <p>All events are <code>composed</code> — they cross Shadow DOM boundaries and bubble to your document root.</p>
+
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Detail</th><th>When</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>verification-started</code></td>
+              <td><code>{ fileName, fileSize }</code></td>
+              <td>User drops a file</td>
+            </tr>
+            <tr>
+              <td><code>verification-complete</code></td>
+              <td><code>{ hash, signatures, plugins }</code></td>
+              <td>All checks finish</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>JavaScript — Listen for events</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">const</span> el = document.<span class="c-fn">querySelector</span>(<span class="c-str">'attestto-verify'</span>)
+
+el.<span class="c-fn">addEventListener</span>(<span class="c-str">'verification-complete'</span>, (e) <span class="c-op">=&gt;</span> <span class="c-br">{</span>
+  console.<span class="c-fn">log</span>(<span class="c-str">'Hash:'</span>, e.detail.hash)
+  console.<span class="c-fn">log</span>(<span class="c-str">'Signatures:'</span>, e.detail.signatures.length)
+
+  <span class="c-cm">// Send hash to your backend for recording</span>
+  <span class="c-fn">fetch</span>(<span class="c-str">'/api/verify'</span>, <span class="c-br">{</span>
+    method: <span class="c-str">'POST'</span>,
+    body: JSON.<span class="c-fn">stringify</span>(e.detail)
+  <span class="c-br">}</span>)
+<span class="c-br">}</span>)</pre>
+        </div>
+
+        <!-- Plugin System -->
+        <h2 id="plugins">Plugin System</h2>
+        <p>Four plugin types run in a fixed "sandwich" order — parser and crypto run before display, trust and verifier run after. This ensures security checks can't be bypassed by a rogue plugin.</p>
+
+        <div class="arch-flow">
+          <div class="arch-box arch-file">PDF File</div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-box arch-plugin">Parser</div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-box arch-plugin">Crypto</div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-box arch-plugin">Trust</div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-box arch-plugin">Verifier</div>
+          <div class="arch-arrow">&rarr;</div>
+          <div class="arch-box arch-result">Result</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>Type</th><th>Purpose</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>parser</code></td><td>Extract data from document format</td><td>PDF form fields, XML schema</td></tr>
+            <tr><td><code>crypto</code></td><td>Cryptographic verification</td><td>pkijs, Ed25519, RSA</td></tr>
+            <tr><td><code>trust</code></td><td>Trust anchor resolution</td><td>CA chain, AATL, EU TSL</td></tr>
+            <tr><td><code>verifier</code></td><td>Identity verification</td><td>DID resolver, vLEI, Solana</td></tr>
+          </tbody>
+        </table>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>JavaScript — Register a plugin</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">import</span> <span class="c-br">{</span> attesttoPlugins <span class="c-br">}</span> <span class="c-kw">from</span> <span class="c-str">'@attestto/verify'</span>
+
+attesttoPlugins.<span class="c-fn">register</span>(<span class="c-br">{</span>
+  type: <span class="c-str">'verifier'</span>,
+  name: <span class="c-str">'my-did-resolver'</span>,
+  label: <span class="c-str">'My DID Resolver'</span>,
+
+  <span class="c-kw">async</span> <span class="c-fn">verify</span>(result) <span class="c-br">{</span>
+    <span class="c-kw">const</span> did = result.signatures[<span class="c-num">0</span>]?.signer.did
+    <span class="c-kw">if</span> (!did) <span class="c-kw">return</span> <span class="c-br">{</span> valid: <span class="c-num">false</span>, message: <span class="c-str">'No DID found'</span> <span class="c-br">}</span>
+
+    <span class="c-kw">const</span> doc = <span class="c-kw">await</span> <span class="c-fn">resolveDid</span>(did)
+    <span class="c-kw">return</span> <span class="c-br">{</span>
+      valid: doc.verified,
+      message: <span class="c-str">`Resolved </span><span class="c-op">${</span>did<span class="c-op">}</span><span class="c-str">`</span>,
+      details: <span class="c-br">{</span> document: doc <span class="c-br">}</span>
+    <span class="c-br">}</span>
+  <span class="c-br">}</span>
+<span class="c-br">}</span>)
+
+<span class="c-cm">// CDN users: window.Attestto.registerPlugin({ ... })</span></pre>
+        </div>
+
+        <!-- Result Schema -->
+        <h2 id="result-schema">Result Schema</h2>
+        <p>Every verification returns an <code>AttesttoVerificationResult</code> — the universal contract that bridges PDF/PAdES and DID/VC verification through a single interface.</p>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>TypeScript — AttesttoVerificationResult</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">interface</span> <span class="c-typ">AttesttoVerificationResult</span> <span class="c-br">{</span>
+  verified: <span class="c-typ">boolean</span>
+  timestamp: <span class="c-typ">string</span>                <span class="c-cm">// ISO 8601</span>
+  document: <span class="c-typ">DocumentInfo</span>           <span class="c-cm">// file, hash, format</span>
+  integrity: <span class="c-typ">IntegrityResult</span>       <span class="c-cm">// hash + ByteRange</span>
+  signatures: <span class="c-typ">SignatureResult</span>[]    <span class="c-cm">// one per signer</span>
+  extensions: <span class="c-typ">ExtensionResult</span>[]    <span class="c-cm">// plugin outputs</span>
+<span class="c-br">}</span>
+
+<span class="c-kw">interface</span> <span class="c-typ">SignatureResult</span> <span class="c-br">{</span>
+  level: <span class="c-typ">VerificationLevel</span>        <span class="c-cm">// detected → qualified</span>
+  type: <span class="c-typ">SignatureType</span>             <span class="c-cm">// pades, did-ecdsa, vc-jwt...</span>
+  signer: <span class="c-typ">SignerIdentity</span>          <span class="c-cm">// name, org, DID, LEI</span>
+  trust: <span class="c-typ">TrustInfo</span>                <span class="c-cm">// source, level, details</span>
+  metadata: <span class="c-typ">Record</span>&lt;<span class="c-typ">string</span>, <span class="c-typ">unknown</span>&gt;
+<span class="c-br">}</span>
+
+<span class="c-kw">type</span> <span class="c-typ">SignatureType</span> =
+  | <span class="c-str">'pades'</span> | <span class="c-str">'cades'</span> | <span class="c-str">'pades-legacy'</span>
+  | <span class="c-str">'did-ecdsa'</span> | <span class="c-str">'did-eddsa'</span>
+  | <span class="c-str">'vc-jwt'</span> | <span class="c-str">'vc-ld'</span> | <span class="c-str">'sd-jwt'</span>
+  | <span class="c-str">'xml-dsig'</span> | <span class="c-str">'unknown'</span></pre>
+        </div>
+
+        <!-- Trust Levels -->
+        <h2 id="trust-levels">Trust Levels</h2>
+        <p>Signatures progress through a trust ladder. Each level builds on the previous:</p>
+
+        <div class="levels">
+          <div class="level-row">
+            <span class="level-badge level-detected">Detected</span>
+            <span class="level-desc">Signature structure found (v1 byte scan)</span>
+          </div>
+          <div class="level-row">
+            <span class="level-badge level-signed">Signed</span>
+            <span class="level-desc">Cryptographic math verifies — key matches signature</span>
+          </div>
+          <div class="level-row">
+            <span class="level-badge level-trusted">Trusted</span>
+            <span class="level-desc">Chain reaches a known root (CA or DID trust registry)</span>
+          </div>
+          <div class="level-row">
+            <span class="level-badge level-qualified">Qualified</span>
+            <span class="level-desc">Meets regulatory standard (eIDAS qualified, gov-issued)</span>
+          </div>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">&#x2139;&#xFE0F;</span>
+          <div>
+            <strong>v1 reaches "detected" level.</strong> Cryptographic verification (signed → qualified) requires the v2 crypto plugin (ATT-209) which uses pkijs for full PKCS#7/CMS parsing.
+          </div>
+        </div>
+
+        <!-- Forensic Audit -->
+        <h2 id="forensic-audit">Forensic Audit</h2>
+        <p>Every PDF is scanned for security properties — no network requests, all done locally via byte scanning:</p>
+
+        <table>
+          <thead>
+            <tr><th>Check</th><th>What</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>pdfVersion</code></td><td>PDF specification version</td><td>Compatibility baseline</td></tr>
+            <tr><td><code>hasJavaScript</code></td><td>Embedded JavaScript</td><td>Security risk — code execution</td></tr>
+            <tr><td><code>hasOpenAction</code></td><td>Auto-execute on open</td><td>Phishing / payload trigger</td></tr>
+            <tr><td><code>hasEmbeddedFiles</code></td><td>Attached files inside PDF</td><td>Hidden payload delivery</td></tr>
+            <tr><td><code>byteRanges</code></td><td>Signature byte ranges</td><td>Tamper detection — gaps = modified</td></tr>
+            <tr><td><code>hasLTV</code></td><td>Long-Term Validation data</td><td>Offline revocation check capability</td></tr>
+            <tr><td><code>isEncrypted</code></td><td>Document encryption</td><td>Access control present</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Wallet Adapter -->
+        <h2 id="wallet-adapter">Wallet Adapter</h2>
+        <p>The sign component uses <code>@attestto/id-wallet-adapter</code> — a universal protocol for credential wallet discovery and signing. Any wallet extension can participate:</p>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>TypeScript — Extension side (register your wallet)</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">import</span> <span class="c-br">{</span> registerWallet <span class="c-br">}</span> <span class="c-kw">from</span> <span class="c-str">'@attestto/id-wallet-adapter'</span>
+
+<span class="c-fn">registerWallet</span>(<span class="c-br">{</span>
+  did: <span class="c-str">'did:web:yourwallet.com'</span>,
+  name: <span class="c-str">'Your Wallet'</span>,
+  icon: <span class="c-str">'https://yourwallet.com/icon.svg'</span>,
+  version: <span class="c-str">'1.0.0'</span>,
+  protocols: [<span class="c-str">'chapi'</span>],
+  maintainer: <span class="c-br">{</span> name: <span class="c-str">'Your Org'</span> <span class="c-br">}</span>
+<span class="c-br">}</span>)</pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <span>TypeScript — Site side (discover + sign)</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><span class="c-kw">import</span> <span class="c-br">{</span>
+  discoverWallets, requestSignature
+<span class="c-br">}</span> <span class="c-kw">from</span> <span class="c-str">'@attestto/id-wallet-adapter'</span>
+
+<span class="c-cm">// Find installed wallets</span>
+<span class="c-kw">const</span> wallets = <span class="c-kw">await</span> <span class="c-fn">discoverWallets</span>()
+
+<span class="c-cm">// Request a signature</span>
+<span class="c-kw">const</span> result = <span class="c-kw">await</span> <span class="c-fn">requestSignature</span>(wallets[<span class="c-num">0</span>], <span class="c-br">{</span>
+  hash: <span class="c-str">'a1b2c3...'</span>,
+  fileName: <span class="c-str">'contract.pdf'</span>,
+  hashAlgorithm: <span class="c-str">'SHA-256'</span>
+<span class="c-br">}</span>)
+
+<span class="c-kw">if</span> (result?.approved) <span class="c-br">{</span>
+  console.<span class="c-fn">log</span>(<span class="c-str">'Signed by'</span>, result.did)
+<span class="c-br">}</span></pre>
+        </div>
+
+        <!-- Privacy -->
+        <h2 id="privacy">Privacy</h2>
+        <div class="callout callout-privacy">
+          <span class="callout-icon">&#x1f512;</span>
+          <div>
+            <strong>No Phone Home.</strong> These components make zero network requests. No analytics, no telemetry, no CDN callbacks, no OCSP checks, no beacons. Your documents are processed entirely in the browser's memory and never leave the device.
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>Guarantee</th><th>How</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>No data transmission</td><td>All crypto runs in WebCrypto API, no server calls</td></tr>
+            <tr><td>No tracking</td><td>No cookies, localStorage, or fingerprinting</td></tr>
+            <tr><td>No phone home</td><td>No OCSP, no analytics, no CDN callbacks</td></tr>
+            <tr><td>Selective disclosure</td><td>Share the hash, not the document</td></tr>
+            <tr><td>No single point of failure</td><td>Works offline after initial load</td></tr>
+          </tbody>
+        </table>
+
+        <!-- License -->
+        <h2 id="license">License</h2>
+        <p>Apache 2.0 — includes patent protection for trust infrastructure. Use freely in commercial and open-source projects.</p>
+
+        <div class="docs-footer">
+          <a href="https://github.com/attestto/verify">GitHub</a> &middot;
+          <a href="https://www.npmjs.com/package/@attestto/verify">npm</a> &middot;
+          <a href="/">Live Demo</a> &middot;
+          Built by <a href="https://attestto.com">Attestto</a>
+        </div>
+      </main>
+    </div>
+
+    <!-- Load the actual components so the playground works -->
+    <script type="module" src="/src/index.ts"></script>
+
+    <script>
+      // Sync debug toggle button with persisted state
+      ;(function() {
+        var btn = document.getElementById('debug-toggle')
+        if (!btn) return
+        function sync() {
+          var on = window.Attestto && window.Attestto.debug
+          btn.classList.toggle('active', !!on)
+          btn.querySelector('.debug-label').textContent = on ? 'Debug ON' : 'Debug OFF'
+        }
+        btn.addEventListener('click', function() {
+          window.Attestto.debug = !window.Attestto.debug
+          sync()
+        })
+        // Wait for module to init the global
+        setTimeout(sync, 100)
+      })()
+
+      // Detect wallets via the announce event
+      ;(function() {
+        const el = document.getElementById('topbar-wallet')
+        if (!el) return
+        let found = false
+        window.addEventListener('credential-wallet:announce', function(e) {
+          if (found) return
+          found = true
+          const w = e.detail?.wallet
+          if (w) {
+            el.innerHTML = '<span style="color: #4ade80;">&#x25CF;</span> ' + w.name
+            el.title = w.did
+          }
+        })
+        setTimeout(function() {
+          if (!found) {
+            el.innerHTML = '<span style="color: #64748b;">&#x25CB;</span> No wallet'
+            el.title = 'No DID wallet extension detected'
+          }
+        }, 2000)
+      })()
+
+      // Playground tab switching (preview + code panes)
+      document.querySelectorAll('.playground-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.playground-tab').forEach(t => t.classList.remove('active'))
+          document.querySelectorAll('.playground-pane-preview').forEach(p => p.classList.remove('active'))
+          document.querySelectorAll('.playground-pane-code').forEach(p => p.classList.remove('active'))
+          tab.classList.add('active')
+          document.getElementById('pg-' + tab.dataset.pg + '-preview').classList.add('active')
+          document.getElementById('pg-' + tab.dataset.pg + '-code').classList.add('active')
+        })
+      })
+
+      // Code drawer toggle
+      document.getElementById('drawer-toggle').addEventListener('click', () => {
+        const drawer = document.getElementById('drawer')
+        const toggle = document.getElementById('drawer-toggle')
+        drawer.classList.toggle('open')
+        toggle.classList.toggle('open')
+        toggle.querySelector('span:first-child').textContent =
+          drawer.classList.contains('open') ? '</> Hide Code' : '</> View Code'
+      })
+
+      // Active sidebar link tracking
+      const sections = document.querySelectorAll('h2[id]')
+      const links = document.querySelectorAll('.sidebar a[href^="#"]')
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            links.forEach(l => l.classList.remove('active'))
+            const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`)
+            if (active) active.classList.add('active')
+          }
+        })
+      }, { rootMargin: '-20% 0px -80% 0px' })
+
+      sections.forEach(s => observer.observe(s))
+
+      // Smooth scroll
+      links.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault()
+          const target = document.querySelector(link.getAttribute('href'))
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+      })
+
+      // Copy code
+      function copyCode(btn) {
+        const container = btn.closest('.code-block') || btn.closest('.playground-pane-code') || btn.closest('.playground-drawer')
+        const pre = container.querySelector('pre')
+        navigator.clipboard.writeText(pre.textContent)
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = 'Copy' }, 1500)
+      }
+    </script>
+  </body>
+</html>

@@ -32,6 +32,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -43,6 +45,7 @@
   "devDependencies": {
     "@types/node": "^25.5.2",
     "eslint": "^9.0.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "vite": "^6.2.0",
     "vitest": "^3.1.0"
@@ -51,5 +54,9 @@
     "type": "git",
     "url": "https://github.com/attestto/verify"
   },
-  "homepage": "https://verify.attestto.com"
+  "homepage": "https://verify.attestto.com",
+  "author": "Eduardo Chongkan <eduardo@attestto.com>",
+  "contributors": [
+    "Guillermo Chavarria <guillermocc@attestto.com>"
+  ]
 }

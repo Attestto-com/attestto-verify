@@ -126,14 +126,16 @@ export function createDidVerifier(options: DidVerifierOptions = {}): VerifierPlu
 
     check: async (
       hash: string,
-      metadata?: Record<string, unknown>
+      metadata?: Record<string, unknown>,
     ): Promise<VerificationResult> => {
       // Look for DID in signature metadata
-      const signatures = metadata?.signatures as Array<{
-        name?: string
-        contactInfo?: string
-        reason?: string
-      }> | undefined
+      const signatures = metadata?.signatures as
+        | Array<{
+            name?: string
+            contactInfo?: string
+            reason?: string
+          }>
+        | undefined
 
       if (!signatures || signatures.length === 0) {
         return { valid: false, message: 'No signatures to verify' }

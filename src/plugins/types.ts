@@ -85,26 +85,21 @@ export interface SignatureResult {
  *   trusted   → Chain reaches a known root (CA or DID trust registry)
  *   qualified → Meets regulatory standard (eIDAS qualified, gov-issued)
  */
-export type VerificationLevel =
-  | 'detected'
-  | 'parsed'
-  | 'signed'
-  | 'trusted'
-  | 'qualified'
+export type VerificationLevel = 'detected' | 'parsed' | 'signed' | 'trusted' | 'qualified'
 
 /**
  * Signature types — what ecosystem produced this signature.
  */
 export type SignatureType =
-  | 'pades'          // PDF PKCS#7 (adbe.pkcs7.detached)
-  | 'cades'          // PDF CAdES (ETSI.CAdES.detached)
-  | 'pades-legacy'   // PDF PKCS#7 SHA-1 (adbe.pkcs7.sha1)
-  | 'did-ecdsa'      // DID-based ECDSA signature
-  | 'did-eddsa'      // DID-based EdDSA signature
-  | 'vc-jwt'         // Verifiable Credential (JWT proof)
-  | 'vc-ld'          // Verifiable Credential (Linked Data proof)
-  | 'sd-jwt'         // Selective Disclosure JWT
-  | 'xml-dsig'       // XML Digital Signature
+  | 'pades' // PDF PKCS#7 (adbe.pkcs7.detached)
+  | 'cades' // PDF CAdES (ETSI.CAdES.detached)
+  | 'pades-legacy' // PDF PKCS#7 SHA-1 (adbe.pkcs7.sha1)
+  | 'did-ecdsa' // DID-based ECDSA signature
+  | 'did-eddsa' // DID-based EdDSA signature
+  | 'vc-jwt' // Verifiable Credential (JWT proof)
+  | 'vc-ld' // Verifiable Credential (Linked Data proof)
+  | 'sd-jwt' // Selective Disclosure JWT
+  | 'xml-dsig' // XML Digital Signature
   | 'unknown'
 
 // ── Signer Identity ──────────────────────────────────────────────────
@@ -143,21 +138,21 @@ export interface TrustInfo {
 }
 
 export type TrustSource =
-  | 'attestto-root'   // Attestto Trust Root CA
-  | 'aatl'            // Adobe Approved Trust List
-  | 'eu-tsl'          // EU Trusted Services List (eIDAS)
-  | 'did-web'         // Resolved via did:web
-  | 'did-sns'         // Resolved via did:sns (Solana)
-  | 'did-key'         // Self-issued (did:key)
-  | 'did-jwk'         // Self-issued (did:jwk)
-  | 'custom'          // Plugin-provided trust source
+  | 'attestto-root' // Attestto Trust Root CA
+  | 'aatl' // Adobe Approved Trust List
+  | 'eu-tsl' // EU Trusted Services List (eIDAS)
+  | 'did-web' // Resolved via did:web
+  | 'did-sns' // Resolved via did:sns (Solana)
+  | 'did-key' // Self-issued (did:key)
+  | 'did-jwk' // Self-issued (did:jwk)
+  | 'custom' // Plugin-provided trust source
   | 'unknown'
 
 export type TrustLevel =
-  | 'qualified'       // eIDAS Qualified / gov-issued
-  | 'recognized'      // Known CA or verified DID
-  | 'self-signed'     // Self-issued cert or self-issued DID
-  | 'unknown'         // Cannot determine trust
+  | 'qualified' // eIDAS Qualified / gov-issued
+  | 'recognized' // Known CA or verified DID
+  | 'self-signed' // Self-issued cert or self-issued DID
+  | 'unknown' // Cannot determine trust
 
 export interface CertTrustDetails {
   type: 'x509'
