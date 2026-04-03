@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Verify and sign documents with decentralized identity. Open source, no login, no backend." />
+    <title>Attestto — Verify & Sign Documents</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0f0f1a;
+        color: #e2e8f0;
+        min-height: 100vh;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .logo span { color: #6366f1; }
+
+      nav { display: flex; gap: 1.5rem; }
+
+      nav a {
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: color 0.15s;
+      }
+
+      nav a:hover, nav a.active { color: #e2e8f0; }
+
+      main {
+        max-width: 640px;
+        margin: 3rem auto;
+        padding: 0 1.5rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      /* Dark theme overrides for web components */
+      attestto-verify,
+      attestto-sign {
+        --attestto-text: #e2e8f0;
+        --attestto-text-muted: #94a3b8;
+        --attestto-primary: #6366f1;
+        --attestto-primary-hover: #818cf8;
+        --attestto-success: #4ade80;
+        --attestto-success-bg: #052e16;
+        --attestto-warning: #fbbf24;
+        --attestto-warning-bg: #422006;
+        --attestto-border: #334155;
+        --attestto-bg: #1e293b;
+        --attestto-bg-hover: #1e1b4b;
+        --attestto-bg-card: #0f172a;
+        --attestto-bg-code: #1e293b;
+        --attestto-bg-code-hover: #334155;
+      }
+
+      .tab-bar {
+        display: flex;
+        gap: 0;
+        margin-bottom: 2rem;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 0.65rem;
+        text-align: center;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        color: #94a3b8;
+        background: transparent;
+        border: none;
+        transition: all 0.15s;
+      }
+
+      .tab:hover { color: #e2e8f0; }
+
+      .tab.active {
+        background: #1e293b;
+        color: #e2e8f0;
+      }
+
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+
+      footer {
+        text-align: center;
+        padding: 2rem;
+        color: #475569;
+        font-size: 0.8rem;
+      }
+
+      footer a { color: #6366f1; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">attestto<span>.</span></div>
+      <nav>
+        <a href="/" class="active">Verify</a>
+        <a href="/sign">Sign</a>
+        <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Document Verification</h1>
+      <p class="subtitle">Verify integrity and signatures — your file never leaves your device.</p>
+
+      <div class="tab-bar">
+        <button class="tab active" data-tab="verify">Verify</button>
+        <button class="tab" data-tab="sign">Sign</button>
+      </div>
+
+      <div id="tab-verify" class="tab-content active">
+        <attestto-verify></attestto-verify>
+      </div>
+
+      <div id="tab-sign" class="tab-content">
+        <attestto-sign></attestto-sign>
+      </div>
+    </main>
+
+    <footer>
+      Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
+      <br />
+      No data is transmitted. All verification happens in your browser.
+    </footer>
+
+    <script type="module" src="/src/index.ts"></script>
+    <script>
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+          tab.classList.add('active')
+          document.getElementById('tab-' + tab.dataset.tab).classList.add('active')
+        })
+      })
+    </script>
+  </body>
+</html>
