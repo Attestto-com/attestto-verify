@@ -17,8 +17,8 @@ export const sharedStyles = css`
     --attestto-font: system-ui, -apple-system, sans-serif;
     --attestto-text: #1a1a2e;
     --attestto-text-muted: #64748b;
-    --attestto-primary: #6366f1;
-    --attestto-primary-hover: #4f46e5;
+    --attestto-primary: #594FD3;
+    --attestto-primary-hover: #7B72ED;
     --attestto-success: #16a34a;
     --attestto-success-bg: #dcfce7;
     --attestto-warning: #d97706;

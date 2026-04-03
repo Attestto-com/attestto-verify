@@ -41,7 +41,7 @@ export class AttesttoSign extends LitElement {
 
       .drop-zone:hover,
       .drop-zone.dragging {
-        border-color: var(--attestto-primary, #6366f1);
+        border-color: var(--attestto-primary, #594FD3);
         background: var(--attestto-bg-hover, #eef2ff);
       }
 
@@ -98,7 +98,7 @@ export class AttesttoSign extends LitElement {
         font-weight: 600;
         cursor: pointer;
         transition: background 0.15s;
-        background: var(--attestto-primary, #6366f1);
+        background: var(--attestto-primary, #594FD3);
         color: white;
       }
 
@@ -126,7 +126,7 @@ export class AttesttoSign extends LitElement {
       }
 
       .step-active {
-        color: var(--attestto-primary, #6366f1);
+        color: var(--attestto-primary, #594FD3);
         font-weight: 600;
       }
 

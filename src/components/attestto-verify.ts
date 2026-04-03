@@ -54,7 +54,7 @@ export class AttesttoVerify extends LitElement {
 
       .drop-zone:hover,
       .drop-zone.dragging {
-        border-color: var(--attestto-primary, #6366f1);
+        border-color: var(--attestto-primary, #594FD3);
         background: var(--attestto-bg-hover, #eef2ff);
       }
 
@@ -204,7 +204,7 @@ export class AttesttoVerify extends LitElement {
       .signer-did {
         font-family: 'SF Mono', 'Fira Code', monospace;
         font-size: 0.78rem;
-        color: var(--attestto-primary, #6366f1);
+        color: var(--attestto-primary, #594FD3);
         margin-top: 0.35rem;
         cursor: pointer;
         word-break: break-all;
@@ -391,7 +391,7 @@ export class AttesttoVerify extends LitElement {
         width: 1rem;
         height: 1rem;
         border: 2px solid var(--attestto-border, #e2e8f0);
-        border-top-color: var(--attestto-primary, #6366f1);
+        border-top-color: var(--attestto-primary, #594FD3);
         border-radius: 50%;
         animation: spin 0.6s linear infinite;
       }

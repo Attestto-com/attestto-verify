@@ -3,8 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Verify and sign documents with decentralized identity. Open source, no login, no backend." />
-    <title>Attestto — Verify & Sign Documents</title>
+
+    <!-- SEO -->
+    <title>Attestto Verify — Document Integrity & Digital Signature Verification</title>
+    <meta name="description" content="Verify PDF integrity, digital signatures, and security properties. Open source, no login, no backend. Your file never leaves your device." />
+    <meta name="keywords" content="PDF verification, digital signature, PAdES, document integrity, SHA-256, forensic audit, open source, decentralized identity, DID, vLEI, Web Components" />
+    <meta name="author" content="Attestto" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://verify.attestto.com" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Attestto Verify — Document Integrity & Digital Signatures" />
+    <meta property="og:description" content="Drop a PDF to verify its integrity, digital signatures, and security. 100% client-side. No data transmitted." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://verify.attestto.com" />
+    <meta property="og:site_name" content="Attestto" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Attestto Verify — Document Integrity Verification" />
+    <meta name="twitter:description" content="Verify PDF signatures and security. Open source, no login. Your file never leaves your device." />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Attestto Verify",
+      "url": "https://verify.attestto.com",
+      "description": "Verify PDF integrity, digital signatures, and document security properties. Open source, client-side only.",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Any (browser-based)",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "creator": {
+        "@type": "Organization",
+        "name": "Attestto",
+        "url": "https://attestto.com"
+      }
+    }
+    </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -20,16 +62,24 @@
         align-items: center;
         justify-content: space-between;
         padding: 1rem 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header-bar {
         border-bottom: 1px solid #1e293b;
       }
 
       .logo {
-        font-size: 1.25rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
       }
 
-      .logo span { color: #6366f1; }
+      .logo img {
+        height: 28px;
+        width: auto;
+      }
 
       nav { display: flex; gap: 1.5rem; }
 
@@ -67,8 +117,8 @@
       attestto-sign {
         --attestto-text: #e2e8f0;
         --attestto-text-muted: #94a3b8;
-        --attestto-primary: #6366f1;
-        --attestto-primary-hover: #818cf8;
+        --attestto-primary: #594FD3;
+        --attestto-primary-hover: #7B72ED;
         --attestto-success: #4ade80;
         --attestto-success-bg: #052e16;
         --attestto-warning: #fbbf24;
@@ -120,18 +170,150 @@
         font-size: 0.8rem;
       }
 
-      footer a { color: #6366f1; text-decoration: none; }
+      footer a { color: #594FD3; text-decoration: none; }
+
+      /* ── Developer Embed Tab ────────────────────────────── */
+      .dev-embed {
+        position: relative;
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      .dev-embed-toggle {
+        position: absolute;
+        bottom: 100%;
+        right: 1.5rem;
+        background: #1e293b;
+        color: #94a3b8;
+        border: 1px solid #334155;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        padding: 0.35rem 1rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        transition: all 0.15s;
+      }
+
+      .dev-embed-toggle:hover {
+        color: #e2e8f0;
+        background: #334155;
+      }
+
+      .dev-embed-toggle.active {
+        color: #594FD3;
+        background: #1e293b;
+      }
+
+      .dev-embed-panel {
+        display: none;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px 8px 0 0;
+        padding: 1rem 1.25rem;
+        margin-bottom: -1px;
+      }
+
+      .dev-embed-panel.active {
+        display: block;
+      }
+
+      .dev-embed-panel pre {
+        margin: 0;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+        line-height: 1.6;
+        color: #e2e8f0;
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      .dev-embed-panel .code-comment {
+        color: #64748b;
+      }
+
+      .dev-embed-panel .code-tag {
+        color: #594FD3;
+      }
+
+      .dev-embed-panel .code-attr {
+        color: #4ade80;
+      }
+
+      .dev-embed-panel .code-string {
+        color: #fbbf24;
+      }
+
+      .dev-embed-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #334155;
+      }
+
+      .dev-embed-actions button {
+        background: none;
+        border: 1px solid #475569;
+        color: #94a3b8;
+        padding: 0.3rem 0.75rem;
+        border-radius: 5px;
+        font-size: 0.72rem;
+        cursor: pointer;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        transition: all 0.15s;
+      }
+
+      .dev-embed-actions button:hover {
+        color: #e2e8f0;
+        border-color: #594FD3;
+      }
+
+      .embed-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid #334155;
+      }
+
+      .embed-tab {
+        background: none;
+        border: none;
+        color: #64748b;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
+      }
+
+      .embed-tab:hover { color: #e2e8f0; }
+
+      .embed-tab.active {
+        color: #594FD3;
+        border-bottom-color: #594FD3;
+      }
+
+      .embed-code { display: none; }
+      .embed-code.active { display: block; }
     </style>
   </head>
   <body>
-    <header>
-      <div class="logo">attestto<span>.</span></div>
-      <nav>
-        <a href="/" class="active">Verify</a>
-        <a href="/sign">Sign</a>
-        <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
-      </nav>
-    </header>
+    <div class="header-bar">
+      <header>
+        <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <nav>
+          <a href="/" class="active">Verify</a>
+          <a href="/sign">Sign</a>
+          <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
+        </nav>
+      </header>
+    </div>
 
     <main>
       <h1>Document Verification</h1>
@@ -151,6 +333,57 @@
       </div>
     </main>
 
+    <div class="dev-embed">
+      <button class="dev-embed-toggle" id="dev-toggle">&lt;/&gt; Embed</button>
+      <div class="dev-embed-panel" id="dev-panel">
+        <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.75rem; line-height: 1.5;">
+          Built with <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Components" target="_blank" style="color: #594FD3; text-decoration: none;">Web Components</a> (W3C standard) — works with any framework or plain HTML. No wrapper needed.
+        </div>
+        <div class="embed-tabs">
+          <button class="embed-tab active" data-embed="html">HTML</button>
+          <button class="embed-tab" data-embed="npm">npm</button>
+          <button class="embed-tab" data-embed="react">React</button>
+          <button class="embed-tab" data-embed="vue">Vue</button>
+        </div>
+
+        <pre class="embed-code active" id="embed-html"><span class="code-comment">&lt;!-- Drop this into any HTML page --&gt;</span>
+<span class="code-tag">&lt;script</span> <span class="code-attr">type</span>=<span class="code-string">"module"</span> <span class="code-attr">src</span>=<span class="code-string">"https://unpkg.com/@attestto/verify"</span><span class="code-tag">&gt;&lt;/script&gt;</span>
+
+<span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></pre>
+
+        <pre class="embed-code" id="embed-npm"><span class="code-comment"># Install</span>
+npm install @attestto/verify
+
+<span class="code-comment">// Import in your app</span>
+<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+
+<span class="code-comment">&lt;!-- Use in HTML --&gt;</span>
+<span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></pre>
+
+        <pre class="embed-code" id="embed-react"><span class="code-comment">// React — Web Components work natively</span>
+<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+
+<span class="code-tag">function</span> App() {
+  <span class="code-tag">return</span> <span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
+}</pre>
+
+        <pre class="embed-code" id="embed-vue"><span class="code-comment">&lt;!-- Vue — register as custom element --&gt;</span>
+<span class="code-tag">&lt;script</span> <span class="code-attr">setup</span><span class="code-tag">&gt;</span>
+<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+<span class="code-tag">&lt;/script&gt;</span>
+
+<span class="code-tag">&lt;template&gt;</span>
+  <span class="code-tag">&lt;attestto-verify /&gt;</span>
+<span class="code-tag">&lt;/template&gt;</span></pre>
+
+        <div class="dev-embed-actions">
+          <button id="copy-embed">Copy</button>
+          <button onclick="window.open('https://github.com/attestto/verify','_blank')">GitHub</button>
+          <button onclick="window.open('https://www.npmjs.com/package/@attestto/verify','_blank')">npm</button>
+        </div>
+      </div>
+    </div>
+
     <footer>
       Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
       <br />
@@ -166,6 +399,31 @@
           tab.classList.add('active')
           document.getElementById('tab-' + tab.dataset.tab).classList.add('active')
         })
+      })
+
+      // Developer embed panel toggle
+      document.getElementById('dev-toggle').addEventListener('click', () => {
+        document.getElementById('dev-toggle').classList.toggle('active')
+        document.getElementById('dev-panel').classList.toggle('active')
+      })
+
+      // Embed tab switching
+      document.querySelectorAll('.embed-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.embed-tab').forEach(t => t.classList.remove('active'))
+          document.querySelectorAll('.embed-code').forEach(c => c.classList.remove('active'))
+          tab.classList.add('active')
+          document.getElementById('embed-' + tab.dataset.embed).classList.add('active')
+        })
+      })
+
+      // Copy active embed code
+      document.getElementById('copy-embed').addEventListener('click', () => {
+        const active = document.querySelector('.embed-code.active')
+        navigator.clipboard.writeText(active.textContent)
+        const btn = document.getElementById('copy-embed')
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = 'Copy' }, 1500)
       })
     </script>
   </body>
