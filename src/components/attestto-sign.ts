@@ -1,22 +1,21 @@
 import { LitElement, html, css } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { sharedStyles } from '../styles/shared.js'
+import { discoverWallets, pickWallet, type WalletAnnouncement } from '@attestto/id-wallet-adapter'
 
 /**
- * <attestto-sign> — Sign a PDF with a DID wallet (Attestto ID extension)
+ * <attestto-sign> — Sign a PDF with any DID wallet
  *
- * Usage:
- *   <attestto-sign></attestto-sign>
- *
- * Requires the Attestto ID browser extension (or any compatible DID wallet
- * via @attestto/credential-wallet-connector).
+ * Uses @attestto/id-wallet-adapter for universal wallet discovery.
+ * Any extension that calls registerWallet() will be detected and shown
+ * in the wallet picker.
  *
  * Flow:
- *   1. User drops a PDF
- *   2. Component detects wallet (extension)
- *   3. User picks DID identity
- *   4. Extension signs with PKCS#7/PAdES
- *   5. User downloads signed PDF
+ *   1. discoverWallets() finds installed credential wallets
+ *   2. User picks a wallet (or auto-selects if only one)
+ *   3. User drops a PDF
+ *   4. CHAPI VP request → wallet signs with DID
+ *   5. User downloads signed receipt
  */
 @customElement('attestto-sign')
 export class AttesttoSign extends LitElement {
@@ -54,6 +53,7 @@ export class AttesttoSign extends LitElement {
         display: none;
       }
 
+      /* ── Wallet Status ──────────────────────────────────── */
       .wallet-status {
         display: flex;
         align-items: center;
@@ -69,11 +69,65 @@ export class AttesttoSign extends LitElement {
         color: var(--attestto-success, #16a34a);
       }
 
+      .wallet-discovering {
+        background: var(--attestto-info-bg, #dbeafe);
+        color: var(--attestto-info, #2563eb);
+      }
+
       .wallet-missing {
         background: var(--attestto-warning-bg, #fef3c7);
         color: var(--attestto-warning, #d97706);
       }
 
+      .wallet-missing a {
+        color: inherit;
+        text-decoration: underline;
+      }
+
+      /* ── Wallet Card (connected state) ─────────────────── */
+      .wallet-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 8px;
+        background: var(--attestto-bg-card, #ffffff);
+        margin-bottom: 1rem;
+      }
+
+      .wallet-card-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        object-fit: contain;
+      }
+
+      .wallet-card-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .wallet-card-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .wallet-card-meta {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      .wallet-card-disconnect {
+        background: none;
+        border: none;
+        color: var(--attestto-text-muted, #94a3b8);
+        cursor: pointer;
+        font-size: 0.75rem;
+        text-decoration: underline;
+      }
+
+      /* ── Sign Card ─────────────────────────────────────── */
       .sign-card {
         border: 1px solid var(--attestto-border, #e2e8f0);
         border-radius: 12px;
@@ -103,12 +157,31 @@ export class AttesttoSign extends LitElement {
       }
 
       .sign-btn:hover {
-        background: var(--attestto-primary-hover, #4f46e5);
+        background: var(--attestto-primary-hover, #7B72ED);
       }
 
       .sign-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+      }
+
+      .connect-btn {
+        width: 100%;
+        padding: 0.65rem;
+        border: 1px solid var(--attestto-primary, #594FD3);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        background: transparent;
+        color: var(--attestto-primary, #594FD3);
+        margin-bottom: 1rem;
+      }
+
+      .connect-btn:hover {
+        background: var(--attestto-primary, #594FD3);
+        color: white;
       }
 
       .step-indicator {
@@ -150,7 +223,9 @@ export class AttesttoSign extends LitElement {
 
   @state() private dragging = false
   @state() private file: File | null = null
-  @state() private walletDetected = false
+  @state() private discovering = false
+  @state() private wallets: WalletAnnouncement[] = []
+  @state() private selectedWallet: WalletAnnouncement | null = null
   @state() private signing = false
   @state() private signed = false
   @state() private signedBlobUrl: string | null = null
@@ -159,7 +234,7 @@ export class AttesttoSign extends LitElement {
 
   override connectedCallback() {
     super.connectedCallback()
-    this.detectWallet()
+    this.discover()
   }
 
   override render() {
@@ -169,12 +244,57 @@ export class AttesttoSign extends LitElement {
     `
   }
 
+  // ── Wallet Status ──────────────────────────────────────────────────
+
   private renderWalletStatus() {
+    if (this.discovering) {
+      return html`
+        <div class="wallet-status wallet-discovering">
+          Discovering credential wallets...
+        </div>
+      `
+    }
+
+    if (this.selectedWallet) {
+      return html`
+        <div class="wallet-card" part="wallet-card">
+          <img
+            class="wallet-card-icon"
+            src=${this.selectedWallet.icon}
+            alt=${this.selectedWallet.name}
+            @error=${(e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          />
+          <div class="wallet-card-info">
+            <div class="wallet-card-name">${this.selectedWallet.name}</div>
+            <div class="wallet-card-meta">
+              by ${this.selectedWallet.maintainer.name}
+              ${this.selectedWallet.protocols.length
+                ? html` · ${this.selectedWallet.protocols.join(', ')}`
+                : ''}
+            </div>
+          </div>
+          <button class="wallet-card-disconnect" @click=${this.disconnect}>Disconnect</button>
+        </div>
+      `
+    }
+
+    if (this.wallets.length > 0) {
+      return html`
+        <button class="connect-btn" @click=${this.pickFromDiscovered}>
+          ${this.wallets.length} wallet${this.wallets.length > 1 ? 's' : ''} found — Connect
+        </button>
+      `
+    }
+
     return html`
-      <div class="wallet-status ${this.walletDetected ? 'wallet-connected' : 'wallet-missing'}">
-        ${this.walletDetected
-          ? '🔗 DID wallet connected'
-          : html`⚠️ DID wallet required — <a href="https://attestto.com/wallet" target="_blank" style="color: inherit; text-decoration: underline;">Get Attestto ID</a> or use any compatible wallet`}
+      <div class="wallet-status wallet-missing">
+        No DID wallet found —
+        <a href="https://attestto.com/wallet" target="_blank">Get Attestto ID</a>
+        or use any compatible wallet
+        <button
+          style="margin-left: auto; background: none; border: 1px solid currentColor; padding: 0.2rem 0.5rem; border-radius: 4px; color: inherit; cursor: pointer; font-size: 0.75rem;"
+          @click=${this.discover}
+        >Retry</button>
       </div>
     `
   }
@@ -188,9 +308,11 @@ export class AttesttoSign extends LitElement {
         @dragleave=${this.onDragLeave}
         @drop=${this.onDrop}
       >
-        <div class="drop-zone-icon">✍️</div>
+        <div class="drop-zone-icon">${this.selectedWallet ? '✍️' : '📄'}</div>
         <div style="font-size: 1rem; color: var(--attestto-text-muted, #64748b)">
-          ${this.walletDetected ? 'Drop a PDF to sign with your DID' : 'Drop a PDF to sign (connect a DID wallet first)'}
+          ${this.selectedWallet
+            ? 'Drop a PDF to sign with your DID'
+            : 'Drop a PDF to sign'}
         </div>
         <div style="font-size: 0.8rem; color: var(--attestto-text-muted, #94a3b8); margin-top: 0.5rem">
           Your document never leaves your device
@@ -224,15 +346,19 @@ export class AttesttoSign extends LitElement {
           ? html`
               <button
                 class="sign-btn"
-                ?disabled=${!this.walletDetected || this.signing}
+                ?disabled=${!this.selectedWallet || this.signing}
                 @click=${this.sign}
               >
-                ${this.signing ? 'Signing...' : 'Sign with DID Identity'}
+                ${this.signing
+                  ? 'Signing...'
+                  : this.selectedWallet
+                    ? `Sign with ${this.selectedWallet.name}`
+                    : 'Connect wallet first'}
               </button>
             `
           : html`
               <a class="download-link" href=${this.signedBlobUrl!} download=${this.signedFileName!}>
-                ⬇ Download Signed PDF
+                Download Signed Receipt
               </a>
             `}
 
@@ -248,50 +374,31 @@ export class AttesttoSign extends LitElement {
     `
   }
 
-  // ── Wallet Detection ────────────────────────────────────────────────
+  // ── Wallet Discovery (via @attestto/id-wallet-adapter) ─────────────
 
-  private detectWallet() {
-    // Method 1: Check for DOM attribute (legacy)
-    if (document.documentElement.hasAttribute('data-attestto-id-extension')) {
-      this.walletDetected = true
-      return
-    }
-
-    // Method 2: Listen for attestto-id-ready event (may have already fired)
-    window.addEventListener('attestto-id-ready', () => {
-      this.walletDetected = true
-    }, { once: true })
-
-    // Method 3: Wallet Adapter discovery protocol (nonce-based handshake)
-    // The extension's registerWallet() listens for credential-wallet:discover
-    // and responds with credential-wallet:announce
-    const nonce = crypto.randomUUID()
-
-    const announceHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail
-      if (detail?.nonce === nonce && detail?.wallet) {
-        this.walletDetected = true
-        window.removeEventListener('credential-wallet:announce', announceHandler)
+  private async discover() {
+    this.discovering = true
+    try {
+      this.wallets = await discoverWallets(1500)
+      // Auto-connect if exactly one wallet found
+      if (this.wallets.length === 1) {
+        this.selectedWallet = this.wallets[0]
       }
+    } finally {
+      this.discovering = false
     }
-    window.addEventListener('credential-wallet:announce', announceHandler)
-    window.dispatchEvent(new CustomEvent('credential-wallet:discover', {
-      detail: { nonce },
-    }))
+  }
 
-    // Clean up announce listener after 3s if no response
-    setTimeout(() => {
-      window.removeEventListener('credential-wallet:announce', announceHandler)
-    }, 3000)
+  private async pickFromDiscovered() {
+    // Use the built-in wallet picker modal
+    const wallet = await pickWallet({ timeoutMs: 2000 })
+    if (wallet) {
+      this.selectedWallet = wallet
+    }
+  }
 
-    // Method 4: MutationObserver fallback for late injection
-    const observer = new MutationObserver(() => {
-      if (document.documentElement.hasAttribute('data-attestto-id-extension')) {
-        this.walletDetected = true
-        observer.disconnect()
-      }
-    })
-    observer.observe(document.documentElement, { attributes: true })
+  private disconnect() {
+    this.selectedWallet = null
   }
 
   // ── File Handlers ───────────────────────────────────────────────────
@@ -331,10 +438,10 @@ export class AttesttoSign extends LitElement {
     }
   }
 
-  // ── Signing ─────────────────────────────────────────────────────────
+  // ── Signing (CHAPI VP request) ─────────────────────────────────────
 
   private async sign() {
-    if (!this.file || !this.walletDetected) return
+    if (!this.file || !this.selectedWallet) return
 
     this.signing = true
     this.error = null
@@ -346,19 +453,15 @@ export class AttesttoSign extends LitElement {
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const contentHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 
-      // Request signature from extension
+      // Request signature from wallet via CHAPI
       const requestId = crypto.randomUUID()
-      const response = await this.requestExtensionSignature(requestId, contentHash, this.file.name)
+      const response = await this.requestWalletSignature(requestId, contentHash, this.file.name)
 
       if (!response) {
         this.error = 'Signature request was cancelled or timed out'
         return
       }
 
-      // TODO: When client-side PKCS#7 is ready, embed signature into PDF here.
-      // For now, we have the DID signature — the signed PDF embedding
-      // requires the cert issuance endpoint (ATT-208 step 2).
-      // Placeholder: create a receipt JSON alongside the original PDF.
       const receipt = {
         version: '1.0',
         document: {
@@ -372,6 +475,11 @@ export class AttesttoSign extends LitElement {
           signature: response.signature,
           publicKeyJwk: response.publicKeyJwk,
           timestamp: response.timestamp,
+        },
+        wallet: {
+          name: this.selectedWallet.name,
+          did: this.selectedWallet.did,
+          protocols: this.selectedWallet.protocols,
         },
         verifyUrl: `https://verify.attestto.com/d/${contentHash}`,
       }
@@ -387,7 +495,7 @@ export class AttesttoSign extends LitElement {
     }
   }
 
-  private requestExtensionSignature(
+  private requestWalletSignature(
     requestId: string,
     contentHash: string,
     title: string

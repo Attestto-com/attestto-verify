@@ -36,6 +36,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@attestto/id-wallet-adapter": "link:/Users/eduardochongkan/Attestto/id-wallet-adapter",
     "lit": "^3.2.0",
     "pdfjs-dist": "^4.9.155"
   },
