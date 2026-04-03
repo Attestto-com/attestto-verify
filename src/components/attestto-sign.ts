@@ -266,14 +266,9 @@ export class AttesttoSign extends LitElement {
           />
           <div class="wallet-card-info">
             <div class="wallet-card-name">${this.selectedWallet.name}</div>
-            <div class="wallet-card-meta">
-              by ${this.selectedWallet.maintainer.name}
-              ${this.selectedWallet.protocols.length
-                ? html` · ${this.selectedWallet.protocols.join(', ')}`
-                : ''}
-            </div>
+            <div class="wallet-card-meta">by ${this.selectedWallet.maintainer.name}</div>
           </div>
-          <button class="wallet-card-disconnect" @click=${this.disconnect}>Disconnect</button>
+          <button class="wallet-card-disconnect" @click=${this.disconnect}>Change</button>
         </div>
       `
     }
