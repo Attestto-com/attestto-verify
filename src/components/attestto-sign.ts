@@ -172,7 +172,9 @@ export class AttesttoSign extends LitElement {
   private renderWalletStatus() {
     return html`
       <div class="wallet-status ${this.walletDetected ? 'wallet-connected' : 'wallet-missing'}">
-        ${this.walletDetected ? '🔗 Attestto ID wallet connected' : '⚠️ Attestto ID extension required'}
+        ${this.walletDetected
+          ? '🔗 DID wallet connected'
+          : html`⚠️ DID wallet required — <a href="https://attestto.com/wallet" target="_blank" style="color: inherit; text-decoration: underline;">Get Attestto ID</a> or use any compatible wallet`}
       </div>
     `
   }
@@ -188,7 +190,7 @@ export class AttesttoSign extends LitElement {
       >
         <div class="drop-zone-icon">✍️</div>
         <div style="font-size: 1rem; color: var(--attestto-text-muted, #64748b)">
-          ${this.walletDetected ? 'Drop a PDF to sign with your DID' : 'Drop a PDF to sign'}
+          ${this.walletDetected ? 'Drop a PDF to sign with your DID' : 'Drop a PDF to sign (connect a DID wallet first)'}
         </div>
         <div style="font-size: 0.8rem; color: var(--attestto-text-muted, #94a3b8); margin-top: 0.5rem">
           Your document never leaves your device
