@@ -231,19 +231,24 @@
       }
 
       .dev-embed-panel .code-comment {
-        color: #64748b;
+        color: #6a737d;
+        font-style: italic;
       }
 
       .dev-embed-panel .code-tag {
-        color: #594FD3;
+        color: #e06c75;
       }
 
       .dev-embed-panel .code-attr {
-        color: #4ade80;
+        color: #d19a66;
       }
 
       .dev-embed-panel .code-string {
-        color: #fbbf24;
+        color: #98c379;
+      }
+
+      .dev-embed-panel .code-keyword {
+        color: #c678dd;
       }
 
       .dev-embed-actions {
@@ -352,24 +357,24 @@
 <span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></pre>
 
         <pre class="embed-code" id="embed-npm"><span class="code-comment"># Install</span>
-npm install @attestto/verify
+npm install <span class="code-string">@attestto/verify</span>
 
 <span class="code-comment">// Import in your app</span>
-<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+<span class="code-keyword">import</span> <span class="code-string">'@attestto/verify'</span>
 
 <span class="code-comment">&lt;!-- Use in HTML --&gt;</span>
 <span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></pre>
 
         <pre class="embed-code" id="embed-react"><span class="code-comment">// React — Web Components work natively</span>
-<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+<span class="code-keyword">import</span> <span class="code-string">'@attestto/verify'</span>
 
-<span class="code-tag">function</span> App() {
-  <span class="code-tag">return</span> <span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
+<span class="code-keyword">function</span> <span class="code-attr">App</span>() {
+  <span class="code-keyword">return</span> <span class="code-tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span>
 }</pre>
 
         <pre class="embed-code" id="embed-vue"><span class="code-comment">&lt;!-- Vue — register as custom element --&gt;</span>
 <span class="code-tag">&lt;script</span> <span class="code-attr">setup</span><span class="code-tag">&gt;</span>
-<span class="code-tag">import</span> <span class="code-string">'@attestto/verify'</span>
+<span class="code-keyword">import</span> <span class="code-string">'@attestto/verify'</span>
 <span class="code-tag">&lt;/script&gt;</span>
 
 <span class="code-tag">&lt;template&gt;</span>
