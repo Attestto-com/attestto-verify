@@ -30,6 +30,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:pages": "vite build --config vite.config.pages.ts",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write 'src/**/*.ts'",
