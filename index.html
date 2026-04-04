@@ -94,9 +94,73 @@
       nav a:hover, nav a.active { color: #e2e8f0; }
 
       main {
-        max-width: 640px;
+        max-width: 1200px;
         margin: 3rem auto;
-        padding: 0 1.5rem;
+        padding: 0 2rem;
+      }
+
+      .two-col {
+        display: flex;
+        gap: 2rem;
+        align-items: flex-start;
+      }
+
+      .col-main { flex: 1; min-width: 0; }
+      .col-side {
+        flex: 0 0 340px;
+        position: sticky;
+        top: 2rem;
+      }
+
+      .dev-panel {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 1.5rem;
+      }
+
+      .dev-panel h3 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+      }
+
+      .dev-panel p {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+      }
+
+      .dev-panel pre {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: 0.8rem;
+        line-height: 1.6;
+        color: #e2e8f0;
+        margin-bottom: 1rem;
+      }
+
+      .dev-panel code { font-family: 'SF Mono', 'Fira Code', monospace; }
+
+      .dev-panel .tag { color: #7B72ED; }
+      .dev-panel .attr { color: #4ade80; }
+      .dev-panel .str { color: #fbbf24; }
+      .dev-panel .comment { color: #475569; }
+
+      @media (max-width: 768px) {
+        .two-col {
+          flex-direction: column;
+        }
+        .col-side {
+          flex: none;
+          position: static;
+        }
       }
 
       h1 {
@@ -145,9 +209,11 @@
   <body>
     <div class="header-bar">
       <header>
-        <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <a href="/" class="logo"><img src="/logo-full-purple.svg" alt="Attestto" /></a>
         <nav>
           <a href="/" class="active">Verify</a>
+          <a href="/sign">Sign</a>
+          <a href="/dev">Developers</a>
           <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
         </nav>
       </header>
@@ -157,7 +223,24 @@
       <h1>Document Verification</h1>
       <p class="subtitle">Verify integrity and signatures — your file never leaves your device.</p>
 
-      <attestto-verify></attestto-verify>
+      <div class="two-col">
+        <div class="col-main">
+          <attestto-verify></attestto-verify>
+        </div>
+        <div class="col-side">
+          <div class="dev-panel">
+            <h3>Embed in your site</h3>
+            <p>Add document verification to any website with two lines of code. No backend, no API keys.</p>
+            <pre><code><span class="comment">&lt;!-- 1. Load the component --&gt;</span>
+<span class="tag">&lt;script</span> <span class="attr">type</span>=<span class="str">"module"</span> <span class="attr">src</span>=<span class="str">"https://verify.attestto.com/attestto-verify.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+
+<span class="comment">&lt;!-- 2. Use it --&gt;</span>
+<span class="tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></code></pre>
+            <p>Supports PDF integrity, PAdES/CAdES digital signatures, CR Firma Digital, certificate chain extraction, and forensic security scan.</p>
+            <p><a href="/dev" style="color: #7B72ED;">Full developer docs &rarr;</a></p>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer>
