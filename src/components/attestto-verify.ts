@@ -341,40 +341,52 @@ export class AttesttoVerify extends LitElement {
       }
 
       /* ── Card Flip ──────────────────────────────────────────── */
-      .card-tabs {
-        display: flex;
-        gap: 0;
-        margin-bottom: 0;
-      }
-
-      .card-tab {
-        padding: 0.5rem 1.25rem;
-        font-size: 0.78rem;
+      .card-flip-tab {
+        position: absolute;
+        top: -1px;
+        right: 1rem;
+        z-index: 2;
+        padding: 0.4rem 1rem;
+        font-size: 0.72rem;
         font-weight: 600;
         cursor: pointer;
         color: var(--attestto-text-muted, #64748b);
-        background: var(--attestto-bg-code, #f1f5f9);
-        border: 1px solid var(--attestto-border, #e2e8f0);
+        background: var(--attestto-bg-code, #1e293b);
+        border: 1px solid var(--attestto-border, #334155);
         border-bottom: none;
         border-radius: 8px 8px 0 0;
         transition: all 0.2s;
-        position: relative;
-        top: 1px;
-        z-index: 1;
+        transform: translateY(-100%);
       }
 
-      .card-tab:hover {
-        color: var(--attestto-text, #1e293b);
+      .card-flip-tab:hover {
+        color: var(--attestto-text, #e2e8f0);
+        background: var(--attestto-bg-code-hover, #334155);
       }
 
-      .card-tab.active {
-        color: var(--attestto-primary, #594fd3);
-        background: var(--attestto-bg-card, #ffffff);
-        border-color: var(--attestto-border, #e2e8f0);
+      .card-back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: #0f172a;
+        background: #e2e8f0;
+        border: none;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        transition: all 0.2s;
+      }
+
+      .card-back-btn:hover {
+        background: #ffffff;
       }
 
       .card-flipper {
         perspective: 1200px;
+        position: relative;
       }
 
       .card-inner {
@@ -393,19 +405,16 @@ export class AttesttoVerify extends LitElement {
         -webkit-backface-visibility: hidden;
       }
 
-      .card-front {
-        padding-top: 1rem;
-      }
-
       .card-back {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         transform: rotateY(180deg);
-        background: var(--attestto-bg-card, #ffffff);
-        border-radius: 0 0 12px 12px;
-        padding: 0.5rem;
+        background: var(--attestto-bg-card, #0f172a);
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid var(--attestto-border, #334155);
       }
 
       /* ── Forensic Audit Section ────────────────────────────── */
@@ -633,13 +642,10 @@ export class AttesttoVerify extends LitElement {
     return html`
       <div class="result">
         <div class="result-card" part="result-card">
-          ${r.isPdf && r.audit ? html`
-            <div class="card-tabs">
-              <button class="card-tab ${this.cardView === 'verify' ? 'active' : ''}" @click=${() => this.cardView = 'verify'}>Verification</button>
-              <button class="card-tab ${this.cardView === 'audit' ? 'active' : ''}" @click=${() => this.cardView = 'audit'}>Technical Audit</button>
-            </div>
-          ` : ''}
           <div class="card-flipper">
+          ${r.isPdf && r.audit && this.cardView === 'verify' ? html`
+            <button class="card-flip-tab" @click=${() => this.cardView = 'audit'}>Technical Audit</button>
+          ` : ''}
           <div class="card-inner ${this.cardView === 'audit' ? 'flipped' : ''}">
           <div class="card-front">
           <div class="result-header">
@@ -813,6 +819,7 @@ export class AttesttoVerify extends LitElement {
           ${r.isPdf && r.audit
             ? html`
                 <div class="card-back">
+                  <button class="card-back-btn" @click=${() => this.cardView = 'verify'}>&larr; Back</button>
                   <div class="audit-grid" part="audit-grid">
                     <div class="audit-group">
                       <div class="audit-group-title">Document Hash</div>
