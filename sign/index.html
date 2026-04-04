@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO -->
+    <title>Attestto Sign — Sign Documents with Your Digital Identity</title>
+    <meta name="description" content="Sign PDFs with your DID wallet or browser key. No login, no backend, no upload. Your document never leaves your device." />
+    <meta name="keywords" content="digital signature, DID, decentralized identity, PDF signing, verifiable credential, W3C, Web Components, browser key, self-sovereign" />
+    <meta name="author" content="Attestto" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://verify.attestto.com/sign" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Attestto Sign — Digital Identity Signatures" />
+    <meta property="og:description" content="Sign documents with your DID wallet or browser key. 100% client-side. No data transmitted." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://verify.attestto.com/sign" />
+    <meta property="og:site_name" content="Attestto" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0f0f1a;
+        color: #e2e8f0;
+        min-height: 100vh;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header-bar {
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+      }
+
+      .logo img {
+        height: 28px;
+        width: auto;
+      }
+
+      nav { display: flex; gap: 1.5rem; }
+
+      nav a {
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: color 0.15s;
+      }
+
+      nav a:hover { color: #e2e8f0; }
+      nav a.active { color: #e2e8f0; }
+
+      main {
+        max-width: 720px;
+        margin: 3rem auto;
+        padding: 0 2rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      /* Dark theme overrides for web components */
+      attestto-sign {
+        --attestto-text: #e2e8f0;
+        --attestto-text-muted: #94a3b8;
+        --attestto-primary: #594FD3;
+        --attestto-primary-hover: #7B72ED;
+        --attestto-success: #4ade80;
+        --attestto-success-bg: #052e16;
+        --attestto-warning: #fbbf24;
+        --attestto-warning-bg: #422006;
+        --attestto-info: #60a5fa;
+        --attestto-info-bg: #172554;
+        --attestto-border: #334155;
+        --attestto-bg: #1e293b;
+        --attestto-bg-hover: #1e1b4b;
+        --attestto-bg-card: #0f172a;
+        --attestto-bg-code: #1e293b;
+        --attestto-bg-code-hover: #334155;
+      }
+
+      /* ── How it works ─────────────────────────────── */
+      .how-it-works {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid #1e293b;
+      }
+
+      .how-it-works h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        margin-bottom: 1.5rem;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+      }
+
+      .step-card {
+        padding: 1.25rem;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        background: #151525;
+      }
+
+      .step-number {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #594FD3;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+      }
+
+      .step-card h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+      }
+
+      .step-card p {
+        font-size: 0.8rem;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      /* ── Signing methods ─────────────────────────── */
+      .methods {
+        margin-top: 2rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .method-card {
+        padding: 1rem;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        background: #151525;
+      }
+
+      .method-card h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .method-card p {
+        font-size: 0.78rem;
+        color: #64748b;
+        line-height: 1.4;
+      }
+
+      .method-badge {
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 0.1rem 0.35rem;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .badge-green {
+        background: #052e16;
+        color: #4ade80;
+      }
+
+      .badge-blue {
+        background: #172554;
+        color: #60a5fa;
+      }
+
+      .badge-purple {
+        background: #1e1b4b;
+        color: #a78bfa;
+      }
+
+      /* ── Footer ─────────────────────────────────── */
+      footer {
+        padding: 2rem;
+        color: #475569;
+        font-size: 0.8rem;
+        max-width: 720px;
+        margin: 0 auto;
+        border-top: 1px solid #1e293b;
+        margin-top: 3rem;
+        text-align: center;
+      }
+
+      footer a { color: #594FD3; text-decoration: none; }
+
+      @media (max-width: 640px) {
+        .steps { grid-template-columns: 1fr; }
+        .methods { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-bar">
+      <header>
+        <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <nav>
+          <a href="/">Verify</a>
+          <a href="/sign" class="active">Sign</a>
+          <a href="/dev">Developers</a>
+          <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
+        </nav>
+      </header>
+    </div>
+
+    <main>
+      <h1>Sign a Document</h1>
+      <p class="subtitle">Sign with your DID wallet or browser key — your file never leaves your device.</p>
+
+      <attestto-sign></attestto-sign>
+
+      <div class="how-it-works">
+        <h2>How it works</h2>
+        <div class="steps">
+          <div class="step-card">
+            <div class="step-number">Step 1</div>
+            <h3>Connect</h3>
+            <p>Your DID wallet is auto-detected, or generate a browser key instantly.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">Step 2</div>
+            <h3>Drop a PDF</h3>
+            <p>The file stays on your device. We compute a SHA-256 hash locally.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">Step 3</div>
+            <h3>Sign</h3>
+            <p>A W3C Verifiable Credential is created and stored in your wallet.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="methods">
+        <div class="method-card">
+          <h3>DID Wallet <span class="method-badge badge-green">Recommended</span></h3>
+          <p>Connect Attestto ID or any CHAPI-compatible wallet. Your signature is tied to your decentralized identity.</p>
+        </div>
+        <div class="method-card">
+          <h3>Browser Key <span class="method-badge badge-blue">Instant</span></h3>
+          <p>No wallet? Generate a self-issued did:key in your browser. Works immediately, portable later.</p>
+        </div>
+        <div class="method-card">
+          <h3>Firma Digital <span class="method-badge badge-purple">Coming soon</span></h3>
+          <p>Sign with your Costa Rica Firma Digital smart card. PKI-backed, legally binding.</p>
+        </div>
+        <div class="method-card">
+          <h3>Verify after signing</h3>
+          <p>Every signed document can be verified at <a href="/" style="color: #594FD3;">verify.attestto.com</a> — no install, no account.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
+      &middot; No data is transmitted. Your file never leaves your device.
+    </footer>
+
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>
