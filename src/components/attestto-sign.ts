@@ -383,6 +383,12 @@ export class AttesttoSign extends LitElement {
               style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-bottom: 1rem"
             >
               ${this.error}
+              ${this.selectedWallet && !this.useBrowserKey
+                ? html`<br /><button
+                    style="background: none; border: none; color: var(--attestto-primary, #594fd3); cursor: pointer; font-size: 0.82rem; text-decoration: underline; padding: 0.25rem 0 0;"
+                    @click=${this.enableBrowserKey}
+                  >Use browser key instead</button>`
+                : ''}
             </div>`
           : ''}
         ${!this.signed
@@ -513,9 +519,7 @@ export class AttesttoSign extends LitElement {
         const result = await signWithWallet(this.selectedWallet, this.file, hash)
         if (!result) {
           this.error =
-            'Wallet did not respond. The extension may not support signing on this origin yet. Try "Sign with browser key" instead.'
-          this.useBrowserKey = false
-          this.selectedWallet = null
+            'Wallet did not respond in time. Click "Sign" to retry, or try "Sign with browser key" below.'
           return
         }
         this.signedCredential = result.credential

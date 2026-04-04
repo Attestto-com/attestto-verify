@@ -104,7 +104,7 @@ export async function signWithWallet(
       hashAlgorithm: 'SHA-256',
       fileSize: file.size,
     },
-    { timeoutMs: 15_000 },
+    { timeoutMs: 120_000 },
   )
 
   if (!response?.approved) {
