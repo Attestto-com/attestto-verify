@@ -480,7 +480,7 @@
 
       <div class="two-col">
         <div class="col-main">
-          <attestto-verify></attestto-verify>
+          <attestto-verify id="verifier"></attestto-verify>
         </div>
         <div class="col-side" id="audit-panel" style="display: none;">
           <div class="dev-panel">
@@ -556,6 +556,24 @@
     </footer>
 
     <script type="module" src="/src/index.ts"></script>
+    <script>
+      // Read #sha256= fragment and pass expected hash to the verify component
+      (function() {
+        const fragment = window.location.hash
+        if (!fragment) return
+        const match = fragment.match(/^#sha256=([a-fA-F0-9]{64})$/)
+        if (!match) return
+        const expectedHash = match[1]
+        // Wait for custom element to be defined
+        customElements.whenDefined('attestto-verify').then(() => {
+          const el = document.getElementById('verifier')
+          if (el) el.setAttribute('expected-hash', expectedHash)
+        })
+        // Update page subtitle
+        const subtitle = document.querySelector('.subtitle')
+        if (subtitle) subtitle.textContent = 'Someone shared a verified document — drop your copy to confirm it matches.'
+      })()
+    </script>
     <script>
       document.addEventListener('verification-complete', (e) => {
         const audit = e.detail?.audit

@@ -789,11 +789,114 @@ export class AttesttoVerify extends LitElement {
         font-size: 0.72rem;
         color: var(--attestto-text-muted, #64748b);
       }
+
+      /* ── Share & Hash Match ──────────────────────────────── */
+      .share-actions {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+      }
+
+      .share-btn {
+        background: var(--attestto-primary, #594fd3);
+        color: white;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+
+      .share-btn:hover {
+        background: var(--attestto-primary-hover, #7B72ED);
+      }
+
+      .reset-btn {
+        background: none;
+        border: 1px solid var(--attestto-border, #cbd5e1);
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      .share-hint {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--attestto-text-muted, #64748b);
+        margin-top: 0.5rem;
+      }
+
+      .hash-match {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+      }
+
+      .hash-match-ok {
+        background: var(--attestto-success-bg, #f0fdf4);
+        border: 1px solid var(--attestto-success, #16a34a);
+      }
+
+      .hash-match-fail {
+        background: var(--attestto-warning-bg, #fefce8);
+        border: 1px solid var(--attestto-warning, #d97706);
+      }
+
+      .hash-match-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+      }
+
+      .hash-match-ok .hash-match-icon {
+        color: var(--attestto-success, #16a34a);
+      }
+
+      .hash-match-fail .hash-match-icon {
+        color: var(--attestto-warning, #d97706);
+      }
+
+      .hash-match-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .hash-match-detail {
+        font-size: 0.82rem;
+        color: var(--attestto-text-muted, #64748b);
+        line-height: 1.4;
+      }
+
+      .hash-match-cta {
+        display: inline-block;
+        margin-top: 0.5rem;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--attestto-primary, #594fd3);
+        text-decoration: none;
+      }
+
+      .hash-match-cta:hover {
+        text-decoration: underline;
+      }
     `,
   ]
 
   /** Pre-filled hash for deep-link mode (/d/{hash}) */
   @property({ type: String }) hash = ''
+  /** Expected hash from a shared verification link (#sha256=...) */
+  @property({ type: String, attribute: 'expected-hash' }) expectedHash = ''
+  /** Whether the share link was just copied */
+  @state() private showShareCopied = false
 
   @state() private dragging = false
   @state() private verifying = false
@@ -838,6 +941,7 @@ export class AttesttoVerify extends LitElement {
   }
 
   private renderDropZone() {
+    const hasExpected = !!this.expectedHash
     return html`
       <div
         class="drop-zone ${this.dragging ? 'dragging' : ''}"
@@ -847,11 +951,19 @@ export class AttesttoVerify extends LitElement {
         @dragleave=${this.onDragLeave}
         @drop=${this.onDrop}
       >
-        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-icon">${hasExpected ? '🔗' : '📄'}</div>
         <div class="drop-zone-text">
-          ${this.dragging ? 'Drop file here' : 'Drop a document to verify'}
+          ${this.dragging
+            ? 'Drop file here'
+            : hasExpected
+              ? 'Someone shared a verified document — drop your copy to confirm'
+              : 'Drop a document to verify'}
         </div>
-        <div class="drop-zone-hint">PDF, Word, or any file — never leaves your device</div>
+        <div class="drop-zone-hint">
+          ${hasExpected
+            ? 'We\'ll compare your file\'s hash against the shared verification'
+            : 'PDF, Word, or any file — never leaves your device'}
+        </div>
         <input type="file" @change=${this.onFileSelect} accept=".pdf,.doc,.docx,.txt,.json" />
       </div>
     `
@@ -1069,21 +1181,44 @@ export class AttesttoVerify extends LitElement {
             : ''}
         </div>
 
-        <div style="text-align: center; margin-top: 1rem">
-          <button
-            style="
-              background: none;
-              border: 1px solid var(--attestto-border, #cbd5e1);
-              padding: 0.5rem 1.25rem;
-              border-radius: 8px;
-              cursor: pointer;
-              font-size: 0.85rem;
-              color: var(--attestto-text-muted, #64748b);
-            "
-            @click=${this.reset}
-          >
+        ${this.expectedHash ? this.renderHashMatch() : ''}
+
+        <div class="share-actions">
+          <button class="share-btn" @click=${this.shareVerification} title="Share a verification link">
+            ${this.showShareCopied ? 'Link copied!' : 'Share verification link'}
+          </button>
+          <button class="reset-btn" @click=${this.reset}>
             Verify another document
           </button>
+        </div>
+
+        ${this.result && !this.expectedHash ? html`
+          <div class="share-hint">
+            Share the link so others can verify they have the same document
+          </div>
+        ` : ''}
+      </div>
+    `
+  }
+
+  private renderHashMatch() {
+    if (!this.result || !this.expectedHash) return ''
+    const match = this.result.hash === this.expectedHash
+    return html`
+      <div class="hash-match ${match ? 'hash-match-ok' : 'hash-match-fail'}">
+        <span class="hash-match-icon">${match ? '✓' : '✗'}</span>
+        <div>
+          <div class="hash-match-title">
+            ${match ? 'Document matches' : 'Document does not match'}
+          </div>
+          <div class="hash-match-detail">
+            ${match
+              ? 'Your copy is identical to the one that was verified.'
+              : 'The hash of your file differs from the shared verification. This may be a different version or a modified copy.'}
+          </div>
+          ${match ? html`
+            <a href="/sign" class="hash-match-cta">Sign your own documents →</a>
+          ` : ''}
         </div>
       </div>
     `
@@ -1187,6 +1322,34 @@ export class AttesttoVerify extends LitElement {
     }
   }
 
+  private async shareVerification() {
+    if (!this.result?.hash) return
+    const url = `${window.location.origin}${window.location.pathname}#sha256=${this.result.hash}`
+    const shareData = {
+      title: 'Document Verification — Attestto',
+      text: 'I verified a document. Drop your copy to confirm it matches.',
+      url,
+    }
+
+    // Try native share (mobile), fall back to clipboard
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share(shareData)
+        return
+      } catch {
+        // User cancelled or share failed — fall through to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      this.showShareCopied = true
+      setTimeout(() => { this.showShareCopied = false }, 2000)
+    } catch {
+      // Clipboard not available
+    }
+  }
+
   private reset() {
     this.result = null
     this.pluginResults = null
@@ -1195,6 +1358,9 @@ export class AttesttoVerify extends LitElement {
     this.challengeInput = ''
     this.challengeError = ''
     this.challengeMethod = null
+    // Clear expected hash and URL fragment on reset
+    this.expectedHash = ''
+    if (window.location.hash) history.replaceState(null, '', window.location.pathname)
   }
 
   // ── Identity Challenge (tiered reveal) ─────────────────────────────
