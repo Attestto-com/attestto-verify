@@ -2,12 +2,9 @@
  * PDF Attestation Page — Injects a signature attestation page into a PDF.
  *
  * Uses pdf-lib (client-side, zero backend). The attestation page contains:
- * - Attestto branding
- * - Signer DID
- * - Document hash (SHA-256)
- * - Signature timestamp
- * - Verification URL
- * - Original document metadata
+ * - Attestto branding header (purple)
+ * - Signer DID, document hash, timestamp, verification URL
+ * - White background for print/standard viewing
  *
  * The page is appended as the last page of the PDF.
  */
@@ -42,66 +39,78 @@ export async function injectAttestationPage(
   const margin = 50
   let y = height - margin
 
-  // ── Header ──
-  const brandColor = rgb(0.349, 0.31, 0.827) // #594FD3
+  // Colors — white background, dark text, purple brand
+  const brand = rgb(0.349, 0.31, 0.827)    // #594FD3
+  const textDark = rgb(0.06, 0.09, 0.16)   // #0f172a
+  const textMuted = rgb(0.39, 0.45, 0.53)  // #64748b
+  const borderLight = rgb(0.88, 0.91, 0.94) // #e2e8f0
+  const greenDark = rgb(0.086, 0.639, 0.247) // #16a34a
+  const greenBg = rgb(0.86, 0.99, 0.91)    // #dcfce7
 
+  // ── Header bar (purple) ──
   page.drawRectangle({
     x: 0,
-    y: height - 80,
+    y: height - 70,
     width,
-    height: 80,
-    color: rgb(0.059, 0.059, 0.102), // #0f0f1a
+    height: 70,
+    color: brand,
   })
 
   page.drawText('ATTESTTO', {
     x: margin,
-    y: height - 35,
-    size: 20,
+    y: height - 32,
+    size: 18,
     font: helveticaBold,
     color: rgb(1, 1, 1),
   })
 
   page.drawText('Document Signature Attestation', {
     x: margin,
-    y: height - 55,
-    size: 11,
+    y: height - 50,
+    size: 10,
     font: helvetica,
-    color: rgb(0.58, 0.64, 0.72), // #94a3b8
+    color: rgb(0.85, 0.82, 1), // light purple
   })
 
-  y = height - 110
+  y = height - 100
 
-  // ── Status Badge ──
+  // ── Status badge ──
   page.drawRectangle({
     x: margin,
-    y: y - 5,
-    width: 180,
-    height: 28,
-    color: rgb(0.02, 0.18, 0.09), // dark green bg
-    borderColor: rgb(0.086, 0.639, 0.247),
+    y: y - 4,
+    width: 160,
+    height: 24,
+    color: greenBg,
+    borderColor: greenDark,
     borderWidth: 1,
   })
 
   page.drawText('DIGITALLY SIGNED', {
-    x: margin + 12,
+    x: margin + 10,
     y: y + 2,
-    size: 12,
+    size: 11,
     font: helveticaBold,
-    color: rgb(0.29, 0.85, 0.5), // #4ade80
+    color: greenDark,
   })
 
-  y -= 50
+  y -= 45
 
-  // ── Document Info Section ──
+  // ── Section helpers ──
   const drawSection = (title: string) => {
+    page.drawLine({
+      start: { x: margin, y: y + 8 },
+      end: { x: width - margin, y: y + 8 },
+      thickness: 0.5,
+      color: borderLight,
+    })
     page.drawText(title, {
       x: margin,
-      y,
-      size: 9,
+      y: y - 6,
+      size: 8,
       font: helveticaBold,
-      color: rgb(0.58, 0.64, 0.72),
+      color: textMuted,
     })
-    y -= 18
+    y -= 22
   }
 
   const drawRow = (label: string, value: string, mono = false) => {
@@ -110,79 +119,69 @@ export async function injectAttestationPage(
       y,
       size: 10,
       font: helveticaBold,
-      color: rgb(0.39, 0.45, 0.53), // #64748b
+      color: textMuted,
     })
 
-    // Truncate long values
     const maxChars = mono ? 60 : 70
     const displayValue = value.length > maxChars ? value.slice(0, maxChars) + '...' : value
 
     page.drawText(displayValue, {
       x: margin + 120,
       y,
-      size: mono ? 9 : 10,
+      size: mono ? 8.5 : 10,
       font: helvetica,
-      color: rgb(0.886, 0.91, 0.94), // #e2e8f0
+      color: textDark,
     })
-    y -= 18
+    y -= 17
   }
 
-  // Background for content area
-  page.drawRectangle({
-    x: margin - 10,
-    y: 40,
-    width: width - 2 * margin + 20,
-    height: y - 20,
-    color: rgb(0.082, 0.098, 0.153), // #151825
-  })
-
+  // ── Content ──
   drawSection('DOCUMENT')
   drawRow('Filename', originalFileName)
   drawRow('File Size', `${(subject.document.size / 1024).toFixed(1)} KB`)
   drawRow('SHA-256', subject.document.hash, true)
-  y -= 8
+  y -= 6
 
   drawSection('SIGNER')
   if (signerName) drawRow('Name', signerName)
   drawRow('DID', credential.issuer, true)
   drawRow('Method', proof.type)
-  y -= 8
+  y -= 6
 
   drawSection('SIGNATURE')
   drawRow('Created', proof.created)
   drawRow('Proof', proof.proofValue.slice(0, 44) + '...', true)
-  y -= 8
+  y -= 6
 
   drawSection('VERIFICATION')
   drawRow('Verify URL', subject.verifyUrl)
   drawRow('Standard', 'W3C Verifiable Credential v1')
-  y -= 20
+  y -= 30
 
-  // ── Separator ──
+  // ── Footer separator ──
   page.drawLine({
     start: { x: margin, y },
     end: { x: width - margin, y },
     thickness: 0.5,
-    color: rgb(0.118, 0.161, 0.212), // #1e293b
+    color: borderLight,
   })
-  y -= 20
+  y -= 16
 
-  // ── Privacy notice ──
   page.drawText('This attestation was generated 100% client-side. No document data was transmitted.', {
     x: margin,
     y,
-    size: 8,
+    size: 7.5,
     font: helvetica,
-    color: rgb(0.39, 0.45, 0.53),
+    color: textMuted,
   })
-  y -= 14
+  y -= 12
 
-  page.drawText(`verify.attestto.com — Open source under Apache 2.0`, {
+  page.drawText('verify.attestto.com — Open source under Apache 2.0', {
     x: margin,
     y,
-    size: 8,
+    size: 7.5,
     font: helvetica,
-    color: brandColor,
+    color: brand,
   })
 
   return pdfDoc.save()
