@@ -677,7 +677,7 @@ export class AttesttoVerify extends LitElement {
                         ? html`
                             <div class="cert-chain" part="cert-chain">
                               <div class="cert-chain-title">Certificate Chain</div>
-                              ${sig.certChain.chain.map(
+                              ${sig.certChain.chain.slice().reverse().map(
                                 (cert, i) => html`
                                   <div class="cert-node" style="--depth: ${i}">
                                     <span class="cert-icon">${cert.role === 'root'
