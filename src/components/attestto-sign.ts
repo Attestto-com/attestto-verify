@@ -227,6 +227,75 @@ export class AttesttoSign extends LitElement {
         color: var(--attestto-success, #16a34a);
       }
 
+      /* ── Download Modal ──────────────────────────────────── */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+
+      .modal-card {
+        background: var(--attestto-bg-card, #0f172a);
+        border: 1px solid var(--attestto-border, #334155);
+        border-radius: 16px;
+        padding: 2rem;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+      }
+
+      .modal-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+      .modal-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+
+      .modal-filename {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.82rem;
+        color: var(--attestto-text-muted, #94a3b8);
+        word-break: break-all;
+        margin-bottom: 1.5rem;
+        padding: 0.5rem;
+        background: var(--attestto-bg-code, #1e293b);
+        border-radius: 6px;
+      }
+
+      .modal-verify-btn {
+        width: 100%;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--attestto-primary, #594fd3);
+        color: white;
+        transition: background 0.15s;
+        margin-bottom: 0.5rem;
+      }
+
+      .modal-verify-btn:hover {
+        background: var(--attestto-primary-hover, #7b72ed);
+      }
+
+      .modal-dismiss {
+        background: none;
+        border: none;
+        color: var(--attestto-text-muted, #94a3b8);
+        cursor: pointer;
+        font-size: 0.82rem;
+        padding: 0.5rem;
+      }
+
+      .modal-dismiss:hover { color: var(--attestto-text, #e2e8f0); }
+
       .download-link {
         display: block;
         text-align: center;
@@ -253,6 +322,9 @@ export class AttesttoSign extends LitElement {
   @state() private signedCredential: DocumentSignatureCredential | null = null
   @state() private error: string | null = null
   @state() private pdfMeta: PdfMeta | null = null
+  @state() private downloaded = false
+  @state() private downloadFileName = ''
+  @state() private showDownloadModal = false
 
   override connectedCallback() {
     super.connectedCallback()
@@ -262,6 +334,7 @@ export class AttesttoSign extends LitElement {
   override render() {
     return html`
       ${this.renderWalletStatus()} ${this.file ? this.renderSignFlow() : this.renderDropZone()}
+      ${this.showDownloadModal ? this.renderDownloadModal() : ''}
     `
   }
 
@@ -438,22 +511,30 @@ export class AttesttoSign extends LitElement {
                   ? 'Signed with browser key'
                   : 'Signed — credential stored in your wallet'}
               </div>
-              <button
-                class="sign-btn"
-                style="background: var(--attestto-success, #16a34a);"
-                @click=${this.downloadSignedPdf}
-              >
-                Download Signed PDF
-              </button>
+              ${this.downloaded
+                ? html`
+                    <button
+                      class="sign-btn"
+                      @click=${() => { window.location.href = '/' }}
+                    >
+                      Verify this document
+                    </button>
+                  `
+                : html`
+                    <button
+                      class="sign-btn"
+                      style="background: #e2e8f0; color: #0f172a;"
+                      @click=${this.downloadSignedPdf}
+                    >
+                      Download Signed PDF
+                    </button>
+                  `}
               <button
                 style="display: block; width: 100%; margin-top: 0.5rem; padding: 0.5rem; background: none; border: 1px solid var(--attestto-border, #334155); border-radius: 8px; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.82rem;"
                 @click=${this.handleExport}
               >
                 Export Credential (.json)
               </button>
-              <div style="font-size: 0.72rem; color: var(--attestto-text-muted, #94a3b8); text-align: center; margin-top: 0.5rem;">
-                The credential can be independently verified at <a href="/" style="color: var(--attestto-primary, #594fd3); text-decoration: none;">verify.attestto.com</a>
-              </div>
             `}
 
         <div style="text-align: center; margin-top: 0.75rem">
@@ -604,6 +685,10 @@ export class AttesttoSign extends LitElement {
 
     const date = new Date().toISOString().slice(0, 10)
     const baseName = this.file.name.replace(/\.pdf$/i, '')
+    const fileName = `${baseName}-signed-${date}.pdf`
+
+    this.downloadFileName = fileName
+    this.showDownloadModal = true
 
     try {
       const buffer = await this.file.arrayBuffer()
@@ -617,19 +702,38 @@ export class AttesttoSign extends LitElement {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${baseName}-signed-${date}.pdf`
+      a.download = fileName
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      // Fallback: download original if injection fails
       const blob = new Blob([this.file], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${baseName}-signed-${date}.pdf`
+      a.download = fileName
       a.click()
       URL.revokeObjectURL(url)
     }
+
+    this.downloaded = true
+  }
+
+  private renderDownloadModal() {
+    return html`
+      <div class="modal-overlay" @click=${(e: Event) => { if (e.target === e.currentTarget) this.showDownloadModal = false }}>
+        <div class="modal-card">
+          <div class="modal-icon">✅</div>
+          <div class="modal-title">Document Signed & Downloaded</div>
+          <div class="modal-filename">${this.downloadFileName}</div>
+          <button class="modal-verify-btn" @click=${() => { window.location.href = '/' }}>
+            Verify this document
+          </button>
+          <button class="modal-dismiss" @click=${() => { this.showDownloadModal = false }}>
+            Continue signing
+          </button>
+        </div>
+      </div>
+    `
   }
 
   private handleExport() {
@@ -644,6 +748,9 @@ export class AttesttoSign extends LitElement {
     this.signedCredential = null
     this.error = null
     this.pdfMeta = null
+    this.downloaded = false
+    this.downloadFileName = ''
+    this.showDownloadModal = false
   }
 
   private formatSize(bytes: number): string {
