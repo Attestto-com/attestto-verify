@@ -142,6 +142,8 @@ export async function signWithWallet(
         signedAt: response.timestamp,
       },
     },
+    // storeToken comes from the extension signing response — not yet in the npm type
+    storeToken: (response as unknown as { storeToken?: string }).storeToken || null,
   }, '*')
 
   logger.sign.event('[5/5] Done — signed VC stored in wallet', { issuer: response.did, hash })
