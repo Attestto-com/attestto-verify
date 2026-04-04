@@ -408,17 +408,21 @@ export class AttesttoSign extends LitElement {
               </button>
             `
           : html`
-              <div class="download-link" style="cursor: default;">
+              <div class="download-link" style="cursor: default; margin-bottom: 0.75rem;">
                 ${this.useBrowserKey
                   ? 'Signed with browser key'
                   : 'Signed — credential stored in your wallet'}
               </div>
               <button
-                style="display: block; margin: 0.5rem auto 0; background: none; border: none; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.75rem; text-decoration: underline;"
+                class="sign-btn"
+                style="background: var(--attestto-success, #16a34a);"
                 @click=${this.handleExport}
               >
-                Export credential (JSON)
+                Download Signed Credential (.json)
               </button>
+              <div style="font-size: 0.72rem; color: var(--attestto-text-muted, #94a3b8); text-align: center; margin-top: 0.5rem;">
+                This W3C Verifiable Credential can be verified at <a href="/" style="color: var(--attestto-primary, #594fd3); text-decoration: none;">verify.attestto.com</a>
+              </div>
             `}
 
         <div style="text-align: center; margin-top: 0.75rem">
