@@ -126,8 +126,23 @@ export async function signWithWallet(
     response.timestamp!,
   )
 
-  logger.sign.info('[5/5] Pushing VC to wallet storage via ATTESTTO_VC_STORE postMessage')
-  window.postMessage({ type: 'ATTESTTO_VC_STORE', credential }, '*')
+  logger.sign.info('[5/5] Pushing VC to wallet storage via ATTESTTO_CREDENTIAL_PUSH')
+  const pushId = `vc-push-${Date.now()}`
+  window.postMessage({
+    type: 'ATTESTTO_CREDENTIAL_PUSH',
+    requestId: pushId,
+    credential: {
+      format: 'w3c-vc',
+      raw: JSON.stringify(credential),
+      issuer: response.did,
+      claims: {
+        type: 'DocumentSignature',
+        fileName: file.name,
+        hash,
+        signedAt: response.timestamp,
+      },
+    },
+  }, '*')
 
   logger.sign.event('[5/5] Done — signed VC stored in wallet', { issuer: response.did, hash })
   return { credential, storedInWallet: true }
