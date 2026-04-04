@@ -618,7 +618,7 @@
           ${audit.byteRanges?.length > 0 ? `
             <div class="audit-section-title">Signature Integrity</div>
             ${audit.byteRanges.map((br, i) => `<div class="audit-row"><strong>Sig ${i+1}</strong><code>[${br.join(', ')}]</code></div>`).join('')}
-            <div class="audit-row"><strong>LTV Data</strong><code class="${audit.hasLtvData ? 'audit-safe' : 'audit-info'}">${audit.hasLtvData ? 'Present' : 'Not embedded'}</code></div>
+            <div class="audit-row"><strong>LTV Data</strong><code class="${audit.hasLtvData ? 'audit-safe' : 'audit-warn'}">${audit.hasLtvData ? 'Present (offline revocation)' : '⚠ Not embedded (requires online check)'}</code></div>
           ` : ''}
         `
         panel.style.display = 'block'
