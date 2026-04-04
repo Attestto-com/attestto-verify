@@ -153,6 +153,52 @@
       .dev-panel .str { color: #fbbf24; }
       .dev-panel .comment { color: #475569; }
 
+      .check-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+      .check-item {
+        display: flex;
+        gap: 0.6rem;
+        align-items: flex-start;
+      }
+
+      .check-item p {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin: 0.15rem 0 0;
+      }
+
+      .check-item strong {
+        font-size: 0.85rem;
+        color: #e2e8f0;
+      }
+
+      .check-icon {
+        font-size: 0.9rem;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+      }
+
+      .level-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+      .level-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+      }
+
+      .level-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        color: #e2e8f0;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+      }
+
       @media (max-width: 768px) {
         .two-col {
           flex-direction: column;
@@ -229,15 +275,68 @@
         </div>
         <div class="col-side">
           <div class="dev-panel">
-            <h3>Embed in your site</h3>
-            <p>Add document verification to any website with two lines of code. No backend, no API keys.</p>
-            <pre><code><span class="comment">&lt;!-- 1. Load the component --&gt;</span>
-<span class="tag">&lt;script</span> <span class="attr">type</span>=<span class="str">"module"</span> <span class="attr">src</span>=<span class="str">"https://verify.attestto.com/attestto-verify.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+            <h3>What gets verified</h3>
+            <div class="check-list">
+              <div class="check-item">
+                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
+                <div>
+                  <strong>Document Integrity</strong>
+                  <p>SHA-256 hash, ByteRange verification, tamper detection</p>
+                </div>
+              </div>
+              <div class="check-item">
+                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
+                <div>
+                  <strong>Digital Signatures</strong>
+                  <p>PAdES, CAdES, PKCS#7 — certificate chain extraction</p>
+                </div>
+              </div>
+              <div class="check-item">
+                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
+                <div>
+                  <strong>PKI Recognition</strong>
+                  <p>CR Firma Digital (GAUDI/BCCR), CA hierarchy, cert policies</p>
+                </div>
+              </div>
+              <div class="check-item">
+                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
+                <div>
+                  <strong>Security Scan</strong>
+                  <p>JavaScript, auto-actions, embedded files, external links</p>
+                </div>
+              </div>
+              <div class="check-item">
+                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
+                <div>
+                  <strong>Metadata Analysis</strong>
+                  <p>Author, creator, timestamps, PDF version, encryption</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-<span class="comment">&lt;!-- 2. Use it --&gt;</span>
-<span class="tag">&lt;attestto-verify&gt;&lt;/attestto-verify&gt;</span></code></pre>
-            <p>Supports PDF integrity, PAdES/CAdES digital signatures, CR Firma Digital, certificate chain extraction, and forensic security scan.</p>
-            <p><a href="/dev" style="color: #7B72ED;">Full developer docs &rarr;</a></p>
+          <div class="dev-panel" style="margin-top: 1rem;">
+            <h3>Verification Levels</h3>
+            <div class="level-list">
+              <div class="level-item">
+                <span class="level-badge" style="background: #334155;">Detected</span>
+                <span>Signature dictionary found</span>
+              </div>
+              <div class="level-item">
+                <span class="level-badge" style="background: #1e3a5f;">Parsed</span>
+                <span>Certificate chain extracted</span>
+              </div>
+              <div class="level-item">
+                <span class="level-badge" style="background: #052e16;">Verified</span>
+                <span>Cryptographic proof valid</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dev-panel" style="margin-top: 1rem;">
+            <h3>Privacy</h3>
+            <p>Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
+            <p style="margin-bottom: 0;"><a href="https://github.com/attestto/verify" style="color: #7B72ED;">View source &rarr;</a></p>
           </div>
         </div>
       </div>
