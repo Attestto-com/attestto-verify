@@ -445,6 +445,79 @@ export class AttesttoVerify extends LitElement {
 
       .id-cta a:hover { text-decoration: underline; }
 
+      .id-challenge-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .id-option-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+        padding: 0.6rem 0.75rem;
+        background: var(--attestto-bg-card, #ffffff);
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.15s;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--attestto-text, #1e293b);
+      }
+
+      .id-option-btn:hover {
+        border-color: var(--attestto-primary, #594fd3);
+        background: var(--attestto-bg-code, #f1f5f9);
+      }
+
+      .id-option-icon {
+        font-size: 1rem;
+      }
+
+      .id-option-hint {
+        font-size: 0.7rem;
+        font-weight: 400;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      .id-challenge-input-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .id-challenge-input {
+        flex: 1;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.78rem;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 6px;
+        background: var(--attestto-bg-card, #ffffff);
+        color: var(--attestto-text, #1e293b);
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      .id-challenge-input:focus {
+        border-color: var(--attestto-primary, #594fd3);
+      }
+
+      .id-challenge-input::placeholder {
+        color: var(--attestto-text-muted, #94a3b8);
+        font-style: italic;
+      }
+
+      .id-challenge-error {
+        font-size: 0.72rem;
+        color: var(--attestto-error, #dc2626);
+        margin: 0 0 0.35rem;
+      }
+
       /* ── Trust Permissions ───────────────────────────────────── */
       .trust-permissions {
         margin-top: 0.75rem;
@@ -730,8 +803,14 @@ export class AttesttoVerify extends LitElement {
   @state() private showCopied = false
   /** Tracks which signature indexes have had their national ID revealed */
   @state() private revealedIds = new Set<number>()
-  /** Which signature index is showing the consent prompt */
+  /** Which signature index is showing the challenge panel */
   @state() private challengeTarget: number | null = null
+  /** Challenge input value (email or national ID) */
+  @state() private challengeInput = ''
+  /** Challenge error message */
+  @state() private challengeError = ''
+  /** Which challenge method is active: 'email' | 'knowledge' | null */
+  @state() private challengeMethod: 'email' | 'knowledge' | null = null
 
   override render() {
     return html`
@@ -880,7 +959,7 @@ export class AttesttoVerify extends LitElement {
                           `
                         : ''}
                       ${sig.certChain?.nationalId
-                        ? this.renderIdentityChallenge(sig.certChain.nationalId, r.signatures.indexOf(sig))
+                        ? this.renderIdentityChallenge(sig.certChain, r.signatures.indexOf(sig))
                         : ''}
                       ${(sig.certChain?.keyUsage?.length || sig.certChain?.extKeyUsage?.length)
                         ? html`
@@ -1113,11 +1192,18 @@ export class AttesttoVerify extends LitElement {
     this.pluginResults = null
     this.revealedIds = new Set()
     this.challengeTarget = null
+    this.challengeInput = ''
+    this.challengeError = ''
+    this.challengeMethod = null
   }
 
   // ── Identity Challenge (tiered reveal) ─────────────────────────────
 
-  private renderIdentityChallenge(nationalId: string, sigIndex: number) {
+  private renderIdentityChallenge(certChain: { nationalId: string | null; signerEmail: string | null }, sigIndex: number) {
+    const nationalId = certChain.nationalId!
+    const hasEmail = !!certChain.signerEmail
+
+    // Already revealed
     if (this.revealedIds.has(sigIndex)) {
       return html`
         <div class="meta-grid" style="margin-top: 0.5rem;">
@@ -1132,36 +1218,142 @@ export class AttesttoVerify extends LitElement {
 
     const masked = this.maskNationalId(nationalId)
 
+    // Challenge panel is open
     if (this.challengeTarget === sigIndex) {
-      return html`
-        <div class="id-challenge">
-          <p>Revealing a signer's national ID is a sensitive action. By proceeding, you confirm you have a legitimate need to verify this identity.</p>
-          <div class="id-challenge-actions">
-            <button class="id-challenge-confirm" @click=${() => this.confirmReveal(sigIndex, nationalId)}>
-              Confirm &amp; Reveal
-            </button>
-            <button class="id-challenge-cancel" @click=${() => { this.challengeTarget = null }}>
-              Cancel
-            </button>
+      // Method selection
+      if (!this.challengeMethod) {
+        return html`
+          <div class="id-challenge">
+            <p>To view the signer's identity, prove your relationship:</p>
+            <div class="id-challenge-options">
+              ${hasEmail
+                ? html`<button class="id-option-btn" @click=${() => { this.challengeMethod = 'email' }}>
+                    <span class="id-option-icon">✉</span>
+                    <span>I am the signer</span>
+                    <span class="id-option-hint">Enter your email to verify</span>
+                  </button>`
+                : ''}
+              <button class="id-option-btn" @click=${() => { this.challengeMethod = 'knowledge' }}>
+                <span class="id-option-icon">🔑</span>
+                <span>I know the signer</span>
+                <span class="id-option-hint">Enter the full national ID to confirm</span>
+              </button>
+            </div>
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Cancel</button>
           </div>
-        </div>
-      `
+        `
+      }
+
+      // Tier 1: Email challenge
+      if (this.challengeMethod === 'email') {
+        return html`
+          <div class="id-challenge">
+            <p>Enter the email address associated with this signature:</p>
+            <div class="id-challenge-input-row">
+              <input
+                type="email"
+                class="id-challenge-input"
+                placeholder="your@email.com"
+                .value=${this.challengeInput}
+                @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
+                @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyEmail(sigIndex, certChain.signerEmail!) }}
+              />
+              <button class="id-challenge-confirm" @click=${() => this.verifyEmail(sigIndex, certChain.signerEmail!)}>Verify</button>
+            </div>
+            ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Back</button>
+          </div>
+        `
+      }
+
+      // Tier 2: Knowledge challenge
+      if (this.challengeMethod === 'knowledge') {
+        const prefix = nationalId.includes('-') ? nationalId.split('-')[0] : ''
+        return html`
+          <div class="id-challenge">
+            <p>Enter the full national ID to confirm you already have this information:</p>
+            <div class="id-challenge-input-row">
+              <input
+                type="text"
+                class="id-challenge-input"
+                placeholder="${prefix ? `${prefix}-...` : 'Full national ID'}"
+                .value=${this.challengeInput}
+                @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
+                @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyKnowledge(sigIndex, nationalId) }}
+              />
+              <button class="id-challenge-confirm" @click=${() => this.verifyKnowledge(sigIndex, nationalId)}>Confirm</button>
+            </div>
+            ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Back</button>
+          </div>
+        `
+      }
     }
 
+    // Default: masked with reveal button
     return html`
       <div class="id-masked">
         <span class="meta-label">National ID</span>
         <span class="id-masked-value">${masked}</span>
-        <button class="id-reveal-btn" @click=${() => { this.challengeTarget = sigIndex }}>
+        <button class="id-reveal-btn" @click=${() => { this.challengeTarget = sigIndex; this.challengeMethod = null; this.challengeInput = ''; this.challengeError = '' }}>
           Reveal
         </button>
       </div>
     `
   }
 
+  private dismissChallenge() {
+    this.challengeTarget = null
+    this.challengeMethod = null
+    this.challengeInput = ''
+    this.challengeError = ''
+  }
+
+  /** Tier 1: Verify email matches signer cert */
+  private verifyEmail(sigIndex: number, certEmail: string) {
+    const input = this.challengeInput.trim().toLowerCase()
+    if (!input) { this.challengeError = 'Please enter an email address'; return }
+    if (input !== certEmail.toLowerCase()) {
+      this.challengeError = 'Email does not match the signer certificate'
+      this.emitChallengeEvent(sigIndex, 'email', 'failed')
+      return
+    }
+    this.revealIdentity(sigIndex, 'email')
+  }
+
+  /** Tier 2: Verify national ID matches cert */
+  private verifyKnowledge(sigIndex: number, nationalId: string) {
+    const input = this.challengeInput.trim()
+    if (!input) { this.challengeError = 'Please enter the full national ID'; return }
+    if (input !== nationalId) {
+      this.challengeError = 'National ID does not match — check the format (e.g. CPF-0123456789)'
+      this.emitChallengeEvent(sigIndex, 'knowledge', 'failed')
+      return
+    }
+    this.revealIdentity(sigIndex, 'knowledge')
+  }
+
+  /** Common reveal logic for all tiers */
+  private revealIdentity(sigIndex: number, method: 'email' | 'knowledge') {
+    const updated = new Set(this.revealedIds)
+    updated.add(sigIndex)
+    this.revealedIds = updated
+    this.dismissChallenge()
+    this.emitChallengeEvent(sigIndex, method, 'revealed')
+  }
+
+  private emitChallengeEvent(sigIndex: number, method: string, action: string) {
+    this.dispatchEvent(
+      new CustomEvent('identity-challenged', {
+        detail: { signerIndex: sigIndex, method, action },
+        composed: true,
+        bubbles: true,
+      }),
+    )
+  }
+
   /** Mask a national ID, preserving prefix and showing last 3 chars */
   private maskNationalId(id: string): string {
-    // Formats: CPF-01234567890, CPJ-3101012345, DIMEX-...
     const dashIdx = id.indexOf('-')
     if (dashIdx === -1 || dashIdx >= id.length - 4) return '•••••••'
     const prefix = id.slice(0, dashIdx + 1)
@@ -1170,26 +1362,6 @@ export class AttesttoVerify extends LitElement {
     const visible = digits.slice(-3)
     const hidden = '•'.repeat(digits.length - 3)
     return `${prefix}${hidden}${visible}`
-  }
-
-  private confirmReveal(sigIndex: number, nationalId: string) {
-    const updated = new Set(this.revealedIds)
-    updated.add(sigIndex)
-    this.revealedIds = updated
-    this.challengeTarget = null
-
-    // Emit event for external listeners (growth engine, analytics)
-    this.dispatchEvent(
-      new CustomEvent('identity-challenged', {
-        detail: {
-          signerIndex: sigIndex,
-          idType: nationalId.split('-')[0] ?? 'unknown',
-          action: 'revealed',
-        },
-        composed: true,
-        bubbles: true,
-      }),
-    )
   }
 
   private badgeLabel(level: string): string {

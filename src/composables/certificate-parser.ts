@@ -51,6 +51,8 @@ export interface CertificateInfo {
   isCa: boolean
   /** Certificate policy OIDs */
   policyOids: string[]
+  /** Subject email (from RDN OID 1.2.840.113549.1.9.1) */
+  email: string | null
   /** Subject Alternative Names (if present) */
   subjectAltNames: string[]
   /** Key Usage flags (from extension 2.5.29.15) */
@@ -82,6 +84,8 @@ export interface CertificateChainResult {
   keyUsage: string[]
   /** Extended Key Usage labels from signer cert (e.g. Email Protection, Document Signing) */
   extKeyUsage: string[]
+  /** Signer email from cert (Subject email or SAN) */
+  signerEmail: string | null
 }
 
 export interface PkiIdentity {
@@ -403,6 +407,7 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
     issuerOrganization: issuerFields['O'] || null,
     validFrom,
     validTo,
+    email: subjectFields['email'] || null,
     isCa,
     policyOids,
     subjectAltNames,
@@ -685,6 +690,25 @@ export function cleanSignerName(name: string): string {
   return name.replace(/\\(.)/g, '$1')
 }
 
+// ── Email Extraction ─────────────────────────────────────────────
+
+/**
+ * Extract signer email from Subject RDN (email field) or SAN (rfc822Name).
+ */
+function extractSignerEmail(signer: CertificateInfo | null): string | null {
+  if (!signer) return null
+
+  // 1. Subject RDN email field (OID 1.2.840.113549.1.9.1)
+  if (signer.email) return signer.email.toLowerCase()
+
+  // 2. SAN rfc822Name entries (email addresses in Subject Alternative Names)
+  for (const san of signer.subjectAltNames) {
+    if (san.includes('@')) return san.toLowerCase()
+  }
+
+  return null
+}
+
 // ── Main Entry Point ──────────────────────────────────────────────
 
 /**
@@ -700,6 +724,7 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
     signerDisplayName: null,
     keyUsage: [],
     extKeyUsage: [],
+    signerEmail: null,
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -739,6 +764,9 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
     // Clean display name
     const signerDisplayName = signer ? cleanSignerName(signer.commonName) : null
 
+    // Extract signer email — from Subject RDN email field or SAN
+    const signerEmail = extractSignerEmail(signer)
+
     return {
       certificates,
       signer,
@@ -748,6 +776,7 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
       signerDisplayName,
       keyUsage: signer?.keyUsage ?? [],
       extKeyUsage: signer?.extKeyUsage ?? [],
+      signerEmail,
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)
