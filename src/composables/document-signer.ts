@@ -215,7 +215,9 @@ export function exportCredentialAsJson(
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = originalFileName?.replace(/\.pdf$/i, '.vc.json') ?? 'credential.vc.json'
+  const date = new Date().toISOString().slice(0, 10)
+  const baseName = originalFileName?.replace(/\.pdf$/i, '') ?? 'credential'
+  a.download = `${baseName}-signed-${date}.vc.json`
   a.click()
   URL.revokeObjectURL(url)
 }
