@@ -6,6 +6,7 @@ import {
   parseCertificateChain,
   extractPkcs7Hex,
 } from './certificate-parser.js'
+import { PKI_REGISTRY, findPkiByCountry } from './pki-registry.js'
 
 describe('certificate-parser', () => {
   describe('cleanSignerName', () => {
@@ -97,5 +98,56 @@ describe('certificate-parser', () => {
       expect(cleaned).toBe('EDUARDO CHONGKAN (FIRMA)')
       expect(cleaned).toContain('(FIRMA)')
     })
+  })
+})
+
+describe('pki-registry', () => {
+  it('contains 9 LATAM countries', () => {
+    expect(PKI_REGISTRY.length).toBe(9)
+  })
+
+  it('each entry has required fields', () => {
+    for (const entry of PKI_REGISTRY) {
+      expect(entry.countryCode).toMatch(/^[A-Z]{2}$/)
+      expect(entry.name).toBeTruthy()
+      expect(entry.fullName).toBeTruthy()
+      expect(entry.oidArc).toMatch(/^2\.16\.\d+$/)
+      expect(entry.rootCaNames.length).toBeGreaterThan(0)
+      expect(entry.governingLaw).toBeTruthy()
+      expect(entry.rootAuthority).toBeTruthy()
+    }
+  })
+
+  it('all country codes are unique', () => {
+    const codes = PKI_REGISTRY.map((e) => e.countryCode)
+    expect(new Set(codes).size).toBe(codes.length)
+  })
+
+  it('all OID arcs are unique', () => {
+    const arcs = PKI_REGISTRY.map((e) => e.oidArc)
+    expect(new Set(arcs).size).toBe(arcs.length)
+  })
+
+  it('findPkiByCountry returns correct entry', () => {
+    const cr = findPkiByCountry('CR')
+    expect(cr?.name).toBe('CR Firma Digital')
+    expect(cr?.oidArc).toBe('2.16.188')
+
+    const mx = findPkiByCountry('MX')
+    expect(mx?.name).toBe('MX e.firma / FIEL')
+
+    const br = findPkiByCountry('BR')
+    expect(br?.name).toBe('BR ICP-Brasil')
+  })
+
+  it('findPkiByCountry returns undefined for unknown country', () => {
+    expect(findPkiByCountry('XX')).toBeUndefined()
+  })
+
+  const expectedCountries = ['CR', 'MX', 'CO', 'BR', 'CL', 'PE', 'AR', 'EC', 'UY']
+  it.each(expectedCountries)('has entry for %s', (code) => {
+    const entry = findPkiByCountry(code)
+    expect(entry).toBeDefined()
+    expect(entry!.policyOids.length).toBeGreaterThan(0)
   })
 })

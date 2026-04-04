@@ -2,13 +2,14 @@
  * X.509 Certificate Parser — PKCS#7 SignedData extraction
  *
  * Extracts certificate chain from PAdES digital signatures.
- * Recognizes known PKI hierarchies (CR Firma Digital / GAUDI).
+ * Recognizes known PKI hierarchies across LATAM (CR, MX, CO, BR, CL, PE, AR, EC, UY).
  * No external dependencies — uses the minimal ASN.1 parser.
  *
  * This is v1.5: structure parsing without cryptographic verification.
  * v2 (ATT-209) adds pkijs for signature math, CRL/OCSP validation.
  */
 
+import { PKI_REGISTRY, type PkiRegistryEntry } from './pki-registry.js'
 import {
   parseAsn1,
   decodeOid,
@@ -121,21 +122,9 @@ const RDN_OIDS: Record<string, string> = {
 
 const OID_SIGNED_DATA = '1.2.840.113549.1.7.2'
 
-// ── CR Firma Digital (GAUDI / BCCR) ──────────────────────────────
-
-/** CR National PKI hierarchy OIDs (Jerarquía Nacional de Certificadores Registrados) */
-const CR_OIDS = {
-  /** Root: Jerarquía Nacional de Certificadores Registrados */
-  ROOT: '2.16.188.1.1.1',
-  /** CA Política Persona Física (BCCR — citizens) */
-  PERSONA_FISICA: '2.16.188.1.1.1.1',
-  /** CA Política Persona Jurídica / Sello Electrónico (BCCR — companies) */
-  PERSONA_JURIDICA: '2.16.188.1.1.1.2',
-  /** CA Política de Sellado de Tiempo (BCCR TSA) */
-  SELLADO_TIEMPO: '2.16.188.1.1.1.3',
-  /** Timestamp token attribute (id-aa-timeStampToken) */
-  TIMESTAMP_TOKEN: '1.2.840.113549.1.9.16.2.14',
-} as const
+// ── CR-Specific Extension OIDs (BCCR/GAUDI) ─────────────────────
+// These are used for extracting national ID from BCCR certificate extensions.
+// PKI recognition has moved to pki-registry.ts.
 
 /** BCCR-specific subject attribute OIDs (from SINPE/GAUDI cert extensions) */
 const CR_SUBJECT_OIDS: Record<string, string> = {
@@ -145,39 +134,8 @@ const CR_SUBJECT_OIDS: Record<string, string> = {
   '1.3.6.1.4.1.35513.1.5.1.2': 'numeroColegiado',
 }
 
-/** Human-readable labels for CR policy OIDs */
-const CR_OID_LABELS: Record<string, string> = {
-  '2.16.188.1.1.1': 'CA Raíz Nacional — Costa Rica',
-  '2.16.188.1.1.1.1': 'Persona Física (BCCR)',
-  '2.16.188.1.1.1.2': 'Persona Jurídica / Sello Electrónico',
-  '2.16.188.1.1.1.3': 'Sellado de Tiempo (TSA)',
-}
-
-// CR root CA name patterns (for name-based fallback detection)
-const CR_ROOT_NAMES = [
-  'CA RAIZ NACIONAL - COSTA RICA',
-  'CA RAIZ NACIONAL COSTA RICA',
-  'CA RAIZ NACIONAL - COSTA RICA V2',
-]
-
-const CR_POLICY_PERSONA_FISICA = [
-  'CA POLITICA PERSONA FISICA',
-  'CA POLITICA PERSONA FISICA - COSTA RICA',
-  'CA POLITICA PERSONA FISICA - COSTA RICA V2',
-]
-
-const CR_POLICY_PERSONA_JURIDICA = [
-  'CA POLITICA PERSONA JURIDICA',
-  'CA POLITICA PERSONA JURIDICA - COSTA RICA',
-]
-
-const CR_POLICY_SELLO = [
-  'CA POLITICA SELLADO DE TIEMPO',
-  'CA POLITICA SELLO ELECTRONICO',
-]
-
-/** CR national ID prefixes in certificate serialNumber field */
-const CR_ID_PREFIXES = ['CPF-', 'CPJ-', 'DIMEX-', 'DIDI-'] as const
+// PKI recognition constants have moved to pki-registry.ts.
+// CR_ROOT_NAMES, CR_POLICY_*, CR_ID_PREFIXES, CR_OID_LABELS removed.
 
 // ── Key Usage / Extended Key Usage ───────────────────────────────
 
@@ -605,79 +563,100 @@ function buildChain(certs: CertificateInfo[]): CertificateInfo[] {
 
 /**
  * Identify the PKI hierarchy from the certificate chain.
- * Uses OID-based detection first (authoritative), falls back to CA name matching.
+ * Iterates the multi-country PKI registry with 4 detection strategies:
+ *   1. OID-based (most reliable) — checks certificate policy OIDs
+ *   2. Root CA name matching — checks root cert CN
+ *   3. Signer name heuristic — checks for known suffixes like "(FIRMA)"
+ *   4. National ID prefix — checks serialNumber field prefixes
  */
 function identifyPki(chain: CertificateInfo[]): PkiIdentity | null {
-  // ── Strategy 1: OID-based detection (most reliable) ──
-  // Check if any certificate in the chain has CR GAUDI policy OIDs
   const allPolicyOids = chain.flatMap((c) => c.policyOids)
-  const hasCrOid =
-    allPolicyOids.some((oid) => oid.startsWith(CR_OIDS.ROOT)) ||
-    allPolicyOids.includes(CR_OIDS.PERSONA_FISICA) ||
-    allPolicyOids.includes(CR_OIDS.PERSONA_JURIDICA)
-
-  // ── Strategy 2: CA name matching (fallback) ──
   const root = chain.find((c) => c.role === 'root')
   const rootName = root?.commonName?.toUpperCase() || ''
-  const hasCrName = CR_ROOT_NAMES.some((n) => rootName.includes(n.toUpperCase()))
-
-  // ── Strategy 3: Signer name heuristic ──
   const signer = chain.find((c) => c.role === 'end-entity')
   const signerName = signer?.commonName?.toUpperCase() || ''
-  const hasFirmaSuffix = signerName.includes('(FIRMA)')
+  const allCaNames = chain.map((c) => c.commonName?.toUpperCase() || '')
+  const allOrgs = chain.map((c) => c.organization?.toUpperCase() || '')
 
-  // ── Strategy 4: National ID prefix detection ──
-  const hasCrId = signer?.subjectSerialNumber
-    ? CR_ID_PREFIXES.some((p) => signer.subjectSerialNumber!.startsWith(p))
-    : false
+  for (const entry of PKI_REGISTRY) {
+    let detectedVia: PkiIdentity['detectedVia'] | null = null
 
-  if (!hasCrOid && !hasCrName && !hasFirmaSuffix && !hasCrId) {
-    // Future: Adobe AATL, EU eIDAS qualified providers, etc.
-    return null
-  }
+    // Strategy 1: OID match (any policy OID starts with the entry's arc or matches exactly)
+    const hasOid = allPolicyOids.some(
+      (oid) => entry.policyOids.includes(oid) || oid.startsWith(entry.oidArc + '.'),
+    )
+    if (hasOid) detectedVia = 'oid'
 
-  // Determine detection method (most authoritative first)
-  const detectedVia = hasCrOid
-    ? ('oid' as const)
-    : hasCrName
-      ? ('ca-name' as const)
-      : hasCrId
-        ? ('national-id' as const)
-        : ('signer-heuristic' as const)
+    // Strategy 2: Root CA name match
+    if (!detectedVia) {
+      const hasRootName = entry.rootCaNames.some((n) => rootName.includes(n))
+      if (hasRootName) detectedVia = 'ca-name'
+    }
 
-  // Determine certificate type from OIDs first, then CA name
-  let certificateType: string | null = null
-  if (allPolicyOids.includes(CR_OIDS.PERSONA_FISICA)) {
-    certificateType = 'Persona Física'
-  } else if (allPolicyOids.includes(CR_OIDS.PERSONA_JURIDICA)) {
-    certificateType = 'Persona Jurídica'
-  } else {
-    // Fall back to intermediate CA name matching
-    const intermediate = chain.find((c) => c.role === 'intermediate')
-    const intName = intermediate?.commonName?.toUpperCase() || ''
-    if (CR_POLICY_PERSONA_FISICA.some((n) => intName.includes(n.toUpperCase()))) {
-      certificateType = 'Persona Física'
-    } else if (CR_POLICY_PERSONA_JURIDICA.some((n) => intName.includes(n.toUpperCase()))) {
-      certificateType = 'Persona Jurídica'
-    } else if (CR_POLICY_SELLO.some((n) => intName.includes(n.toUpperCase()))) {
-      certificateType = 'Sello Electrónico'
+    // Strategy 3: Issuer org match (check all certs in chain)
+    if (!detectedVia) {
+      const hasOrg = entry.issuerOrgPatterns.some((p) => allOrgs.some((o) => o.includes(p)))
+      if (hasOrg) detectedVia = 'ca-name'
+    }
+
+    // Strategy 4: Signer name pattern
+    if (!detectedVia && entry.signerPatterns.length > 0) {
+      const hasPattern = entry.signerPatterns.some((p) => signerName.includes(p))
+      if (hasPattern) detectedVia = 'signer-heuristic'
+    }
+
+    // Strategy 5: National ID prefix
+    if (!detectedVia && entry.idPrefixes.length > 0 && signer?.subjectSerialNumber) {
+      const hasId = entry.idPrefixes.some((p) => signer.subjectSerialNumber!.startsWith(p))
+      if (hasId) detectedVia = 'national-id'
+    }
+
+    if (!detectedVia) continue
+
+    // ── Match found — determine certificate type ──
+    const certificateType = determineCertType(entry, allPolicyOids, allCaNames)
+
+    // Find the issuing CA
+    const issuingCa = signer
+      ? chain.find((c) => c.commonName === signer.issuerCommonName && c.role !== 'end-entity')
+      : null
+
+    return {
+      name: entry.name,
+      fullName: entry.fullName,
+      country: entry.countryCode,
+      rootAuthority: root?.commonName || entry.rootAuthority,
+      issuingAuthority: issuingCa?.commonName || null,
+      certificateType,
+      detectedVia,
     }
   }
 
-  // Find the issuing CA (the CA that directly issued the signer cert)
-  const issuingCa = signer
-    ? chain.find((c) => c.commonName === signer.issuerCommonName && c.role !== 'end-entity')
-    : null
+  return null
+}
 
-  return {
-    name: 'CR Firma Digital',
-    fullName: 'Sistema Nacional de Certificación Digital — Firma Digital Costa Rica',
-    country: 'CR',
-    rootAuthority: root?.commonName || 'CA RAIZ NACIONAL - COSTA RICA',
-    issuingAuthority: issuingCa?.commonName || null,
-    certificateType,
-    detectedVia,
+/**
+ * Determine certificate type from a matched PKI entry.
+ * Tries OID-based rules first, then CA name patterns.
+ */
+function determineCertType(
+  entry: PkiRegistryEntry,
+  policyOids: string[],
+  caNames: string[],
+): string | null {
+  // OID rules first (most reliable)
+  for (const rule of entry.certTypeRules) {
+    if (rule.match === 'oid' && policyOids.includes(rule.pattern)) {
+      return rule.label
+    }
   }
+  // CA name rules (fallback)
+  for (const rule of entry.certTypeRules) {
+    if (rule.match === 'ca-name' && caNames.some((n) => n.includes(rule.pattern))) {
+      return rule.label
+    }
+  }
+  return null
 }
 
 // ── Clean Display Name ────────────────────────────────────────────
