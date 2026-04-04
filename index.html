@@ -241,14 +241,104 @@
         --attestto-muted-bg: #1e293b;
       }
 
+      /* ── Badge Pills ──────────────────────────────── */
+      .badge-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        border-radius: 20px;
+        background: #1e293b;
+        color: #e2e8f0;
+        border: 1px solid #334155;
+      }
+
+      .pill-flag {
+        background: #1e1b4b;
+        border-color: #594FD3;
+      }
+
+      .pill-green {
+        background: #052e16;
+        border-color: #16a34a;
+        color: #4ade80;
+      }
+
+      .pill-outline {
+        background: transparent;
+        border-color: #475569;
+        color: #64748b;
+        font-style: italic;
+      }
+
+      /* ── Footer ────────────────────────────────────── */
       footer {
-        text-align: center;
-        padding: 2rem;
+        padding: 3rem 2rem 2rem;
         color: #475569;
         font-size: 0.8rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        border-top: 1px solid #1e293b;
+        margin-top: 3rem;
       }
 
       footer a { color: #594FD3; text-decoration: none; }
+
+      .footer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+        margin-bottom: 2rem;
+        text-align: left;
+      }
+
+      .footer-col h4 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        margin-bottom: 0.75rem;
+      }
+
+      .footer-col ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .footer-col li {
+        padding: 0.2rem 0;
+        color: #64748b;
+        font-size: 0.78rem;
+      }
+
+      .footer-col li::before {
+        content: '\2713 ';
+        color: #4ade80;
+        margin-right: 0.3rem;
+      }
+
+      .footer-col p {
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      .footer-bottom {
+        text-align: center;
+        padding-top: 1.5rem;
+        border-top: 1px solid #1e293b;
+      }
+
+      @media (max-width: 768px) {
+        .footer-grid {
+          grid-template-columns: 1fr;
+        }
+      }
 
     </style>
   </head>
@@ -275,77 +365,81 @@
         </div>
         <div class="col-side">
           <div class="dev-panel">
-            <h3>What gets verified</h3>
-            <div class="check-list">
-              <div class="check-item">
-                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
-                <div>
-                  <strong>Document Integrity</strong>
-                  <p>SHA-256 hash, ByteRange verification, tamper detection</p>
-                </div>
-              </div>
-              <div class="check-item">
-                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
-                <div>
-                  <strong>Digital Signatures</strong>
-                  <p>PAdES, CAdES, PKCS#7 — certificate chain extraction</p>
-                </div>
-              </div>
-              <div class="check-item">
-                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
-                <div>
-                  <strong>PKI Recognition</strong>
-                  <p>CR Firma Digital (GAUDI/BCCR), CA hierarchy, cert policies</p>
-                </div>
-              </div>
-              <div class="check-item">
-                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
-                <div>
-                  <strong>Security Scan</strong>
-                  <p>JavaScript, auto-actions, embedded files, external links</p>
-                </div>
-              </div>
-              <div class="check-item">
-                <span class="check-icon" style="color: #4ade80;">&#x2713;</span>
-                <div>
-                  <strong>Metadata Analysis</strong>
-                  <p>Author, creator, timestamps, PDF version, encryption</p>
-                </div>
-              </div>
+            <h3>Signature Types</h3>
+            <div class="badge-grid">
+              <span class="pill">PAdES</span>
+              <span class="pill">CAdES</span>
+              <span class="pill">PKCS#7</span>
+              <span class="pill">ETSI.CAdES.detached</span>
+              <span class="pill">adbe.pkcs7.detached</span>
             </div>
           </div>
 
           <div class="dev-panel" style="margin-top: 1rem;">
-            <h3>Verification Levels</h3>
-            <div class="level-list">
-              <div class="level-item">
-                <span class="level-badge" style="background: #334155;">Detected</span>
-                <span>Signature dictionary found</span>
-              </div>
-              <div class="level-item">
-                <span class="level-badge" style="background: #1e3a5f;">Parsed</span>
-                <span>Certificate chain extracted</span>
-              </div>
-              <div class="level-item">
-                <span class="level-badge" style="background: #052e16;">Verified</span>
-                <span>Cryptographic proof valid</span>
-              </div>
+            <h3>Recognized PKI</h3>
+            <div class="badge-grid">
+              <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
+              <span class="pill pill-outline">EU eIDAS (planned)</span>
+              <span class="pill pill-outline">AATL (planned)</span>
             </div>
           </div>
 
           <div class="dev-panel" style="margin-top: 1rem;">
-            <h3>Privacy</h3>
-            <p>Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
-            <p style="margin-bottom: 0;"><a href="https://github.com/attestto/verify" style="color: #7B72ED;">View source &rarr;</a></p>
+            <h3>Capabilities</h3>
+            <div class="badge-grid">
+              <span class="pill pill-green">Zero upload</span>
+              <span class="pill pill-green">100% client-side</span>
+              <span class="pill pill-green">Open source</span>
+              <span class="pill">X.509 chain</span>
+              <span class="pill">ByteRange integrity</span>
+              <span class="pill">Forensic scan</span>
+              <span class="pill">LTV detection</span>
+            </div>
+          </div>
+
+          <div class="dev-panel" style="margin-top: 1rem;">
+            <h3>Compatibility</h3>
+            <div class="badge-grid">
+              <span class="pill">Chrome</span>
+              <span class="pill">Firefox</span>
+              <span class="pill">Safari</span>
+              <span class="pill">Edge</span>
+              <span class="pill">Mobile</span>
+            </div>
           </div>
         </div>
       </div>
     </main>
 
     <footer>
-      Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
-      <br />
-      No data is transmitted. All verification happens in your browser.
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>What gets verified</h4>
+          <ul>
+            <li>Document integrity (SHA-256, ByteRange)</li>
+            <li>Digital signatures (PAdES, CAdES, PKCS#7)</li>
+            <li>PKI recognition (CR Firma Digital)</li>
+            <li>Security scan (JS, auto-actions, embeds)</li>
+            <li>Metadata analysis</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Verification Levels</h4>
+          <div class="level-list">
+            <div class="level-item"><span class="level-badge" style="background: #334155;">Detected</span> Signature found</div>
+            <div class="level-item"><span class="level-badge" style="background: #1e3a5f;">Parsed</span> Cert chain extracted</div>
+            <div class="level-item"><span class="level-badge" style="background: #052e16;">Verified</span> Crypto proof valid</div>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Privacy</h4>
+          <p>Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
+          <p><a href="https://github.com/attestto/verify">View source &rarr;</a></p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
+        &middot; No data is transmitted.
     </footer>
 
     <script type="module" src="/src/index.ts"></script>
