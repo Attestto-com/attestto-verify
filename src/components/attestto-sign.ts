@@ -11,6 +11,7 @@ import {
   type DocumentSignatureCredential,
 } from '../composables/document-signer.js'
 import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
+import { injectAttestationPage } from '../composables/pdf-attestation.js'
 
 interface PdfMeta {
   title: string | null
@@ -598,19 +599,37 @@ export class AttesttoSign extends LitElement {
     }
   }
 
-  private downloadSignedPdf() {
-    if (!this.file) return
-    // TODO (ATT-226): Inject attestation page into PDF via pdf-lib
-    // For now, download the original PDF with the signed filename convention
+  private async downloadSignedPdf() {
+    if (!this.file || !this.signedCredential) return
+
     const date = new Date().toISOString().slice(0, 10)
     const baseName = this.file.name.replace(/\.pdf$/i, '')
-    const blob = new Blob([this.file], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${baseName}-signed-${date}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
+
+    try {
+      const buffer = await this.file.arrayBuffer()
+      const modifiedBytes = await injectAttestationPage(buffer, {
+        credential: this.signedCredential,
+        originalFileName: this.file.name,
+        signerName: this.selectedWallet?.name || (this.useBrowserKey ? 'Browser Key (self-issued)' : undefined),
+      })
+
+      const blob = new Blob([modifiedBytes as unknown as BlobPart], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${baseName}-signed-${date}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: download original if injection fails
+      const blob = new Blob([this.file], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${baseName}-signed-${date}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
   }
 
   private handleExport() {
