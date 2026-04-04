@@ -345,21 +345,22 @@ export class AttesttoVerify extends LitElement {
         display: flex;
         gap: 0;
         margin-bottom: 0;
-        border-bottom: 1px solid var(--attestto-border, #e2e8f0);
       }
 
       .card-tab {
-        flex: 1;
-        padding: 0.6rem 1rem;
-        text-align: center;
-        font-size: 0.82rem;
+        padding: 0.5rem 1.25rem;
+        font-size: 0.78rem;
         font-weight: 600;
         cursor: pointer;
         color: var(--attestto-text-muted, #64748b);
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
+        background: var(--attestto-bg-code, #f1f5f9);
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
         transition: all 0.2s;
+        position: relative;
+        top: 1px;
+        z-index: 1;
       }
 
       .card-tab:hover {
@@ -368,7 +369,8 @@ export class AttesttoVerify extends LitElement {
 
       .card-tab.active {
         color: var(--attestto-primary, #594fd3);
-        border-bottom-color: var(--attestto-primary, #594fd3);
+        background: var(--attestto-bg-card, #ffffff);
+        border-color: var(--attestto-border, #e2e8f0);
       }
 
       .card-flipper {
@@ -391,12 +393,19 @@ export class AttesttoVerify extends LitElement {
         -webkit-backface-visibility: hidden;
       }
 
+      .card-front {
+        padding-top: 1rem;
+      }
+
       .card-back {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         transform: rotateY(180deg);
+        background: var(--attestto-bg-card, #ffffff);
+        border-radius: 0 0 12px 12px;
+        padding: 0.5rem;
       }
 
       /* ── Forensic Audit Section ────────────────────────────── */
@@ -634,6 +643,7 @@ export class AttesttoVerify extends LitElement {
           <div class="card-inner ${this.cardView === 'audit' ? 'flipped' : ''}">
           <div class="card-front">
           <div class="result-header">
+            <span class="meta-label">Filename</span>
             📄 ${r.fileName}
             <span
               style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)"
@@ -642,15 +652,34 @@ export class AttesttoVerify extends LitElement {
             </span>
           </div>
 
-          <div class="hash-label">SHA-256 Hash</div>
-          <div
-            class="hash-display"
-            part="hash-display"
-            @click=${this.copyHash}
-            title="Click to copy"
-          >
-            ${r.hash}
-          </div>
+          ${r.isPdf && r.metadata
+            ? html`
+                <div class="section-title">Document Metadata</div>
+                <div class="meta-grid">
+                  ${r.metadata.title
+                    ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>`
+                    : ''}
+                  ${r.metadata.author
+                    ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>`
+                    : ''}
+                  ${r.metadata.subject
+                    ? html`<span class="meta-label">Subject</span><span>${r.metadata.subject}</span>`
+                    : ''}
+                  ${r.metadata.creator
+                    ? html`<span class="meta-label">Creator</span><span>${r.metadata.creator}</span>`
+                    : ''}
+                  ${r.metadata.producer
+                    ? html`<span class="meta-label">Producer</span><span>${r.metadata.producer}</span>`
+                    : ''}
+                  ${r.metadata.creationDate
+                    ? html`<span class="meta-label">Created</span><span>${r.metadata.creationDate}</span>`
+                    : ''}
+                  ${r.metadata.modDate
+                    ? html`<span class="meta-label">Modified</span><span>${r.metadata.modDate}</span>`
+                    : ''}
+                </div>
+              `
+            : ''}
 
           ${r.isPdf && r.signatures.length > 0
             ? html`
@@ -780,44 +809,18 @@ export class AttesttoVerify extends LitElement {
                   </div>
                 `
               : ''}
-          ${r.isPdf && r.metadata
-            ? html`
-                <div class="section-title">Document Metadata</div>
-                <div class="meta-grid">
-                  ${r.metadata.title
-                    ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>`
-                    : ''}
-                  ${r.metadata.author
-                    ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>`
-                    : ''}
-                  ${r.metadata.subject
-                    ? html`<span class="meta-label">Subject</span
-                        ><span>${r.metadata.subject}</span>`
-                    : ''}
-                  ${r.metadata.creator
-                    ? html`<span class="meta-label">Creator</span
-                        ><span>${r.metadata.creator}</span>`
-                    : ''}
-                  ${r.metadata.producer
-                    ? html`<span class="meta-label">Producer</span
-                        ><span>${r.metadata.producer}</span>`
-                    : ''}
-                  ${r.metadata.creationDate
-                    ? html`<span class="meta-label">Created</span
-                        ><span>${r.metadata.creationDate}</span>`
-                    : ''}
-                  ${r.metadata.modDate
-                    ? html`<span class="meta-label">Modified</span
-                        ><span>${r.metadata.modDate}</span>`
-                    : ''}
-                </div>
-              `
-            : ''}
           </div><!-- /card-front -->
           ${r.isPdf && r.audit
             ? html`
                 <div class="card-back">
                   <div class="audit-grid" part="audit-grid">
+                    <div class="audit-group">
+                      <div class="audit-group-title">Document Hash</div>
+                      <div class="audit-item">
+                        <strong>SHA-256</strong>
+                        <code class="hash-inline" @click=${this.copyHash} title="Click to copy" style="cursor:pointer; word-break:break-all; font-size:0.72rem;">${r.hash}</code>
+                      </div>
+                    </div>
                     <div class="audit-group">
                       <div class="audit-group-title">Document Properties</div>
                       <div class="audit-item">
