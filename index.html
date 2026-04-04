@@ -113,8 +113,7 @@
       }
 
       /* Dark theme overrides for web components */
-      attestto-verify,
-      attestto-sign {
+      attestto-verify {
         --attestto-text: #e2e8f0;
         --attestto-text-muted: #94a3b8;
         --attestto-primary: #594FD3;
@@ -131,38 +130,6 @@
         --attestto-bg-code-hover: #334155;
         --attestto-muted-bg: #1e293b;
       }
-
-      .tab-bar {
-        display: flex;
-        gap: 0;
-        margin-bottom: 2rem;
-        border: 1px solid #334155;
-        border-radius: 10px;
-        overflow: hidden;
-      }
-
-      .tab {
-        flex: 1;
-        padding: 0.65rem;
-        text-align: center;
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        color: #94a3b8;
-        background: transparent;
-        border: none;
-        transition: all 0.15s;
-      }
-
-      .tab:hover { color: #e2e8f0; }
-
-      .tab.active {
-        background: #1e293b;
-        color: #e2e8f0;
-      }
-
-      .tab-content { display: none; }
-      .tab-content.active { display: block; }
 
       footer {
         text-align: center;
@@ -181,8 +148,6 @@
         <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
         <nav>
           <a href="/" class="active">Verify</a>
-          <a href="/sign">Sign</a>
-          <a href="/docs">Docs</a>
           <a href="https://github.com/attestto/verify" target="_blank">GitHub</a>
         </nav>
       </header>
@@ -192,18 +157,7 @@
       <h1>Document Verification</h1>
       <p class="subtitle">Verify integrity and signatures — your file never leaves your device.</p>
 
-      <div class="tab-bar">
-        <button class="tab active" data-tab="verify">Verify</button>
-        <button class="tab" data-tab="sign">Sign</button>
-      </div>
-
-      <div id="tab-verify" class="tab-content active">
-        <attestto-verify></attestto-verify>
-      </div>
-
-      <div id="tab-sign" class="tab-content">
-        <attestto-sign></attestto-sign>
-      </div>
+      <attestto-verify></attestto-verify>
     </main>
 
     <footer>
@@ -213,16 +167,5 @@
     </footer>
 
     <script type="module" src="/src/index.ts"></script>
-    <script>
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
-          tab.classList.add('active')
-          document.getElementById('tab-' + tab.dataset.tab).classList.add('active')
-        })
-      })
-
-    </script>
   </body>
 </html>
