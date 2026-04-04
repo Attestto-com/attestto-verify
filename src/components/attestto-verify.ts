@@ -27,7 +27,8 @@ import { sharedStyles } from '../styles/shared.js'
  *
  * Events (composed, cross shadow DOM):
  *   verification-started  — { fileName, fileSize }
- *   verification-complete — { hash, signatures, plugins }
+ *   verification-complete — { hash, signatures, plugins, audit }
+ *   identity-challenged  — { signerIndex, idType, action: 'revealed' }
  *
  * No login. No backend. 100% client-side.
  */
@@ -340,6 +341,110 @@ export class AttesttoVerify extends LitElement {
         color: var(--attestto-primary, #594fd3);
       }
 
+      /* ── Identity Challenge ─────────────────────────────────── */
+      .id-masked {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      .id-masked-value {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        color: var(--attestto-text-muted, #64748b);
+        font-size: 0.82rem;
+        letter-spacing: 0.04em;
+      }
+
+      .id-reveal-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--attestto-primary, #594fd3);
+        background: none;
+        border: 1px solid var(--attestto-primary, #594fd3);
+        border-radius: 6px;
+        transition: all 0.15s;
+      }
+
+      .id-reveal-btn:hover {
+        background: var(--attestto-primary, #594fd3);
+        color: white;
+      }
+
+      .id-challenge {
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background: var(--attestto-bg-code, #f1f5f9);
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 8px;
+        font-size: 0.78rem;
+      }
+
+      .id-challenge p {
+        color: var(--attestto-text-muted, #64748b);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+      }
+
+      .id-challenge-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .id-challenge-confirm {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--attestto-primary, #594fd3);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        transition: opacity 0.15s;
+      }
+
+      .id-challenge-confirm:hover { opacity: 0.85; }
+
+      .id-challenge-cancel {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.72rem;
+        cursor: pointer;
+        background: none;
+        color: var(--attestto-text-muted, #64748b);
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 6px;
+        transition: all 0.15s;
+      }
+
+      .id-challenge-cancel:hover {
+        border-color: var(--attestto-text-muted, #64748b);
+      }
+
+      .id-revealed {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        color: var(--attestto-primary, #594fd3);
+        font-size: 0.82rem;
+      }
+
+      .id-cta {
+        font-size: 0.68rem;
+        color: var(--attestto-text-muted, #64748b);
+        margin-top: 0.35rem;
+        font-style: italic;
+      }
+
+      .id-cta a {
+        color: var(--attestto-primary, #594fd3);
+        text-decoration: none;
+      }
+
+      .id-cta a:hover { text-decoration: underline; }
+
       /* ── Card Flip ──────────────────────────────────────────── */
       .card-flip-tab {
         position: absolute;
@@ -590,6 +695,10 @@ export class AttesttoVerify extends LitElement {
   @state() private result: PdfVerificationResult | null = null
   @state() private pluginResults: Map<string, VerificationResult> | null = null
   @state() private showCopied = false
+  /** Tracks which signature indexes have had their national ID revealed */
+  @state() private revealedIds = new Set<number>()
+  /** Which signature index is showing the consent prompt */
+  @state() private challengeTarget: number | null = null
 
   override render() {
     return html`
@@ -738,12 +847,7 @@ export class AttesttoVerify extends LitElement {
                           `
                         : ''}
                       ${sig.certChain?.nationalId
-                        ? html`
-                            <div class="meta-grid" style="margin-top: 0.5rem;">
-                              <span class="meta-label">National ID</span>
-                              <span class="cert-id">${sig.certChain.nationalId}</span>
-                            </div>
-                          `
+                        ? this.renderIdentityChallenge(sig.certChain.nationalId, r.signatures.indexOf(sig))
                         : ''}
                       ${sig.certChain && sig.certChain.chain.length > 0
                         ? html`
@@ -959,6 +1063,85 @@ export class AttesttoVerify extends LitElement {
   private reset() {
     this.result = null
     this.pluginResults = null
+    this.revealedIds = new Set()
+    this.challengeTarget = null
+  }
+
+  // ── Identity Challenge (tiered reveal) ─────────────────────────────
+
+  private renderIdentityChallenge(nationalId: string, sigIndex: number) {
+    if (this.revealedIds.has(sigIndex)) {
+      return html`
+        <div class="meta-grid" style="margin-top: 0.5rem;">
+          <span class="meta-label">National ID</span>
+          <span class="id-revealed">${nationalId}</span>
+        </div>
+        <div class="id-cta">
+          Protect your own identity — <a href="https://attestto.com/id" target="_blank">Get Attestto ID</a>
+        </div>
+      `
+    }
+
+    const masked = this.maskNationalId(nationalId)
+
+    if (this.challengeTarget === sigIndex) {
+      return html`
+        <div class="id-challenge">
+          <p>Revealing a signer's national ID is a sensitive action. By proceeding, you confirm you have a legitimate need to verify this identity.</p>
+          <div class="id-challenge-actions">
+            <button class="id-challenge-confirm" @click=${() => this.confirmReveal(sigIndex, nationalId)}>
+              Confirm &amp; Reveal
+            </button>
+            <button class="id-challenge-cancel" @click=${() => { this.challengeTarget = null }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      `
+    }
+
+    return html`
+      <div class="id-masked">
+        <span class="meta-label">National ID</span>
+        <span class="id-masked-value">${masked}</span>
+        <button class="id-reveal-btn" @click=${() => { this.challengeTarget = sigIndex }}>
+          Reveal
+        </button>
+      </div>
+    `
+  }
+
+  /** Mask a national ID, preserving prefix and showing last 3 chars */
+  private maskNationalId(id: string): string {
+    // Formats: CPF-01234567890, CPJ-3101012345, DIMEX-...
+    const dashIdx = id.indexOf('-')
+    if (dashIdx === -1 || dashIdx >= id.length - 4) return '•••••••'
+    const prefix = id.slice(0, dashIdx + 1)
+    const digits = id.slice(dashIdx + 1)
+    if (digits.length <= 3) return `${prefix}${'•'.repeat(digits.length)}`
+    const visible = digits.slice(-3)
+    const hidden = '•'.repeat(digits.length - 3)
+    return `${prefix}${hidden}${visible}`
+  }
+
+  private confirmReveal(sigIndex: number, nationalId: string) {
+    const updated = new Set(this.revealedIds)
+    updated.add(sigIndex)
+    this.revealedIds = updated
+    this.challengeTarget = null
+
+    // Emit event for external listeners (growth engine, analytics)
+    this.dispatchEvent(
+      new CustomEvent('identity-challenged', {
+        detail: {
+          signerIndex: sigIndex,
+          idType: nationalId.split('-')[0] ?? 'unknown',
+          action: 'revealed',
+        },
+        composed: true,
+        bubbles: true,
+      }),
+    )
   }
 
   private badgeLabel(level: string): string {
