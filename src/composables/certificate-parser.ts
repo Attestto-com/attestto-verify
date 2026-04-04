@@ -53,6 +53,10 @@ export interface CertificateInfo {
   policyOids: string[]
   /** Subject Alternative Names (if present) */
   subjectAltNames: string[]
+  /** Key Usage flags (from extension 2.5.29.15) */
+  keyUsage: string[]
+  /** Extended Key Usage OID labels (from extension 2.5.29.37) */
+  extKeyUsage: string[]
   /** Position in chain: 'end-entity' | 'intermediate' | 'root' */
   role: 'end-entity' | 'intermediate' | 'root'
   /** CR-specific: profesión from BCCR extension */
@@ -74,6 +78,10 @@ export interface CertificateChainResult {
   nationalId: string | null
   /** Signer name cleaned up (no backslash escapes) */
   signerDisplayName: string | null
+  /** Key Usage flags from signer cert (e.g. Digital Signature, Non-Repudiation) */
+  keyUsage: string[]
+  /** Extended Key Usage labels from signer cert (e.g. Email Protection, Document Signing) */
+  extKeyUsage: string[]
 }
 
 export interface PkiIdentity {
@@ -166,6 +174,33 @@ const CR_POLICY_SELLO = [
 
 /** CR national ID prefixes in certificate serialNumber field */
 const CR_ID_PREFIXES = ['CPF-', 'CPJ-', 'DIMEX-', 'DIDI-'] as const
+
+// ── Key Usage / Extended Key Usage ───────────────────────────────
+
+/** Key Usage bit flags (2.5.29.15) — bit position → label */
+const KEY_USAGE_BITS: string[] = [
+  'Digital Signature',
+  'Non-Repudiation',
+  'Key Encipherment',
+  'Data Encipherment',
+  'Key Agreement',
+  'Certificate Signing',
+  'CRL Signing',
+  'Encipher Only',
+  'Decipher Only',
+]
+
+/** Extended Key Usage OIDs (2.5.29.37) → human label */
+const EKU_OIDS: Record<string, string> = {
+  '1.3.6.1.5.5.7.3.1': 'Server Authentication',
+  '1.3.6.1.5.5.7.3.2': 'Client Authentication',
+  '1.3.6.1.5.5.7.3.3': 'Code Signing',
+  '1.3.6.1.5.5.7.3.4': 'Email Protection',
+  '1.3.6.1.5.5.7.3.8': 'Time Stamping',
+  '1.3.6.1.5.5.7.3.9': 'OCSP Signing',
+  '1.3.6.1.4.1.311.10.3.12': 'Document Signing',
+  '2.16.840.1.101.2.1.11.10': 'Smart Card Login',
+}
 
 // ── Hex Blob Extraction ───────────────────────────────────────────
 
@@ -332,6 +367,8 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
   let isCa = false
   const policyOids: string[] = []
   const subjectAltNames: string[] = []
+  const keyUsage: string[] = []
+  const extKeyUsage: string[] = []
   let profesion: string | null = null
   let numeroColegiado: string | null = null
 
@@ -344,6 +381,8 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
           isCa: (v) => (isCa = v),
           policyOids,
           subjectAltNames,
+          keyUsage,
+          extKeyUsage,
           onCrAttribute: (key, value) => {
             if (key === 'profesion') profesion = value
             if (key === 'numeroColegiado') numeroColegiado = value
@@ -367,6 +406,8 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
     isCa,
     policyOids,
     subjectAltNames,
+    keyUsage,
+    extKeyUsage,
     role: 'end-entity', // Will be assigned by chain builder
     profesion,
     numeroColegiado,
@@ -409,6 +450,8 @@ function parseExtension(
     isCa: (v: boolean) => void
     policyOids: string[]
     subjectAltNames: string[]
+    keyUsage: string[]
+    extKeyUsage: string[]
     onCrAttribute: (key: string, value: string) => void
   },
 ): void {
@@ -468,6 +511,37 @@ function parseExtension(
         for (const name of inner.children) {
           if (name.tagClass === 2) {
             out.subjectAltNames.push(decodeString(name))
+          }
+        }
+      }
+    }
+
+    // 2.5.29.15 = KeyUsage (BIT STRING)
+    if (oid === '2.5.29.15') {
+      if (inner.tag === ASN1_TAG.BIT_STRING && inner.content.length >= 2) {
+        const unusedBits = inner.content[0]
+        const bytes = inner.content.slice(1)
+        for (let byteIdx = 0; byteIdx < bytes.length; byteIdx++) {
+          for (let bit = 7; bit >= 0; bit--) {
+            const bitPos = byteIdx * 8 + (7 - bit)
+            if (bitPos >= KEY_USAGE_BITS.length) break
+            // Skip unused trailing bits in the last byte
+            if (byteIdx === bytes.length - 1 && (7 - bit) < unusedBits) continue
+            if (bytes[byteIdx] & (1 << bit)) {
+              out.keyUsage.push(KEY_USAGE_BITS[bitPos])
+            }
+          }
+        }
+      }
+    }
+
+    // 2.5.29.37 = ExtendedKeyUsage (SEQUENCE OF OID)
+    if (oid === '2.5.29.37') {
+      if (inner.tag === ASN1_TAG.SEQUENCE) {
+        for (const ekuOid of inner.children) {
+          if (ekuOid.tag === ASN1_TAG.OID) {
+            const oidStr = decodeOid(ekuOid.content)
+            out.extKeyUsage.push(EKU_OIDS[oidStr] || oidStr)
           }
         }
       }
@@ -624,6 +698,8 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
     pki: null,
     nationalId: null,
     signerDisplayName: null,
+    keyUsage: [],
+    extKeyUsage: [],
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -670,6 +746,8 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
       pki,
       nationalId,
       signerDisplayName,
+      keyUsage: signer?.keyUsage ?? [],
+      extKeyUsage: signer?.extKeyUsage ?? [],
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)

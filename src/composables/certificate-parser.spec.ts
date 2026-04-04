@@ -67,11 +67,15 @@ describe('certificate-parser', () => {
       expect(result.certificates).toHaveLength(0)
       expect(result.signer).toBeNull()
       expect(result.pki).toBeNull()
+      expect(result.keyUsage).toEqual([])
+      expect(result.extKeyUsage).toEqual([])
     })
 
     it('returns empty result for empty string', () => {
       const result = parseCertificateChain('')
       expect(result.certificates).toHaveLength(0)
+      expect(result.keyUsage).toEqual([])
+      expect(result.extKeyUsage).toEqual([])
     })
 
     it('returns empty result for non-SignedData structure', () => {

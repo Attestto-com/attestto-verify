@@ -445,6 +445,39 @@ export class AttesttoVerify extends LitElement {
 
       .id-cta a:hover { text-decoration: underline; }
 
+      /* ── Trust Permissions ───────────────────────────────────── */
+      .trust-permissions {
+        margin-top: 0.75rem;
+      }
+
+      .permission-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      .permission-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.68rem;
+        font-weight: 500;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .permission-key {
+        background: var(--attestto-success-bg, #dcfce7);
+        color: var(--attestto-success, #16a34a);
+        border: 1px solid color-mix(in srgb, var(--attestto-success, #16a34a), transparent 70%);
+      }
+
+      .permission-ext {
+        background: var(--attestto-info-bg, #dbeafe);
+        color: var(--attestto-info, #2563eb);
+        border: 1px solid color-mix(in srgb, var(--attestto-info, #2563eb), transparent 70%);
+      }
+
       /* ── Card Flip ──────────────────────────────────────────── */
       .card-flip-tab {
         position: absolute;
@@ -848,6 +881,21 @@ export class AttesttoVerify extends LitElement {
                         : ''}
                       ${sig.certChain?.nationalId
                         ? this.renderIdentityChallenge(sig.certChain.nationalId, r.signatures.indexOf(sig))
+                        : ''}
+                      ${(sig.certChain?.keyUsage?.length || sig.certChain?.extKeyUsage?.length)
+                        ? html`
+                            <div class="trust-permissions">
+                              <div class="cert-chain-title">Trust Permissions</div>
+                              <div class="permission-grid">
+                                ${(sig.certChain.keyUsage ?? []).map(
+                                  (ku) => html`<span class="permission-badge permission-key">${ku}</span>`,
+                                )}
+                                ${(sig.certChain.extKeyUsage ?? []).map(
+                                  (eku) => html`<span class="permission-badge permission-ext">${eku}</span>`,
+                                )}
+                              </div>
+                            </div>
+                          `
                         : ''}
                       ${sig.certChain && sig.certChain.chain.length > 0
                         ? html`
