@@ -54,6 +54,14 @@ export {
 } from './composables/document-signer.js'
 export type { DocumentSignatureCredential, SignResult } from './composables/document-signer.js'
 
+// Certificate chain parser
+export { parseCertificateChain, cleanSignerName } from './composables/certificate-parser.js'
+export type {
+  CertificateInfo,
+  CertificateChainResult,
+  PkiIdentity,
+} from './composables/certificate-parser.js'
+
 // Built-in plugins
 export { didVerifierPlugin, createDidVerifier } from './plugins/did-verifier.js'
 export type { DidDocument, DidResolver, VerificationMethod } from './plugins/did-verifier.js'

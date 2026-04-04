@@ -7,8 +7,99 @@
  */
 
 import { logger } from '../logger.js'
+import {
+  extractPkcs7Hex,
+  parseCertificateChain,
+  cleanSignerName,
+  type CertificateChainResult,
+} from './certificate-parser.js'
 
 const log = logger.verify
+
+// ── CDN Lazy Loader for pdfjs-dist ────────────────────────────────
+
+const PDFJS_VERSION = '4.9.155'
+const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let pdfjsCache: any = null
+let pdfjsLoading: Promise<unknown> | null = null
+
+/**
+ * Load pdfjs-dist from CDN. Cached after first load.
+ * Returns the pdfjsLib global, or null if loading fails.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadPdfJs(onProgress?: VerifyProgressCallback): Promise<any> {
+  // Already loaded
+  if (pdfjsCache) return pdfjsCache
+
+  // Check if running in Node (tests) — skip CDN loading
+  if (typeof window === 'undefined') return null
+
+  // Already loading (concurrent calls)
+  if (pdfjsLoading) {
+    await pdfjsLoading
+    return pdfjsCache
+  }
+
+  onProgress?.('loading-pdfjs', 'Loading PDF engine from CDN...')
+  log.info('[cdn] Loading pdfjs-dist from CDN (first time only)')
+
+  pdfjsLoading = new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = `${PDFJS_CDN}/pdf.min.mjs`
+    script.type = 'module'
+
+    // For module scripts, we need a different approach — use dynamic import
+    script.remove()
+
+    // Use dynamic import from CDN
+    const moduleScript = document.createElement('script')
+    moduleScript.type = 'module'
+    moduleScript.textContent = `
+      import * as pdfjsLib from '${PDFJS_CDN}/pdf.min.mjs';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '${PDFJS_CDN}/pdf.worker.min.mjs';
+      window.__pdfjsLib = pdfjsLib;
+      window.dispatchEvent(new Event('pdfjs-loaded'));
+    `
+
+    const onLoad = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pdfjsCache = (window as any).__pdfjsLib
+      window.removeEventListener('pdfjs-loaded', onLoad)
+      if (pdfjsCache) {
+        log.event('[cdn] pdfjs-dist loaded and cached')
+        onProgress?.('pdfjs-ready', 'PDF engine ready')
+        resolve()
+      } else {
+        reject(new Error('pdfjs-dist module did not expose __pdfjsLib'))
+      }
+    }
+
+    window.addEventListener('pdfjs-loaded', onLoad)
+    // Timeout after 15s
+    setTimeout(() => {
+      window.removeEventListener('pdfjs-loaded', onLoad)
+      if (!pdfjsCache) {
+        log.warn('[cdn] pdfjs-dist load timed out after 15s')
+        resolve() // Don't reject — graceful degradation
+      }
+    }, 15_000)
+
+    document.head.appendChild(moduleScript)
+  })
+
+  try {
+    await pdfjsLoading
+  } catch (e) {
+    log.warn(`[cdn] Failed to load pdfjs-dist: ${e}`)
+  } finally {
+    pdfjsLoading = null
+  }
+
+  return pdfjsCache
+}
 
 export interface PdfMetadata {
   title: string | null
@@ -36,6 +127,8 @@ export interface PdfSignatureInfo {
   organization: string | null
   /** SubFilter from PDF signature dictionary */
   subFilter: string | null
+  /** Certificate chain extracted from PKCS#7 (v1.5) */
+  certChain: CertificateChainResult | null
 }
 
 /** Forensic audit data extracted from raw PDF bytes — zero network calls */
@@ -153,8 +246,9 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       }
     }
 
-    // Get the full dictionary, then strip /Contents hex blob to make regex work
+    // Get the full dictionary — capture /Contents hex blob before stripping
     const rawDict = text.substring(dictStart, dictEnd)
+    const pkcs7Hex = extractPkcs7Hex(text, dictStart, dictEnd)
     const dict = rawDict.replace(/\/Contents\s*<[0-9a-fA-F\s]*>/g, '')
 
     // Extract parenthesized string values — handles nested parens via balanced match
@@ -183,18 +277,29 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       return m ? m[1] : null
     }
 
-    const name = getField('Name') || 'Unknown Signer'
+    // Parse certificate chain from PKCS#7 blob
+    let certChain: CertificateChainResult | null = null
+    if (pkcs7Hex) {
+      certChain = parseCertificateChain(pkcs7Hex)
+    }
+
+    // Use cert data to enrich signature info
+    const rawName = getField('Name') || 'Unknown Signer'
+    const displayName = certChain?.signerDisplayName || cleanSignerName(rawName)
+    const level = certChain && certChain.certificates.length > 0 ? 'parsed' : 'detected'
+
     sigs.push({
-      name,
+      name: displayName,
       reason: getField('Reason'),
       location: getField('Location'),
       contactInfo: getField('ContactInfo'),
       signDate: getField('M') ? formatPdfDate(getField('M')!) : null,
-      level: 'detected', // v1 = byte scan only; v2 (ATT-209) will upgrade to 'signed'/'trusted'
-      did: null, // v2: extracted from cert SubjectAltName
-      lei: null, // v2: extracted from cert serialNumber
-      organization: null, // v2: extracted from cert O field
+      level,
+      did: certChain?.signer?.subjectAltNames.find((s) => s.startsWith('did:')) || null,
+      lei: null, // v2: extracted from cert or vLEI
+      organization: certChain?.signer?.organization || null,
       subFilter: getNameField('SubFilter'),
+      certChain,
     })
   }
 
@@ -276,8 +381,14 @@ function scanPdfAudit(bytes: Uint8Array, text: string): PdfAuditInfo {
   }
 }
 
+/** Progress callback for lazy-loading status */
+export type VerifyProgressCallback = (step: string, detail?: string) => void
+
 /** Full client-side PDF verification */
-export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
+export async function verifyPdf(
+  file: File,
+  onProgress?: VerifyProgressCallback,
+): Promise<PdfVerificationResult> {
   log.info(`[1/4] Reading "${file.name}" (${file.size} bytes)`)
   const buffer = await file.arrayBuffer()
   const hash = await computeHash(buffer)
@@ -304,27 +415,24 @@ export async function verifyPdf(file: File): Promise<PdfVerificationResult> {
       `[3/4] Forensic audit: PDF ${audit.pdfVersion || '?'}, JS=${audit.hasJavaScript ? 'YES' : 'no'}, OpenAction=${audit.hasOpenAction ? 'YES' : 'no'}, Encrypted=${audit.encrypted ? 'YES' : 'no'}`,
     )
 
-    // Try pdfjs-dist for metadata (lazy-loaded)
+    // Load pdfjs-dist from CDN (lazy, cached) for metadata extraction
     try {
-      const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist')
-      GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url,
-      ).toString()
+      const pdfjsLib = await loadPdfJs(onProgress)
+      if (pdfjsLib) {
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
+        const meta = await pdf.getMetadata()
+        const info = meta?.info as Record<string, unknown> | undefined
 
-      const pdf = await getDocument({ data: buffer }).promise
-      const meta = await pdf.getMetadata()
-      const info = meta?.info as Record<string, unknown> | undefined
-
-      if (info) {
-        metadata = {
-          title: (info.Title as string) || null,
-          author: (info.Author as string) || null,
-          subject: (info.Subject as string) || null,
-          creator: (info.Creator as string) || null,
-          producer: (info.Producer as string) || null,
-          creationDate: info.CreationDate ? formatPdfDate(info.CreationDate as string) : null,
-          modDate: info.ModDate ? formatPdfDate(info.ModDate as string) : null,
+        if (info) {
+          metadata = {
+            title: (info.Title as string) || null,
+            author: (info.Author as string) || null,
+            subject: (info.Subject as string) || null,
+            creator: (info.Creator as string) || null,
+            producer: (info.Producer as string) || null,
+            creationDate: info.CreationDate ? formatPdfDate(info.CreationDate as string) : null,
+            modDate: info.ModDate ? formatPdfDate(info.ModDate as string) : null,
+          }
         }
       }
     } catch {

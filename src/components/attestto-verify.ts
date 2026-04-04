@@ -251,6 +251,93 @@ export class AttesttoVerify extends LitElement {
         border-radius: 3px;
       }
 
+      /* ── PKI Identity Badge ────────────────────────────────── */
+      .pki-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        background: var(--attestto-info-bg, #dbeafe);
+        border: 1px solid var(--attestto-info, #2563eb);
+      }
+
+      .pki-badge .pki-flag {
+        font-size: 1.1rem;
+      }
+
+      .pki-badge .pki-name {
+        font-weight: 600;
+        color: var(--attestto-info, #2563eb);
+      }
+
+      .pki-badge .pki-type {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      /* ── Certificate Chain ──────────────────────────────────── */
+      .cert-chain {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        background: var(--attestto-bg-code, #f1f5f9);
+        border-radius: 6px;
+        font-size: 0.78rem;
+      }
+
+      .cert-chain-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--attestto-text-muted, #64748b);
+        margin-bottom: 0.5rem;
+      }
+
+      .cert-node {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        padding: 0.25rem 0;
+        padding-left: calc(var(--depth, 0) * 1rem);
+      }
+
+      .cert-icon {
+        flex-shrink: 0;
+        width: 1rem;
+        text-align: center;
+      }
+
+      .cert-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .cert-cn {
+        font-weight: 600;
+        color: var(--attestto-text, #1e293b);
+      }
+
+      .cert-org {
+        color: var(--attestto-text-muted, #64748b);
+        font-size: 0.72rem;
+      }
+
+      .cert-meta {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.15rem;
+        font-size: 0.68rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
+      .cert-id {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        color: var(--attestto-primary, #594fd3);
+      }
+
       /* ── Forensic Audit Section ────────────────────────────── */
       details[part~='audit-section'] {
         margin-top: 1.25rem;
@@ -389,27 +476,56 @@ export class AttesttoVerify extends LitElement {
         }
       }
 
-      .loading {
+      /* ── Loading Card with Animated Beans ──────────────────── */
+      .loading-card {
         display: flex;
+        flex-direction: column;
         align-items: center;
+        justify-content: center;
+        padding: 3rem 2rem;
+        text-align: center;
+        min-height: 200px;
+      }
+
+      .loading-beans {
+        display: flex;
         gap: 0.5rem;
-        color: var(--attestto-text-muted, #64748b);
-        padding: 1rem 0;
+        margin-bottom: 1.5rem;
       }
 
-      .spinner {
-        width: 1rem;
-        height: 1rem;
-        border: 2px solid var(--attestto-border, #e2e8f0);
-        border-top-color: var(--attestto-primary, #594fd3);
+      .bean {
+        width: 12px;
+        height: 12px;
         border-radius: 50%;
-        animation: spin 0.6s linear infinite;
+        background: var(--attestto-primary, #594fd3);
+        animation: bean-bounce 1.4s ease-in-out infinite;
       }
 
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
+      .bean-1 { animation-delay: 0s; }
+      .bean-2 { animation-delay: 0.16s; }
+      .bean-3 { animation-delay: 0.32s; }
+
+      @keyframes bean-bounce {
+        0%, 80%, 100% {
+          transform: scale(0.6);
+          opacity: 0.4;
         }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .loading-step {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--attestto-text, #1e293b);
+        margin-bottom: 0.5rem;
+      }
+
+      .loading-hint {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
       }
     `,
   ]
@@ -419,14 +535,33 @@ export class AttesttoVerify extends LitElement {
 
   @state() private dragging = false
   @state() private verifying = false
+  @state() private verifyStep = ''
   @state() private result: PdfVerificationResult | null = null
   @state() private pluginResults: Map<string, VerificationResult> | null = null
   @state() private showCopied = false
 
   override render() {
     return html`
-      ${this.result ? this.renderResult() : this.renderDropZone()}
+      ${this.verifying
+        ? this.renderLoading()
+        : this.result
+          ? this.renderResult()
+          : this.renderDropZone()}
       ${this.showCopied ? html`<div class="copied-toast">Hash copied to clipboard</div>` : ''}
+    `
+  }
+
+  private renderLoading() {
+    return html`
+      <div class="loading-card" part="loading">
+        <div class="loading-beans">
+          <span class="bean bean-1"></span>
+          <span class="bean bean-2"></span>
+          <span class="bean bean-3"></span>
+        </div>
+        <div class="loading-step">${this.verifyStep}</div>
+        <div class="loading-hint">All processing happens locally — your file never leaves this device</div>
+      </div>
     `
   }
 
@@ -518,6 +653,58 @@ export class AttesttoVerify extends LitElement {
                           : ''}
 
                       <div class="level-hint" part="trust-level">${this.levelHint(sig.level)}</div>
+
+                      ${sig.certChain?.pki
+                        ? html`
+                            <div class="pki-badge" part="pki-badge">
+                              <span class="pki-flag">${this.countryFlag(sig.certChain.pki.country)}</span>
+                              <span class="pki-name">${sig.certChain.pki.name}</span>
+                              ${sig.certChain.pki.certificateType
+                                ? html`<span class="pki-type">${sig.certChain.pki.certificateType}</span>`
+                                : ''}
+                            </div>
+                          `
+                        : ''}
+                      ${sig.certChain?.nationalId
+                        ? html`
+                            <div class="meta-grid" style="margin-top: 0.5rem;">
+                              <span class="meta-label">National ID</span>
+                              <span class="cert-id">${sig.certChain.nationalId}</span>
+                            </div>
+                          `
+                        : ''}
+                      ${sig.certChain && sig.certChain.chain.length > 0
+                        ? html`
+                            <div class="cert-chain" part="cert-chain">
+                              <div class="cert-chain-title">Certificate Chain</div>
+                              ${sig.certChain.chain.map(
+                                (cert, i) => html`
+                                  <div class="cert-node" style="--depth: ${i}">
+                                    <span class="cert-icon">${cert.role === 'root'
+                                      ? '\u{1F3DB}'
+                                      : cert.role === 'intermediate'
+                                        ? '\u{1F517}'
+                                        : '\u{270D}'}</span>
+                                    <div class="cert-details">
+                                      <div class="cert-cn">${cert.commonName}</div>
+                                      ${cert.organization
+                                        ? html`<div class="cert-org">${cert.organization}</div>`
+                                        : ''}
+                                      <div class="cert-meta">
+                                        ${cert.validFrom && cert.validTo
+                                          ? html`<span>${cert.validFrom.split('T')[0]} — ${cert.validTo.split('T')[0]}</span>`
+                                          : ''}
+                                        ${cert.country
+                                          ? html`<span>${cert.country}</span>`
+                                          : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                `,
+                              )}
+                            </div>
+                          `
+                        : ''}
 
                       <div class="meta-grid">
                         ${sig.reason
@@ -756,6 +943,7 @@ export class AttesttoVerify extends LitElement {
 
   private async verify(file: File) {
     this.verifying = true
+    this.verifyStep = 'Reading file...'
     this.result = null
     this.pluginResults = null
 
@@ -769,8 +957,18 @@ export class AttesttoVerify extends LitElement {
     )
 
     try {
+      this.verifyStep = 'Computing SHA-256 hash...'
+      // Small delay to let the UI render the loading state
+      await new Promise((r) => setTimeout(r, 50))
+
       // 1. Core integrity check (always runs — the "sandwich" base layer)
-      this.result = await verifyPdf(file)
+      this.result = await verifyPdf(file, (step, detail) => {
+        if (step === 'loading-pdfjs') {
+          this.verifyStep = detail || 'Loading PDF engine...'
+        } else if (step === 'pdfjs-ready') {
+          this.verifyStep = 'Extracting metadata...'
+        }
+      })
 
       // 2. Run registered verifier plugins (can only ADD trust, never bypass core)
       const verifiers = attesttoPlugins.getByType('verifier')
@@ -830,12 +1028,22 @@ export class AttesttoVerify extends LitElement {
   private levelHint(level: string): string {
     const hints: Record<string, string> = {
       detected: 'Signature structure found — cryptographic verification pending (v2)',
-      parsed: 'Signature decoded — awaiting chain validation',
+      parsed: 'Certificate chain extracted — cryptographic verification pending (v2)',
       signed: 'Cryptographically valid — signature math verified',
       trusted: 'Chain reaches a recognized Certificate Authority',
       qualified: 'Qualified corporate identity — GLEIF vLEI verified',
     }
     return hints[level] ?? ''
+  }
+
+  /** Convert ISO 3166-1 alpha-2 country code to flag emoji */
+  private countryFlag(code: string): string {
+    if (!code || code.length !== 2) return '\u{1F310}' // globe
+    const upper = code.toUpperCase()
+    return String.fromCodePoint(
+      0x1f1e6 + upper.charCodeAt(0) - 65,
+      0x1f1e6 + upper.charCodeAt(1) - 65,
+    )
   }
 
   private formatSize(bytes: number): string {

@@ -38,9 +38,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@attestto/id-wallet-adapter": "link:../id-wallet-adapter",
-    "lit": "^3.2.0",
-    "pdfjs-dist": "^4.9.155"
+    "@attestto/id-wallet-adapter": "^0.3.0",
+    "lit": "^3.2.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
@@ -48,7 +47,7 @@
     "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "vite": "^6.2.0",
-    "vitest": "^3.1.0"
+    "vitest": "^2.1.9"
   },
   "repository": {
     "type": "git",

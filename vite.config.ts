@@ -17,12 +17,23 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
-      // pdfjs-dist is lazy-loaded at runtime — keep it external to reduce bundle
-      external: ['pdfjs-dist'],
-      output: {
-        globals: {
-          'pdfjs-dist': 'pdfjsLib',
-        },
+      output: {},
+    },
+  },
+  test: {
+    testTimeout: 30000,
+    fileParallelism: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        execArgv: ['--max-old-space-size=8192'],
+      },
+    },
+    environment: 'node',
+    server: {
+      deps: {
+        external: ['lit', '@lit/reactive-element', 'lit-element', 'lit-html'],
       },
     },
   },
