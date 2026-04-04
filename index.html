@@ -398,6 +398,57 @@
         cursor: pointer;
       }
 
+      .doc-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .doc-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+
+      .doc-badge-green {
+        background: #052e16;
+        color: #4ade80;
+        border: 1px solid #16a34a;
+      }
+
+      .doc-badge-amber {
+        background: #422006;
+        color: #fbbf24;
+        border: 1px solid #d97706;
+      }
+
+      .doc-badge-red {
+        background: #450a0a;
+        color: #f87171;
+        border: 1px solid #dc2626;
+      }
+
+      .doc-badge-blue {
+        background: #172554;
+        color: #60a5fa;
+        border: 1px solid #2563eb;
+      }
+
+      .doc-badge-muted {
+        background: #1e293b;
+        color: #94a3b8;
+        border: 1px solid #334155;
+      }
+
       @media (max-width: 768px) {
         .footer-grid {
           grid-template-columns: 1fr;
@@ -515,7 +566,40 @@
         const safe = v => v ? 'audit-warn' : 'audit-safe'
         const safeLabel = (v, yes, no) => `<code class="${v ? 'audit-warn' : 'audit-safe'}">${v ? yes : no}</code>`
 
+        const sigs = e.detail.signatures || 0
+        const hasSigs = sigs > 0
+        const noJS = !audit.hasJavaScript
+        const noAutoAction = !audit.hasOpenAction
+        const isSafe = noJS && noAutoAction
+        const isEncrypted = !!audit.encrypted
+        const hasLtv = !!audit.hasLtvData
+
+        const badges = []
+        // Signing status
+        if (hasSigs) badges.push(['green', 'Signed'])
+        else badges.push(['muted', 'Unsigned'])
+
+        // Editable / locked
+        if (!isEncrypted) badges.push(['blue', 'Editable'])
+        else badges.push(['amber', 'Locked'])
+
+        // Can be signed (if not encrypted, can add more signatures)
+        if (!isEncrypted) badges.push(['blue', 'Can sign'])
+
+        // Safety
+        if (isSafe) badges.push(['green', 'Safe'])
+        else if (audit.hasJavaScript) badges.push(['red', 'Has scripts'])
+
+        // LTV
+        if (hasLtv) badges.push(['green', 'Long-term valid'])
+
+        // Web optimized
+        if (audit.linearized) badges.push(['muted', 'Web-optimized'])
+
         content.innerHTML = `
+          <div class="doc-badges">
+            ${badges.map(([cls, label]) => `<span class="doc-badge doc-badge-${cls}">${label}</span>`).join('')}
+          </div>
           <div class="audit-section-title">Document Hash</div>
           <div class="audit-row"><strong>SHA-256</strong><code class="audit-hash" title="Click to copy">${e.detail.hash}</code></div>
 
