@@ -449,6 +449,26 @@
         border: 1px solid #334155;
       }
 
+      .transparency-note {
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .transparency-note h4 {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        margin-bottom: 0.4rem;
+      }
+
+      .transparency-note p {
+        font-size: 0.78rem;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
       @media (max-width: 768px) {
         .footer-grid {
           grid-template-columns: 1fr;
@@ -549,6 +569,10 @@
             <span class="pill">Chrome</span><span class="pill">Firefox</span><span class="pill">Safari</span><span class="pill">Edge</span>
           </div>
         </div>
+      </div>
+      <div class="transparency-note">
+        <h4>Network Transparency</h4>
+        <p>All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files. <a href="https://github.com/Attestto-com/verify">Verify in the source code &rarr;</a></p>
       </div>
       <div class="footer-bottom">
         Open source under Apache 2.0 — <a href="https://github.com/Attestto-com/verify">attestto/verify</a>
