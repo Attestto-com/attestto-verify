@@ -10,6 +10,18 @@ import {
   exportCredentialAsJson,
   type DocumentSignatureCredential,
 } from '../composables/document-signer.js'
+import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
+
+interface PdfMeta {
+  title: string | null
+  author: string | null
+  subject: string | null
+  creator: string | null
+  producer: string | null
+  creationDate: string | null
+  modDate: string | null
+  pages: number | null
+}
 
 /**
  * <attestto-sign> — Sign a PDF with any DID wallet or browser key
@@ -239,6 +251,7 @@ export class AttesttoSign extends LitElement {
   @state() private signed = false
   @state() private signedCredential: DocumentSignatureCredential | null = null
   @state() private error: string | null = null
+  @state() private pdfMeta: PdfMeta | null = null
 
   override connectedCallback() {
     super.connectedCallback()
@@ -378,6 +391,17 @@ export class AttesttoSign extends LitElement {
           </span>
         </div>
 
+        ${this.pdfMeta ? html`
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.75rem; font-size: 0.82rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--attestto-bg-code, #f1f5f9); border-radius: 8px;">
+            ${this.pdfMeta.title ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Title</span><span>${this.pdfMeta.title}</span>` : ''}
+            ${this.pdfMeta.author ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Author</span><span>${this.pdfMeta.author}</span>` : ''}
+            ${this.pdfMeta.pages ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Pages</span><span>${this.pdfMeta.pages}</span>` : ''}
+            ${this.pdfMeta.creator ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Creator</span><span>${this.pdfMeta.creator}</span>` : ''}
+            ${this.pdfMeta.creationDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Created</span><span>${this.pdfMeta.creationDate}</span>` : ''}
+            ${this.pdfMeta.modDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">Modified</span><span>${this.pdfMeta.modDate}</span>` : ''}
+          </div>
+        ` : ''}
+
         ${this.error
           ? html`<div
               style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-bottom: 1rem"
@@ -486,6 +510,7 @@ export class AttesttoSign extends LitElement {
     if (file && file.name.toLowerCase().endsWith('.pdf')) {
       this.file = file
       this.error = null
+      this.extractMetadata(file)
     } else {
       this.error = 'Only PDF files can be signed'
     }
@@ -502,6 +527,31 @@ export class AttesttoSign extends LitElement {
     if (file) {
       this.file = file
       this.error = null
+      this.extractMetadata(file)
+    }
+  }
+
+  private async extractMetadata(file: File): Promise<void> {
+    this.pdfMeta = null
+    try {
+      const pdfjsLib = await loadPdfJs()
+      if (!pdfjsLib) return
+      const buffer = await file.arrayBuffer()
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
+      const meta = await pdf.getMetadata()
+      const info = meta?.info as Record<string, unknown> | undefined
+      this.pdfMeta = {
+        title: (info?.Title as string) || null,
+        author: (info?.Author as string) || null,
+        subject: (info?.Subject as string) || null,
+        creator: (info?.Creator as string) || null,
+        producer: (info?.Producer as string) || null,
+        creationDate: info?.CreationDate ? formatPdfDate(info.CreationDate as string) : null,
+        modDate: info?.ModDate ? formatPdfDate(info.ModDate as string) : null,
+        pages: pdf.numPages ?? null,
+      }
+    } catch {
+      // Metadata extraction is best-effort
     }
   }
 
@@ -553,6 +603,7 @@ export class AttesttoSign extends LitElement {
     this.signing = false
     this.signedCredential = null
     this.error = null
+    this.pdfMeta = null
   }
 
   private formatSize(bytes: number): string {

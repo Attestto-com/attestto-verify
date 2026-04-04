@@ -30,7 +30,7 @@ let pdfjsLoading: Promise<unknown> | null = null
  * Returns the pdfjsLib global, or null if loading fails.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function loadPdfJs(onProgress?: VerifyProgressCallback): Promise<any> {
+export async function loadPdfJs(onProgress?: VerifyProgressCallback): Promise<any> {
   // Already loaded
   if (pdfjsCache) return pdfjsCache
 
@@ -178,7 +178,7 @@ export async function computeHash(buffer: ArrayBuffer): Promise<string> {
 }
 
 /** Parse PDF date string (D:YYYYMMDDHHmmSS) to ISO string */
-function formatPdfDate(raw: string): string | null {
+export function formatPdfDate(raw: string): string | null {
   if (!raw) return null
   try {
     const cleaned = raw.replace(/^D:/, '')
