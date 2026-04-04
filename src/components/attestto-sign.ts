@@ -307,6 +307,54 @@ export class AttesttoSign extends LitElement {
         text-decoration: none;
         font-weight: 600;
       }
+
+      /* ── Signing Loading State ──────────────────────── */
+      .signing-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .signing-beans {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .signing-bean {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--attestto-primary, #594fd3);
+        animation: signing-bounce 1.4s ease-in-out infinite;
+      }
+
+      .signing-bean:nth-child(2) { animation-delay: 0.16s; }
+      .signing-bean:nth-child(3) { animation-delay: 0.32s; }
+
+      @keyframes signing-bounce {
+        0%, 80%, 100% {
+          transform: scale(0.6);
+          opacity: 0.4;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .signing-step {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+      }
+
+      .signing-hint {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
     `,
   ]
 
@@ -490,21 +538,31 @@ export class AttesttoSign extends LitElement {
             </div>`
           : ''}
         ${!this.signed
-          ? html`
-              <button
-                class="sign-btn"
-                ?disabled=${(!this.selectedWallet && !this.useBrowserKey) || this.signing}
-                @click=${this.sign}
-              >
-                ${this.signing
-                  ? this.signingStatus || 'Signing...'
-                  : this.selectedWallet
+          ? this.signing
+            ? html`
+                <div class="signing-status">
+                  <div class="signing-beans">
+                    <span class="signing-bean"></span>
+                    <span class="signing-bean"></span>
+                    <span class="signing-bean"></span>
+                  </div>
+                  <div class="signing-step">${this.signingStatus || 'Signing...'}</div>
+                  <div class="signing-hint">All signing happens locally — your file never leaves this device</div>
+                </div>
+              `
+            : html`
+                <button
+                  class="sign-btn"
+                  ?disabled=${!this.selectedWallet && !this.useBrowserKey}
+                  @click=${this.sign}
+                >
+                  ${this.selectedWallet
                     ? `Sign with ${this.selectedWallet.name}`
                     : this.useBrowserKey
                       ? 'Sign with browser key'
                       : 'Connect wallet first'}
-              </button>
-            `
+                </button>
+              `
           : html`
               <div class="download-link" style="cursor: default; margin-bottom: 0.75rem;">
                 ${this.useBrowserKey
