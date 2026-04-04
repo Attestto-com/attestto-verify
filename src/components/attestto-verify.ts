@@ -590,7 +590,6 @@ export class AttesttoVerify extends LitElement {
   @state() private result: PdfVerificationResult | null = null
   @state() private pluginResults: Map<string, VerificationResult> | null = null
   @state() private showCopied = false
-  @state() private cardView: 'verify' | 'audit' = 'verify'
 
   override render() {
     return html`
@@ -642,12 +641,7 @@ export class AttesttoVerify extends LitElement {
     return html`
       <div class="result">
         <div class="result-card" part="result-card">
-          <div class="card-flipper">
-          ${r.isPdf && r.audit && this.cardView === 'verify' ? html`
-            <button class="card-flip-tab" @click=${() => this.cardView = 'audit'}>Technical Audit</button>
-          ` : ''}
-          <div class="card-inner ${this.cardView === 'audit' ? 'flipped' : ''}">
-          <div class="card-front">
+          <div>
           <div class="result-header">
             <span class="meta-label">Filename</span>
             📄 ${r.fileName}
@@ -815,110 +809,7 @@ export class AttesttoVerify extends LitElement {
                   </div>
                 `
               : ''}
-          </div><!-- /card-front -->
-          ${r.isPdf && r.audit
-            ? html`
-                <div class="card-back">
-                  <button class="card-back-btn" @click=${() => this.cardView = 'verify'}>&larr; Back</button>
-                  <div class="audit-grid" part="audit-grid">
-                    <div class="audit-group">
-                      <div class="audit-group-title">Document Hash</div>
-                      <div class="audit-item">
-                        <strong>SHA-256</strong>
-                        <code class="hash-inline" @click=${this.copyHash} title="Click to copy" style="cursor:pointer; word-break:break-all; font-size:0.72rem;">${r.hash}</code>
-                      </div>
-                    </div>
-                    <div class="audit-group">
-                      <div class="audit-group-title">Document Properties</div>
-                      <div class="audit-item">
-                        <strong>PDF Version</strong>
-                        <code>${r.audit.pdfVersion ?? 'Unknown'}</code>
-                      </div>
-                      ${r.audit.pageCount !== null
-                        ? html`
-                            <div class="audit-item">
-                              <strong>Pages</strong>
-                              <code>${r.audit.pageCount}</code>
-                            </div>
-                          `
-                        : ''}
-                      <div class="audit-item">
-                        <strong>Linearized</strong>
-                        <code>${r.audit.linearized ? 'Yes (web-optimized)' : 'No'}</code>
-                      </div>
-                      <div class="audit-item">
-                        <strong>Encryption</strong>
-                        <code class="${r.audit.encrypted ? 'audit-info' : ''}">
-                          ${r.audit.encrypted ? `Yes (${r.audit.encryptionAlgorithm})` : 'None'}
-                        </code>
-                      </div>
-                    </div>
-
-                    <div class="audit-group">
-                      <div class="audit-group-title">Security Scan</div>
-                      <div class="audit-item">
-                        <strong>JavaScript</strong>
-                        <code class="${r.audit.hasJavaScript ? 'audit-danger' : 'audit-safe'}">
-                          ${r.audit.hasJavaScript
-                            ? `${r.audit.javaScriptCount} script(s) detected`
-                            : 'None found (safe)'}
-                        </code>
-                      </div>
-                      <div class="audit-item">
-                        <strong>Auto Actions</strong>
-                        <code class="${r.audit.hasOpenAction ? 'audit-warn' : 'audit-safe'}">
-                          ${r.audit.hasOpenAction ? 'OpenAction detected' : 'None (safe)'}
-                        </code>
-                      </div>
-                      <div class="audit-item">
-                        <strong>Embedded Files</strong>
-                        <code
-                          class="${r.audit.embeddedFileCount > 0 ? 'audit-warn' : 'audit-safe'}"
-                        >
-                          ${r.audit.embeddedFileCount > 0
-                            ? `${r.audit.embeddedFileCount} file(s)`
-                            : 'None'}
-                        </code>
-                      </div>
-                      <div class="audit-item">
-                        <strong>External Links</strong>
-                        <code
-                          >${r.audit.externalLinkCount > 0
-                            ? `${r.audit.externalLinkCount} URI(s)`
-                            : 'None'}</code
-                        >
-                      </div>
-                    </div>
-
-                    ${r.audit.byteRanges.length > 0
-                      ? html`
-                          <div class="audit-group">
-                            <div class="audit-group-title">Signature Integrity (ByteRange)</div>
-                            ${r.audit.byteRanges.map(
-                              (br, i) => html`
-                                <div class="audit-item">
-                                  <strong>Sig ${i + 1}</strong>
-                                  <code>[${br.join(', ')}]</code>
-                                </div>
-                              `,
-                            )}
-                            <div class="audit-item">
-                              <strong>LTV Data</strong>
-                              <code class="${r.audit.hasLtvData ? 'audit-safe' : 'audit-info'}">
-                                ${r.audit.hasLtvData
-                                  ? 'Present (/DSS — offline revocation)'
-                                  : 'Not embedded (requires online check)'}
-                              </code>
-                            </div>
-                          </div>
-                        `
-                      : ''}
-                  </div>
-                </div><!-- /card-back -->
-              `
-            : ''}
-          </div><!-- /card-inner -->
-          </div><!-- /card-flipper -->
+          </div>
           ${this.pluginResults && this.pluginResults.size > 0
             ? html`
                 <div class="section-title">Extended Verification</div>
@@ -1041,6 +932,7 @@ export class AttesttoVerify extends LitElement {
             hash: this.result.hash,
             signatures: this.result.signatures.length,
             plugins: this.pluginResults ? Object.fromEntries(this.pluginResults) : {},
+            audit: this.result.audit ?? null,
           },
           composed: true,
           bubbles: true,
@@ -1067,7 +959,6 @@ export class AttesttoVerify extends LitElement {
   private reset() {
     this.result = null
     this.pluginResults = null
-    this.cardView = 'verify'
   }
 
   private badgeLabel(level: string): string {

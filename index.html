@@ -334,9 +334,77 @@
         border-top: 1px solid #1e293b;
       }
 
+      .footer-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        justify-content: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .footer-badge-group h4 {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.4rem;
+      }
+
+      /* ── Audit panel styles ─────────────────────── */
+      .audit-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.35rem 0;
+        font-size: 0.82rem;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .audit-row:last-child { border-bottom: none; }
+
+      .audit-row strong {
+        color: #94a3b8;
+        font-weight: 500;
+        min-width: 100px;
+      }
+
+      .audit-row code {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.78rem;
+      }
+
+      .audit-section-title {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin: 1rem 0 0.4rem;
+      }
+
+      .audit-section-title:first-child { margin-top: 0; }
+
+      .audit-safe { color: #4ade80; }
+      .audit-warn { color: #fbbf24; }
+      .audit-danger { color: #ef4444; }
+      .audit-info { color: #60a5fa; }
+
+      .audit-hash {
+        font-size: 0.7rem;
+        word-break: break-all;
+        color: #e2e8f0;
+        cursor: pointer;
+      }
+
       @media (max-width: 768px) {
         .footer-grid {
           grid-template-columns: 1fr;
+        }
+        .footer-badges {
+          flex-direction: column;
+          align-items: center;
         }
       }
 
@@ -363,49 +431,10 @@
         <div class="col-main">
           <attestto-verify></attestto-verify>
         </div>
-        <div class="col-side">
+        <div class="col-side" id="audit-panel" style="display: none;">
           <div class="dev-panel">
-            <h3>Signature Types</h3>
-            <div class="badge-grid">
-              <span class="pill">PAdES</span>
-              <span class="pill">CAdES</span>
-              <span class="pill">PKCS#7</span>
-              <span class="pill">ETSI.CAdES.detached</span>
-              <span class="pill">adbe.pkcs7.detached</span>
-            </div>
-          </div>
-
-          <div class="dev-panel" style="margin-top: 1rem;">
-            <h3>Recognized PKI</h3>
-            <div class="badge-grid">
-              <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
-              <span class="pill pill-outline">EU eIDAS (planned)</span>
-              <span class="pill pill-outline">AATL (planned)</span>
-            </div>
-          </div>
-
-          <div class="dev-panel" style="margin-top: 1rem;">
-            <h3>Capabilities</h3>
-            <div class="badge-grid">
-              <span class="pill pill-green">Zero upload</span>
-              <span class="pill pill-green">100% client-side</span>
-              <span class="pill pill-green">Open source</span>
-              <span class="pill">X.509 chain</span>
-              <span class="pill">ByteRange integrity</span>
-              <span class="pill">Forensic scan</span>
-              <span class="pill">LTV detection</span>
-            </div>
-          </div>
-
-          <div class="dev-panel" style="margin-top: 1rem;">
-            <h3>Compatibility</h3>
-            <div class="badge-grid">
-              <span class="pill">Chrome</span>
-              <span class="pill">Firefox</span>
-              <span class="pill">Safari</span>
-              <span class="pill">Edge</span>
-              <span class="pill">Mobile</span>
-            </div>
+            <h3>Technical Audit</h3>
+            <div id="audit-content"></div>
           </div>
         </div>
       </div>
@@ -437,11 +466,79 @@
           <p><a href="https://github.com/attestto/verify">View source &rarr;</a></p>
         </div>
       </div>
+      <div class="footer-badges">
+        <div class="footer-badge-group">
+          <h4>Signature Types</h4>
+          <div class="badge-grid">
+            <span class="pill">PAdES</span><span class="pill">CAdES</span><span class="pill">PKCS#7</span>
+          </div>
+        </div>
+        <div class="footer-badge-group">
+          <h4>Recognized PKI</h4>
+          <div class="badge-grid">
+            <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
+            <span class="pill pill-outline">EU eIDAS</span>
+            <span class="pill pill-outline">AATL</span>
+          </div>
+        </div>
+        <div class="footer-badge-group">
+          <h4>Capabilities</h4>
+          <div class="badge-grid">
+            <span class="pill pill-green">Zero upload</span>
+            <span class="pill pill-green">Client-side</span>
+            <span class="pill pill-green">Open source</span>
+            <span class="pill">X.509</span>
+            <span class="pill">ByteRange</span>
+            <span class="pill">Forensic</span>
+          </div>
+        </div>
+        <div class="footer-badge-group">
+          <h4>Browsers</h4>
+          <div class="badge-grid">
+            <span class="pill">Chrome</span><span class="pill">Firefox</span><span class="pill">Safari</span><span class="pill">Edge</span>
+          </div>
+        </div>
+      </div>
       <div class="footer-bottom">
         Open source under Apache 2.0 — <a href="https://github.com/attestto/verify">attestto/verify</a>
         &middot; No data is transmitted.
     </footer>
 
     <script type="module" src="/src/index.ts"></script>
+    <script>
+      document.addEventListener('verification-complete', (e) => {
+        const audit = e.detail?.audit
+        const panel = document.getElementById('audit-panel')
+        const content = document.getElementById('audit-content')
+        if (!audit || !panel || !content) { panel && (panel.style.display = 'none'); return }
+
+        const safe = v => v ? 'audit-warn' : 'audit-safe'
+        const safeLabel = (v, yes, no) => `<code class="${v ? 'audit-warn' : 'audit-safe'}">${v ? yes : no}</code>`
+
+        content.innerHTML = `
+          <div class="audit-section-title">Document Hash</div>
+          <div class="audit-row"><strong>SHA-256</strong><code class="audit-hash" title="Click to copy">${e.detail.hash}</code></div>
+
+          <div class="audit-section-title">Document Properties</div>
+          <div class="audit-row"><strong>PDF Version</strong><code>${audit.pdfVersion ?? 'Unknown'}</code></div>
+          ${audit.pageCount !== null ? `<div class="audit-row"><strong>Pages</strong><code>${audit.pageCount}</code></div>` : ''}
+          <div class="audit-row"><strong>Linearized</strong><code>${audit.linearized ? 'Yes' : 'No'}</code></div>
+          <div class="audit-row"><strong>Encryption</strong><code>${audit.encrypted ? audit.encryptionAlgorithm : 'None'}</code></div>
+
+          <div class="audit-section-title">Security Scan</div>
+          <div class="audit-row"><strong>JavaScript</strong>${safeLabel(audit.hasJavaScript, audit.javaScriptCount + ' script(s)', 'None (safe)')}</div>
+          <div class="audit-row"><strong>Auto Actions</strong>${safeLabel(audit.hasOpenAction, 'Detected', 'None (safe)')}</div>
+          <div class="audit-row"><strong>Embedded Files</strong>${safeLabel(audit.embeddedFileCount > 0, audit.embeddedFileCount + ' file(s)', 'None')}</div>
+          <div class="audit-row"><strong>External Links</strong><code>${audit.externalLinkCount > 0 ? audit.externalLinkCount + ' URI(s)' : 'None'}</code></div>
+
+          ${audit.byteRanges?.length > 0 ? `
+            <div class="audit-section-title">Signature Integrity</div>
+            ${audit.byteRanges.map((br, i) => `<div class="audit-row"><strong>Sig ${i+1}</strong><code>[${br.join(', ')}]</code></div>`).join('')}
+            <div class="audit-row"><strong>LTV Data</strong><code class="${audit.hasLtvData ? 'audit-safe' : 'audit-info'}">${audit.hasLtvData ? 'Present' : 'Not embedded'}</code></div>
+          ` : ''}
+        `
+        panel.style.display = 'block'
+      })
+    </script>
   </body>
 </html>
