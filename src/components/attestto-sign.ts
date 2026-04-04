@@ -440,12 +440,18 @@ export class AttesttoSign extends LitElement {
               <button
                 class="sign-btn"
                 style="background: var(--attestto-success, #16a34a);"
+                @click=${this.downloadSignedPdf}
+              >
+                Download Signed PDF
+              </button>
+              <button
+                style="display: block; width: 100%; margin-top: 0.5rem; padding: 0.5rem; background: none; border: 1px solid var(--attestto-border, #334155); border-radius: 8px; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.82rem;"
                 @click=${this.handleExport}
               >
-                Download Signed Credential (.json)
+                Export Credential (.json)
               </button>
               <div style="font-size: 0.72rem; color: var(--attestto-text-muted, #94a3b8); text-align: center; margin-top: 0.5rem;">
-                This W3C Verifiable Credential can be verified at <a href="/" style="color: var(--attestto-primary, #594fd3); text-decoration: none;">verify.attestto.com</a>
+                The credential can be independently verified at <a href="/" style="color: var(--attestto-primary, #594fd3); text-decoration: none;">verify.attestto.com</a>
               </div>
             `}
 
@@ -590,6 +596,21 @@ export class AttesttoSign extends LitElement {
       this.signing = false
       this.signingStatus = ''
     }
+  }
+
+  private downloadSignedPdf() {
+    if (!this.file) return
+    // TODO (ATT-226): Inject attestation page into PDF via pdf-lib
+    // For now, download the original PDF with the signed filename convention
+    const date = new Date().toISOString().slice(0, 10)
+    const baseName = this.file.name.replace(/\.pdf$/i, '')
+    const blob = new Blob([this.file], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${baseName}-signed-${date}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   private handleExport() {
