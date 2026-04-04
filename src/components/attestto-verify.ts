@@ -255,27 +255,29 @@ export class AttesttoVerify extends LitElement {
       .pki-badge {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        border-radius: 6px;
-        font-size: 0.82rem;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        font-size: 1rem;
         background: var(--attestto-info-bg, #dbeafe);
         border: 1px solid var(--attestto-info, #2563eb);
       }
 
       .pki-badge .pki-flag {
-        font-size: 1.1rem;
+        font-size: 2rem;
       }
 
       .pki-badge .pki-name {
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 1.15rem;
         color: var(--attestto-info, #2563eb);
       }
 
       .pki-badge .pki-type {
-        font-size: 0.72rem;
+        font-size: 0.85rem;
         color: var(--attestto-text-muted, #64748b);
+        font-weight: 500;
       }
 
       /* ── Certificate Chain ──────────────────────────────────── */
@@ -338,35 +340,66 @@ export class AttesttoVerify extends LitElement {
         color: var(--attestto-primary, #594fd3);
       }
 
-      /* ── Forensic Audit Section ────────────────────────────── */
-      details[part~='audit-section'] {
-        margin-top: 1.25rem;
-        border: 1px solid var(--attestto-border, #e2e8f0);
-        border-radius: 8px;
-        overflow: hidden;
+      /* ── Card Flip ──────────────────────────────────────────── */
+      .card-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 0;
+        border-bottom: 1px solid var(--attestto-border, #e2e8f0);
       }
 
-      details[part~='audit-section'] summary {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        font-size: 0.85rem;
+      .card-tab {
+        flex: 1;
+        padding: 0.6rem 1rem;
+        text-align: center;
+        font-size: 0.82rem;
         font-weight: 600;
+        cursor: pointer;
         color: var(--attestto-text-muted, #64748b);
-        background: var(--attestto-bg-code, #f1f5f9);
-        user-select: none;
-        list-style: none;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
       }
 
-      details[part~='audit-section'] summary::before {
-        content: '▶ ';
-        font-size: 0.7rem;
-        transition: transform 0.15s;
-        display: inline-block;
+      .card-tab:hover {
+        color: var(--attestto-text, #1e293b);
       }
 
-      details[open][part~='audit-section'] summary::before {
-        transform: rotate(90deg);
+      .card-tab.active {
+        color: var(--attestto-primary, #594fd3);
+        border-bottom-color: var(--attestto-primary, #594fd3);
       }
+
+      .card-flipper {
+        perspective: 1200px;
+      }
+
+      .card-inner {
+        position: relative;
+        transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-style: preserve-3d;
+      }
+
+      .card-inner.flipped {
+        transform: rotateY(180deg);
+      }
+
+      .card-front,
+      .card-back {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+
+      .card-back {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        transform: rotateY(180deg);
+      }
+
+      /* ── Forensic Audit Section ────────────────────────────── */
 
       .audit-grid {
         padding: 1rem;
@@ -539,6 +572,7 @@ export class AttesttoVerify extends LitElement {
   @state() private result: PdfVerificationResult | null = null
   @state() private pluginResults: Map<string, VerificationResult> | null = null
   @state() private showCopied = false
+  @state() private cardView: 'verify' | 'audit' = 'verify'
 
   override render() {
     return html`
@@ -590,6 +624,15 @@ export class AttesttoVerify extends LitElement {
     return html`
       <div class="result">
         <div class="result-card" part="result-card">
+          ${r.isPdf && r.audit ? html`
+            <div class="card-tabs">
+              <button class="card-tab ${this.cardView === 'verify' ? 'active' : ''}" @click=${() => this.cardView = 'verify'}>Verification</button>
+              <button class="card-tab ${this.cardView === 'audit' ? 'active' : ''}" @click=${() => this.cardView = 'audit'}>Technical Audit</button>
+            </div>
+          ` : ''}
+          <div class="card-flipper">
+          <div class="card-inner ${this.cardView === 'audit' ? 'flipped' : ''}">
+          <div class="card-front">
           <div class="result-header">
             📄 ${r.fileName}
             <span
@@ -770,10 +813,10 @@ export class AttesttoVerify extends LitElement {
                 </div>
               `
             : ''}
+          </div><!-- /card-front -->
           ${r.isPdf && r.audit
             ? html`
-                <details part="audit-section">
-                  <summary part="audit-summary">Technical Audit &amp; Security Scan</summary>
+                <div class="card-back">
                   <div class="audit-grid" part="audit-grid">
                     <div class="audit-group">
                       <div class="audit-group-title">Document Properties</div>
@@ -861,9 +904,11 @@ export class AttesttoVerify extends LitElement {
                         `
                       : ''}
                   </div>
-                </details>
+                </div><!-- /card-back -->
               `
             : ''}
+          </div><!-- /card-inner -->
+          </div><!-- /card-flipper -->
           ${this.pluginResults && this.pluginResults.size > 0
             ? html`
                 <div class="section-title">Extended Verification</div>
@@ -1012,6 +1057,7 @@ export class AttesttoVerify extends LitElement {
   private reset() {
     this.result = null
     this.pluginResults = null
+    this.cardView = 'verify'
   }
 
   private badgeLabel(level: string): string {
