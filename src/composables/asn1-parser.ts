@@ -37,7 +37,9 @@ export interface Asn1Node {
   tagClass: number
   /** Tag number (for context-specific: 0, 1, 2, 3...) */
   tagNumber: number
-  /** Byte offset where content starts */
+  /** Byte offset where the tag byte begins (start of the full TLV in the source buffer) */
+  nodeStart: number
+  /** Byte offset where content starts (after tag + length bytes) */
   contentOffset: number
   /** Length of content in bytes */
   contentLength: number
@@ -87,6 +89,7 @@ export function parseAsn1(data: Uint8Array, offset = 0): Asn1Node {
     constructed,
     tagClass,
     tagNumber,
+    nodeStart: offset,
     contentOffset,
     contentLength: length,
     content,

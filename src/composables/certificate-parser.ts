@@ -22,6 +22,7 @@ import {
   type Asn1Node,
 } from './asn1-parser.js'
 import { logger } from '../logger.js'
+import { validateChain } from './chain-validator.js'
 
 const log = logger.verify
 
@@ -66,6 +67,13 @@ export interface CertificateInfo {
   profesion: string | null
   /** CR-specific: número de colegiado from BCCR extension */
   numeroColegiado: string | null
+  /**
+   * Raw DER bytes of this certificate as a hex string. Captured at parse time
+   * so the chain validator (`chain-validator.ts`) can re-decode the cert with
+   * pkijs and run real cryptographic chain validation against bundled BCCR
+   * trust anchors. Without this, only structure parsing is possible.
+   */
+  rawDerHex: string
 }
 
 export interface CertificateChainResult {
@@ -87,6 +95,26 @@ export interface CertificateChainResult {
   extKeyUsage: string[]
   /** Signer email from cert (Subject email or SAN) */
   signerEmail: string | null
+  /**
+   * SECURITY: Has the certificate chain been cryptographically verified
+   * against a bundled trust anchor (root CA fingerprint pinned, signature
+   * walked end-to-end with WebCrypto / pkijs)?
+   *
+   * As of v1.5 this is ALWAYS `false` — the parser only walks the ASN.1
+   * structure and matches root CA names against `pki-registry.ts` patterns.
+   * No `child.verify(parent.publicKey)` is performed and no trust anchor
+   * fingerprint is pinned. UI MUST treat the signature as "structure-only"
+   * and never claim cryptographic trust.
+   *
+   * v2 (ATT-209, `docs/v2-pkijs-implementation-guide.md`) will set this
+   * to `true` once `pkijs.CertificateChainValidationEngine` is wired in.
+   */
+  cryptographicallyVerified: boolean
+  /**
+   * SECURITY: Human-readable warning surfaced when the result is consumed
+   * by a UI. Set whenever `cryptographicallyVerified === false`.
+   */
+  cryptoVerificationWarning: string | null
 }
 
 export interface PkiIdentity {
@@ -188,6 +216,17 @@ export function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
+/**
+ * Convert Uint8Array to hex string (lowercase, no separators).
+ */
+export function bytesToHex(bytes: Uint8Array): string {
+  let hex = ''
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0')
+  }
+  return hex
+}
+
 // ── PKCS#7 / CMS Parsing ─────────────────────────────────────────
 
 /**
@@ -247,7 +286,14 @@ export function parsePkcs7Certificates(derBytes: Uint8Array): CertificateInfo[] 
     for (const child of certsNode.children) {
       try {
         const cert = parseCertificate(child)
-        if (cert) certs.push(cert)
+        if (cert) {
+          // Capture the raw DER bytes of THIS certificate so the chain
+          // validator can re-decode and verify it cryptographically.
+          const certEnd = child.contentOffset + child.contentLength
+          const rawDer = derBytes.subarray(child.nodeStart, certEnd)
+          cert.rawDerHex = bytesToHex(rawDer)
+          certs.push(cert)
+        }
       } catch (e) {
         log.warn(`PKCS#7: failed to parse certificate: ${e}`)
       }
@@ -374,6 +420,7 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
     role: 'end-entity', // Will be assigned by chain builder
     profesion,
     numeroColegiado,
+    rawDerHex: '', // Filled in by parsePkcs7Certificates after parseCertificate returns
   }
 }
 
@@ -691,9 +738,14 @@ function extractSignerEmail(signer: CertificateInfo | null): string | null {
 // ── Main Entry Point ──────────────────────────────────────────────
 
 /**
- * Extract and parse the certificate chain from a PKCS#7 hex blob.
+ * Extract and parse the certificate chain from a PKCS#7 hex blob, then run
+ * REAL cryptographic chain validation against bundled BCCR trust anchors.
+ *
+ * This function is async because chain validation lazy-loads pkijs (~250KB).
  */
-export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult {
+export async function parseCertificateChain(
+  pkcs7Hex: string,
+): Promise<CertificateChainResult> {
   const empty: CertificateChainResult = {
     certificates: [],
     signer: null,
@@ -704,6 +756,9 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
     keyUsage: [],
     extKeyUsage: [],
     signerEmail: null,
+    cryptographicallyVerified: false,
+    cryptoVerificationWarning:
+      'Certificate parser v1.5: ASN.1 structure parsed only — chain signatures NOT cryptographically verified against bundled trust anchors. Treat results as informational, not as proof of trust. v2 (pkijs) wiring tracked in ATT-209.',
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -746,6 +801,44 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
     // Extract signer email — from Subject RDN email field or SAN
     const signerEmail = extractSignerEmail(signer)
 
+    // ── REAL chain validation against bundled BCCR trust anchors ──
+    // Uses pkijs.CertificateChainValidationEngine. Closes ATT-209.
+    let cryptographicallyVerified = false
+    let cryptoVerificationWarning: string | null =
+      'Chain validation has not been attempted (no signer cert).'
+
+    if (signer && signer.rawDerHex) {
+      try {
+        const intermediates = chain
+          .filter((c) => c !== signer && c.rawDerHex)
+          .map((c) => c.rawDerHex)
+        const result = await validateChain(signer.rawDerHex, intermediates)
+
+        if (result.trusted) {
+          cryptographicallyVerified = true
+          cryptoVerificationWarning = null
+          log.event(
+            `[cert] ✓ Chain CRYPTOGRAPHICALLY VERIFIED — anchor: ${result.anchorCommonName} (length: ${result.chainLength})`,
+          )
+        } else {
+          cryptographicallyVerified = false
+          cryptoVerificationWarning =
+            `Cryptographic chain validation FAILED: ${result.error || 'unknown error'}. ` +
+            'Structure was parsed but the chain does not link to any bundled BCCR trust anchor. ' +
+            'The signature may be forged, self-signed, or issued by a CA we do not trust.'
+          log.warn(`[cert] ✗ Chain validation failed: ${result.error}`)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        cryptographicallyVerified = false
+        cryptoVerificationWarning = `Chain validator threw: ${message}`
+        log.warn(`[cert] Chain validator exception: ${message}`)
+      }
+    } else if (signer) {
+      cryptoVerificationWarning =
+        'Signer certificate raw DER not captured — chain validation skipped.'
+    }
+
     return {
       certificates,
       signer,
@@ -756,6 +849,8 @@ export function parseCertificateChain(pkcs7Hex: string): CertificateChainResult 
       keyUsage: signer?.keyUsage ?? [],
       extKeyUsage: signer?.extKeyUsage ?? [],
       signerEmail,
+      cryptographicallyVerified,
+      cryptoVerificationWarning,
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)

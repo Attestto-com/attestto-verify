@@ -40,8 +40,11 @@
   },
   "dependencies": {
     "@attestto/id-wallet-adapter": "^0.3.0",
+    "asn1js": "^3.0.5",
     "lit": "^3.2.0",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "pkijs": "^3.2.4",
+    "pvutils": "^1.1.3"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

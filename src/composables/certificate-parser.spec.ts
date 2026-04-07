@@ -63,32 +63,36 @@ describe('certificate-parser', () => {
   })
 
   describe('parseCertificateChain', () => {
-    it('returns empty result for invalid/short hex', () => {
-      const result = parseCertificateChain('00')
+    it('returns empty result for invalid/short hex', async () => {
+      const result = await parseCertificateChain('00')
       expect(result.certificates).toHaveLength(0)
       expect(result.signer).toBeNull()
       expect(result.pki).toBeNull()
       expect(result.keyUsage).toEqual([])
       expect(result.extKeyUsage).toEqual([])
+      expect(result.cryptographicallyVerified).toBe(false)
     })
 
-    it('returns empty result for empty string', () => {
-      const result = parseCertificateChain('')
+    it('returns empty result for empty string', async () => {
+      const result = await parseCertificateChain('')
       expect(result.certificates).toHaveLength(0)
       expect(result.keyUsage).toEqual([])
       expect(result.extKeyUsage).toEqual([])
+      expect(result.cryptographicallyVerified).toBe(false)
     })
 
-    it('returns empty result for non-SignedData structure', () => {
+    it('returns empty result for non-SignedData structure', async () => {
       // A simple SEQUENCE { INTEGER(1) } — not a ContentInfo
-      const result = parseCertificateChain('3003020101')
+      const result = await parseCertificateChain('3003020101')
       expect(result.certificates).toHaveLength(0)
+      expect(result.cryptographicallyVerified).toBe(false)
     })
 
-    it('handles malformed DER gracefully', () => {
+    it('handles malformed DER gracefully', async () => {
       // Random bytes that might cause parser issues
-      const result = parseCertificateChain('FFFFFFFFFFFF')
+      const result = await parseCertificateChain('FFFFFFFFFFFF')
       expect(result.certificates).toHaveLength(0)
+      expect(result.cryptographicallyVerified).toBe(false)
     })
   })
 

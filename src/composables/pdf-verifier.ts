@@ -117,8 +117,16 @@ export interface PdfSignatureInfo {
   location: string | null
   contactInfo: string | null
   signDate: string | null
-  /** Verification level achieved — v1 = 'detected', v2 will upgrade */
-  level: 'detected' | 'parsed' | 'signed' | 'trusted' | 'qualified'
+  /**
+   * Verification level achieved.
+   *   - 'detected'  → signature dictionary present, no certs parsed
+   *   - 'parsed'    → certs parsed, chain NOT cryptographically verified
+   *   - 'verified'  → chain cryptographically verified against bundled trust anchor (post-ATT-209)
+   *   - 'signed'    → legacy alias, retained for backward compatibility
+   *   - 'trusted'   → plugin-elevated (e.g. did-verifier matched)
+   *   - 'qualified' → plugin-elevated (e.g. vLEI / GLEIF tier)
+   */
+  level: 'detected' | 'parsed' | 'verified' | 'signed' | 'trusted' | 'qualified'
   /** DID URI extracted from cert SubjectAltName (v2) */
   did: string | null
   /** LEI code from cert serialNumber (v2) */
@@ -201,7 +209,7 @@ export function formatPdfDate(raw: string): string | null {
  * so we strip it before extracting fields. We also need to find the full
  * dictionary boundary (matching << ... >>) rather than using fixed offsets.
  */
-function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
+async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatureInfo[]> {
   const sigs: PdfSignatureInfo[] = []
   const text = new TextDecoder('latin1').decode(bytes)
 
@@ -277,16 +285,25 @@ function extractSignaturesFromBytes(bytes: Uint8Array): PdfSignatureInfo[] {
       return m ? m[1] : null
     }
 
-    // Parse certificate chain from PKCS#7 blob
+    // Parse certificate chain from PKCS#7 blob (now async — runs real
+    // cryptographic chain validation against bundled BCCR trust anchors)
     let certChain: CertificateChainResult | null = null
     if (pkcs7Hex) {
-      certChain = parseCertificateChain(pkcs7Hex)
+      certChain = await parseCertificateChain(pkcs7Hex)
     }
 
     // Use cert data to enrich signature info
     const rawName = getField('Name') || 'Unknown Signer'
     const displayName = certChain?.signerDisplayName || cleanSignerName(rawName)
-    const level = certChain && certChain.certificates.length > 0 ? 'parsed' : 'detected'
+    // Level escalation rules (post-ATT-209):
+    //   - 'detected'  → no certs found
+    //   - 'parsed'    → certs found but chain NOT cryptographically verified
+    //   - 'verified'  → chain cryptographically verified against a bundled BCCR anchor
+    // Plugins may further escalate (e.g. did-verifier → 'trusted', vLEI → 'qualified').
+    let level: 'detected' | 'parsed' | 'verified' = 'detected'
+    if (certChain && certChain.certificates.length > 0) {
+      level = certChain.cryptographicallyVerified ? 'verified' : 'parsed'
+    }
 
     sigs.push({
       name: displayName,
@@ -404,7 +421,7 @@ export async function verifyPdf(
     const pdfText = new TextDecoder('latin1').decode(pdfBytes)
 
     // Extract signatures from raw bytes (no external dependency)
-    signatures = extractSignaturesFromBytes(pdfBytes)
+    signatures = await extractSignaturesFromBytes(pdfBytes)
     log.info(
       `[3/4] PAdES scan: ${signatures.length} signature${signatures.length !== 1 ? 's' : ''} found${signatures.length > 0 ? ' — ' + signatures.map((s) => s.name).join(', ') : ''}`,
     )

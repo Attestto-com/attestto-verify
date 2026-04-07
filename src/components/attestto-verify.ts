@@ -1037,14 +1037,55 @@ export class AttesttoVerify extends LitElement {
                   (sig) => html`
                     <div class="sig-card" part="sig-card">
                       <div class="sig-name">
-                        <span class="badge badge-${sig.level}" part="status-badge trust-level">
-                          ${this.badgeLabel(sig.level)}
+                        <span
+                          class="badge badge-${sig.certChain?.cryptographicallyVerified ? 'verified' : 'detected'}"
+                          part="status-badge trust-level"
+                          title=${sig.certChain?.cryptographicallyVerified
+                            ? `Chain cryptographically verified against bundled trust anchor`
+                            : 'Structure parsed only — chain NOT cryptographically verified'}
+                        >
+                          ${sig.certChain?.cryptographicallyVerified
+                            ? 'CRYPTOGRAPHICALLY VERIFIED'
+                            : 'STRUCTURE PARSED'}
                         </span>
                         <span part="signer-name">${sig.name}</span>
                         ${sig.subFilter
                           ? html`<span class="sub-filter-tag">${sig.subFilter}</span>`
                           : ''}
                       </div>
+                      ${sig.certChain && !sig.certChain.cryptographicallyVerified
+                        ? html`
+                            <div
+                              class="crypto-warning"
+                              part="crypto-warning"
+                              style="background:#3a1f00;border:1px solid #ff9500;color:#ffb84d;
+                                     padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
+                                     line-height:1.45;"
+                            >
+                              ⚠
+                              <strong>Structure parsed only.</strong>
+                              ${sig.certChain.cryptoVerificationWarning ||
+                              'The certificate chain has not been cryptographically verified.'}
+                            </div>
+                          `
+                        : ''}
+                      ${sig.certChain?.cryptographicallyVerified
+                        ? html`
+                            <div
+                              class="crypto-verified"
+                              part="crypto-verified"
+                              style="background:#0a2818;border:1px solid #00c853;color:#69f0ae;
+                                     padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
+                                     line-height:1.45;"
+                            >
+                              ✓
+                              <strong>Cryptographically verified.</strong>
+                              The certificate chain has been validated end-to-end against a
+                              bundled trust anchor. The signer's identity is cryptographically
+                              proven by the PKI.
+                            </div>
+                          `
+                        : ''}
 
                       ${sig.did
                         ? html`<div
