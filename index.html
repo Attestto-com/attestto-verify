@@ -491,18 +491,21 @@
     <div class="header-bar">
       <header>
         <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
-        <nav>
-          <a href="/" class="active">Verify</a>
-          <a href="/sign">Sign</a>
-          <a href="/dev">Developers</a>
-          <a href="https://github.com/Attestto-com/verify" target="_blank">GitHub</a>
-        </nav>
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+          <nav>
+            <a href="/" class="active" data-i18n="nav.verify">Verify</a>
+            <a href="/sign/" data-i18n="nav.sign">Sign</a>
+            <a href="/dev/" data-i18n="nav.developers">Developers</a>
+            <a href="https://github.com/Attestto-com/verify" target="_blank">GitHub</a>
+          </nav>
+          <button id="lang-switch" style="background: none; border: 1px solid #334155; color: #94a3b8; padding: 0.25rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.15s;" onmouseover="this.style.borderColor='#594FD3';this.style.color='#e2e8f0'" onmouseout="this.style.borderColor='#334155';this.style.color='#94a3b8'">ES</button>
+        </div>
       </header>
     </div>
 
     <main>
-      <h1>Document Verification</h1>
-      <p class="subtitle">Verify integrity and signatures — your file never leaves your device.</p>
+      <h1 data-i18n="verify.title">Document Verification</h1>
+      <p class="subtitle" data-i18n="verify.subtitle">Verify integrity and signatures — your file never leaves your device.</p>
 
       <div class="two-col">
         <div class="col-main">
@@ -510,7 +513,7 @@
         </div>
         <div class="col-side" id="audit-panel" style="display: none;">
           <div class="dev-panel">
-            <h3>Technical Audit</h3>
+            <h3 data-i18n="verify.audit.title">Technical Audit</h3>
             <div id="audit-content"></div>
           </div>
         </div>
@@ -520,38 +523,38 @@
     <footer>
       <div class="footer-grid">
         <div class="footer-col">
-          <h4>What gets verified</h4>
+          <h4 data-i18n="verify.footer.whatGetsVerified">What gets verified</h4>
           <ul>
-            <li>Document integrity (SHA-256, ByteRange)</li>
-            <li>Digital signatures (PAdES, CAdES, PKCS#7)</li>
-            <li>PKI recognition (CR Firma Digital)</li>
-            <li>Security scan (JS, auto-actions, embeds)</li>
-            <li>Metadata analysis</li>
+            <li data-i18n="verify.footer.item1">Document integrity (SHA-256, ByteRange)</li>
+            <li data-i18n="verify.footer.item2">Digital signatures (PAdES, CAdES, PKCS#7)</li>
+            <li data-i18n="verify.footer.item3">PKI recognition (CR Firma Digital)</li>
+            <li data-i18n="verify.footer.item4">Security scan (JS, auto-actions, embeds)</li>
+            <li data-i18n="verify.footer.item5">Metadata analysis</li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Verification Levels</h4>
+          <h4 data-i18n="verify.footer.levels">Verification Levels</h4>
           <div class="level-list">
-            <div class="level-item"><span class="level-badge" style="background: #422006; color: #fbbf24;">Detected</span> Signature found</div>
-            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;">Parsed</span> Cert chain extracted</div>
-            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;">Verified</span> Crypto proof valid</div>
+            <div class="level-item"><span class="level-badge" style="background: #422006; color: #fbbf24;" data-i18n="comp.verify.badge.detected">Detected</span> <span data-i18n="verify.footer.detected">Signature found</span></div>
+            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;" data-i18n="comp.verify.badge.parsed">Parsed</span> <span data-i18n="verify.footer.parsed">Cert chain extracted</span></div>
+            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;" data-i18n="comp.verify.badge.signed">Verified</span> <span data-i18n="verify.footer.verified">Crypto proof valid</span></div>
           </div>
         </div>
         <div class="footer-col">
-          <h4>Privacy</h4>
-          <p>Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
-          <p><a href="https://github.com/Attestto-com/verify">View source &rarr;</a></p>
+          <h4 data-i18n="verify.footer.privacy">Privacy</h4>
+          <p data-i18n="verify.footer.privacyText">Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
+          <p><a href="https://github.com/Attestto-com/verify" data-i18n="verify.footer.viewSource">View source</a> &rarr;</p>
         </div>
       </div>
       <div class="footer-badges">
         <div class="footer-badge-group">
-          <h4>Signature Types</h4>
+          <h4 data-i18n="verify.footer.signatureTypes">Signature Types</h4>
           <div class="badge-grid">
             <span class="pill">PAdES</span><span class="pill">CAdES</span><span class="pill">PKCS#7</span>
           </div>
         </div>
         <div class="footer-badge-group">
-          <h4>Recognized PKI</h4>
+          <h4 data-i18n="verify.footer.recognizedPki">Recognized PKI</h4>
           <div class="badge-grid">
             <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
             <span class="pill pill-outline">EU eIDAS</span>
@@ -559,34 +562,53 @@
           </div>
         </div>
         <div class="footer-badge-group">
-          <h4>Capabilities</h4>
+          <h4 data-i18n="verify.footer.capabilities">Capabilities</h4>
           <div class="badge-grid">
-            <span class="pill pill-green">Zero upload</span>
-            <span class="pill pill-green">Client-side</span>
-            <span class="pill pill-green">Open source</span>
+            <span class="pill pill-green" data-i18n="verify.footer.zeroUpload">Zero upload</span>
+            <span class="pill pill-green" data-i18n="verify.footer.clientSide">Client-side</span>
+            <span class="pill pill-green" data-i18n="verify.footer.openSource">Open source</span>
             <span class="pill">X.509</span>
             <span class="pill">ByteRange</span>
             <span class="pill">Forensic</span>
           </div>
         </div>
         <div class="footer-badge-group">
-          <h4>Browsers</h4>
+          <h4 data-i18n="verify.footer.browsers">Browsers</h4>
           <div class="badge-grid">
             <span class="pill">Chrome</span><span class="pill">Firefox</span><span class="pill">Safari</span><span class="pill">Edge</span>
           </div>
         </div>
       </div>
       <div class="transparency-note">
-        <h4>Network Transparency</h4>
-        <p>All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files. <a href="https://github.com/Attestto-com/verify">Verify in the source code &rarr;</a></p>
+        <h4 data-i18n="verify.footer.networkTransparency">Network Transparency</h4>
+        <p><span data-i18n="verify.footer.networkText">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.</span> <a href="https://github.com/Attestto-com/verify"><span data-i18n="verify.footer.verifySource">Verify in the source code</span> &rarr;</a></p>
       </div>
       <div class="footer-bottom">
-        Open source under Apache 2.0 — <a href="https://github.com/Attestto-com/verify">attestto/verify</a>
-        &middot; Your file never leaves your device.
+        <span data-i18n="verify.footer.license">Open source under Apache 2.0</span> — <a href="https://github.com/Attestto-com/verify">attestto/verify</a>
+        &middot; <span data-i18n="verify.footer.fileNeverLeaves">Your file never leaves your device.</span>
       </div>
     </footer>
 
     <script type="module" src="/src/index.ts"></script>
+    <script type="module">
+      import { t, currentLang, setLang } from '/src/i18n.ts'
+
+      function applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          el.textContent = t(el.getAttribute('data-i18n'))
+        })
+        document.documentElement.lang = currentLang()
+        const btn = document.getElementById('lang-switch')
+        if (btn) btn.textContent = currentLang() === 'en' ? 'ES' : 'EN'
+      }
+
+      document.getElementById('lang-switch')?.addEventListener('click', () => {
+        setLang(currentLang() === 'en' ? 'es' : 'en')
+      })
+
+      window.addEventListener('attestto-lang-change', applyTranslations)
+      applyTranslations()
+    </script>
     <script>
       // Read #sha256= fragment and pass expected hash to the verify component
       (function() {
@@ -602,17 +624,21 @@
         })
         // Update page subtitle
         const subtitle = document.querySelector('.subtitle')
-        if (subtitle) subtitle.textContent = 'Someone shared a verified document — drop your copy to confirm it matches.'
+        if (subtitle) {
+          subtitle.setAttribute('data-i18n', 'verify.subtitle.shared')
+          // Will be translated when applyTranslations runs
+        }
       })()
     </script>
-    <script>
+    <script type="module">
+      import { t } from '/src/i18n.ts'
+
       document.addEventListener('verification-complete', (e) => {
         const audit = e.detail?.audit
         const panel = document.getElementById('audit-panel')
         const content = document.getElementById('audit-content')
         if (!audit || !panel || !content) { panel && (panel.style.display = 'none'); return }
 
-        const safe = v => v ? 'audit-warn' : 'audit-safe'
         const safeLabel = (v, yes, no) => `<code class="${v ? 'audit-warn' : 'audit-safe'}">${v ? yes : no}</code>`
 
         const sigs = e.detail.signatures || 0
@@ -624,50 +650,44 @@
         const hasLtv = !!audit.hasLtvData
 
         const badges = []
-        // Signing status
-        if (hasSigs) badges.push(['green', 'Signed'])
-        else badges.push(['muted', 'Unsigned'])
+        if (hasSigs) badges.push(['green', t('audit.signed')])
+        else badges.push(['muted', t('audit.unsigned')])
 
-        // Editable / locked
-        if (!isEncrypted) badges.push(['blue', 'Editable'])
-        else badges.push(['amber', 'Locked'])
+        if (!isEncrypted) badges.push(['blue', t('audit.editable')])
+        else badges.push(['amber', t('audit.locked')])
 
-        // Can be signed (if not encrypted, can add more signatures)
-        if (!isEncrypted) badges.push(['blue', 'Can sign'])
+        if (!isEncrypted) badges.push(['blue', t('audit.canSign')])
 
-        // Safety
-        if (isSafe) badges.push(['green', 'Safe'])
-        else if (audit.hasJavaScript) badges.push(['red', 'Has scripts'])
+        if (isSafe) badges.push(['green', t('audit.safe')])
+        else if (audit.hasJavaScript) badges.push(['red', t('audit.hasScripts')])
 
-        // LTV
-        if (hasLtv) badges.push(['green', 'Long-term valid'])
+        if (hasLtv) badges.push(['green', t('audit.longTermValid')])
 
-        // Web optimized
-        if (audit.linearized) badges.push(['muted', 'Web-optimized'])
+        if (audit.linearized) badges.push(['muted', t('audit.webOptimized')])
 
         content.innerHTML = `
           <div class="doc-badges">
             ${badges.map(([cls, label]) => `<span class="doc-badge doc-badge-${cls}">${label}</span>`).join('')}
           </div>
-          <div class="audit-section-title">Document Hash</div>
+          <div class="audit-section-title">${t('audit.documentHash')}</div>
           <div class="audit-row"><strong>SHA-256</strong><code class="audit-hash" title="Click to copy">${e.detail.hash}</code></div>
 
-          <div class="audit-section-title">Document Properties</div>
-          <div class="audit-row"><strong>PDF Version</strong><code>${audit.pdfVersion ?? 'Unknown'}</code></div>
-          ${audit.pageCount !== null ? `<div class="audit-row"><strong>Pages</strong><code>${audit.pageCount}</code></div>` : ''}
-          <div class="audit-row"><strong>Linearized</strong><code>${audit.linearized ? 'Yes' : 'No'}</code></div>
-          <div class="audit-row"><strong>Encryption</strong><code>${audit.encrypted ? audit.encryptionAlgorithm : 'None'}</code></div>
+          <div class="audit-section-title">${t('audit.documentProperties')}</div>
+          <div class="audit-row"><strong>${t('audit.pdfVersion')}</strong><code>${audit.pdfVersion ?? t('audit.unknown')}</code></div>
+          ${audit.pageCount !== null ? `<div class="audit-row"><strong>${t('audit.pages')}</strong><code>${audit.pageCount}</code></div>` : ''}
+          <div class="audit-row"><strong>${t('audit.linearized')}</strong><code>${audit.linearized ? t('audit.yes') : t('audit.no')}</code></div>
+          <div class="audit-row"><strong>${t('audit.encryption')}</strong><code>${audit.encrypted ? audit.encryptionAlgorithm : t('audit.none')}</code></div>
 
-          <div class="audit-section-title">Security Scan</div>
-          <div class="audit-row"><strong>JavaScript</strong>${safeLabel(audit.hasJavaScript, audit.javaScriptCount + ' script(s)', 'None (safe)')}</div>
-          <div class="audit-row"><strong>Auto Actions</strong>${safeLabel(audit.hasOpenAction, 'Detected', 'None (safe)')}</div>
-          <div class="audit-row"><strong>Embedded Files</strong>${safeLabel(audit.embeddedFileCount > 0, audit.embeddedFileCount + ' file(s)', 'None')}</div>
-          <div class="audit-row"><strong>External Links</strong><code>${audit.externalLinkCount > 0 ? audit.externalLinkCount + ' URI(s)' : 'None'}</code></div>
+          <div class="audit-section-title">${t('audit.securityScan')}</div>
+          <div class="audit-row"><strong>${t('audit.javascript')}</strong>${safeLabel(audit.hasJavaScript, audit.javaScriptCount + ' ' + t('audit.scripts'), t('audit.noneSafe'))}</div>
+          <div class="audit-row"><strong>${t('audit.autoActions')}</strong>${safeLabel(audit.hasOpenAction, t('audit.detected'), t('audit.noneSafe'))}</div>
+          <div class="audit-row"><strong>${t('audit.embeddedFiles')}</strong>${safeLabel(audit.embeddedFileCount > 0, audit.embeddedFileCount + ' ' + t('audit.files'), t('audit.none'))}</div>
+          <div class="audit-row"><strong>${t('audit.externalLinks')}</strong><code>${audit.externalLinkCount > 0 ? audit.externalLinkCount + ' ' + t('audit.uris') : t('audit.none')}</code></div>
 
           ${audit.byteRanges?.length > 0 ? `
-            <div class="audit-section-title">Signature Integrity</div>
-            ${audit.byteRanges.map((br, i) => `<div class="audit-row"><strong>Sig ${i+1}</strong><code>[${br.join(', ')}]</code></div>`).join('')}
-            <div class="audit-row"><strong>LTV Data</strong><code class="${audit.hasLtvData ? 'audit-safe' : 'audit-warn'}">${audit.hasLtvData ? 'Present (offline revocation)' : '⚠ Not embedded (requires online check)'}</code></div>
+            <div class="audit-section-title">${t('audit.signatureIntegrity')}</div>
+            ${audit.byteRanges.map((br, i) => `<div class="audit-row"><strong>${t('audit.sig')} ${i+1}</strong><code>[${br.join(', ')}]</code></div>`).join('')}
+            <div class="audit-row"><strong>${t('audit.ltvData')}</strong><code class="${audit.hasLtvData ? 'audit-safe' : 'audit-warn'}">${audit.hasLtvData ? t('audit.ltvPresent') : '⚠ ' + t('audit.ltvMissing')}</code></div>
           ` : ''}
         `
         panel.style.display = 'block'

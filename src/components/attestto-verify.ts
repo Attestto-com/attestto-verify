@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { verifyPdf, type PdfVerificationResult } from '../composables/pdf-verifier.js'
 import { attesttoPlugins, type VerificationResult } from '../plugins/registry.js'
 import { sharedStyles } from '../styles/shared.js'
+import { t, currentLang, type Lang } from '../i18n.js'
 
 /**
  * <attestto-verify> — Drop a PDF to verify its integrity and signatures
@@ -914,6 +915,21 @@ export class AttesttoVerify extends LitElement {
   @state() private challengeError = ''
   /** Which challenge method is active: 'email' | 'knowledge' | null */
   @state() private challengeMethod: 'email' | 'knowledge' | null = null
+  @state() private _lang: Lang = currentLang()
+
+  private _onLangChange = (e: Event) => {
+    this._lang = (e as CustomEvent).detail.lang
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    window.addEventListener('attestto-lang-change', this._onLangChange)
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    window.removeEventListener('attestto-lang-change', this._onLangChange)
+  }
 
   override render() {
     return html`
@@ -922,7 +938,7 @@ export class AttesttoVerify extends LitElement {
         : this.result
           ? this.renderResult()
           : this.renderDropZone()}
-      ${this.showCopied ? html`<div class="copied-toast">Hash copied to clipboard</div>` : ''}
+      ${this.showCopied ? html`<div class="copied-toast">${t('comp.verify.hashCopied')}</div>` : ''}
     `
   }
 
@@ -935,7 +951,7 @@ export class AttesttoVerify extends LitElement {
           <span class="bean bean-3"></span>
         </div>
         <div class="loading-step">${this.verifyStep}</div>
-        <div class="loading-hint">All processing happens locally — your file never leaves this device</div>
+        <div class="loading-hint">${t('comp.verify.loading.hint')}</div>
       </div>
     `
   }
@@ -954,15 +970,15 @@ export class AttesttoVerify extends LitElement {
         <div class="drop-zone-icon">${hasExpected ? '🔗' : '📄'}</div>
         <div class="drop-zone-text">
           ${this.dragging
-            ? 'Drop file here'
+            ? t('comp.verify.dropFile')
             : hasExpected
-              ? 'Someone shared a verified document — drop your copy to confirm'
-              : 'Drop a document to verify'}
+              ? t('comp.verify.dropShared')
+              : t('comp.verify.dropVerify')}
         </div>
         <div class="drop-zone-hint">
           ${hasExpected
-            ? 'We\'ll compare your file\'s hash against the shared verification'
-            : 'PDF, Word, or any file — never leaves your device'}
+            ? t('comp.verify.dropHintShared')
+            : t('comp.verify.dropHint')}
         </div>
         <input type="file" @change=${this.onFileSelect} accept=".pdf,.doc,.docx,.txt,.json" />
       </div>
@@ -976,7 +992,7 @@ export class AttesttoVerify extends LitElement {
         <div class="result-card" part="result-card">
           <div>
           <div class="result-header">
-            <span class="meta-label">Filename</span>
+            <span class="meta-label">${t('comp.verify.filename')}</span>
             📄 ${r.fileName}
             <span
               style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)"
@@ -987,28 +1003,28 @@ export class AttesttoVerify extends LitElement {
 
           ${r.isPdf && r.metadata
             ? html`
-                <div class="section-title">Document Metadata</div>
+                <div class="section-title">${t('comp.verify.metadata')}</div>
                 <div class="meta-grid">
                   ${r.metadata.title
-                    ? html`<span class="meta-label">Title</span><span>${r.metadata.title}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.title')}</span><span>${r.metadata.title}</span>`
                     : ''}
                   ${r.metadata.author
-                    ? html`<span class="meta-label">Author</span><span>${r.metadata.author}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.author')}</span><span>${r.metadata.author}</span>`
                     : ''}
                   ${r.metadata.subject
-                    ? html`<span class="meta-label">Subject</span><span>${r.metadata.subject}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.subject')}</span><span>${r.metadata.subject}</span>`
                     : ''}
                   ${r.metadata.creator
-                    ? html`<span class="meta-label">Creator</span><span>${r.metadata.creator}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.creator')}</span><span>${r.metadata.creator}</span>`
                     : ''}
                   ${r.metadata.producer
-                    ? html`<span class="meta-label">Producer</span><span>${r.metadata.producer}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.producer')}</span><span>${r.metadata.producer}</span>`
                     : ''}
                   ${r.metadata.creationDate
-                    ? html`<span class="meta-label">Created</span><span>${r.metadata.creationDate}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.created')}</span><span>${r.metadata.creationDate}</span>`
                     : ''}
                   ${r.metadata.modDate
-                    ? html`<span class="meta-label">Modified</span><span>${r.metadata.modDate}</span>`
+                    ? html`<span class="meta-label">${t('comp.verify.modified')}</span><span>${r.metadata.modDate}</span>`
                     : ''}
                 </div>
               `
@@ -1016,7 +1032,7 @@ export class AttesttoVerify extends LitElement {
 
           ${r.isPdf && r.signatures.length > 0
             ? html`
-                <div class="section-title">Digital Signatures</div>
+                <div class="section-title">${t('comp.verify.digitalSigs')}</div>
                 ${r.signatures.map(
                   (sig) => html`
                     <div class="sig-card" part="sig-card">
@@ -1034,7 +1050,7 @@ export class AttesttoVerify extends LitElement {
                         ? html`<div
                             class="signer-did"
                             part="did-link"
-                            title="Decentralized Identifier"
+                            title="${t('comp.verify.decentralizedId')}"
                           >
                             ${sig.did}
                           </div>`
@@ -1044,7 +1060,7 @@ export class AttesttoVerify extends LitElement {
                             <div class="corporate-row" part="vlei-badge">
                               <span class="gleif-icon">GLEIF</span>
                               <span
-                                >${sig.organization ?? 'Organization'} &middot; LEI:
+                                >${sig.organization ?? t('comp.verify.organization')} &middot; LEI:
                                 ${sig.lei}</span
                               >
                             </div>
@@ -1076,7 +1092,7 @@ export class AttesttoVerify extends LitElement {
                       ${(sig.certChain?.keyUsage?.length || sig.certChain?.extKeyUsage?.length)
                         ? html`
                             <div class="trust-permissions">
-                              <div class="cert-chain-title">Trust Permissions</div>
+                              <div class="cert-chain-title">${t('comp.verify.trustPermissions')}</div>
                               <div class="permission-grid">
                                 ${(sig.certChain.keyUsage ?? []).map(
                                   (ku) => html`<span class="permission-badge permission-key">${ku}</span>`,
@@ -1091,7 +1107,7 @@ export class AttesttoVerify extends LitElement {
                       ${sig.certChain && sig.certChain.chain.length > 0
                         ? html`
                             <div class="cert-chain" part="cert-chain">
-                              <div class="cert-chain-title">Certificate Chain</div>
+                              <div class="cert-chain-title">${t('comp.verify.certChain')}</div>
                               ${sig.certChain.chain.slice().reverse().map(
                                 (cert, i) => html`
                                   <div class="cert-node" style="--depth: ${i}">
@@ -1123,18 +1139,18 @@ export class AttesttoVerify extends LitElement {
 
                       <div class="meta-grid">
                         ${sig.reason
-                          ? html`<span class="meta-label">Reason</span><span>${sig.reason}</span>`
+                          ? html`<span class="meta-label">${t('comp.verify.reason')}</span><span>${sig.reason}</span>`
                           : ''}
                         ${sig.location
-                          ? html`<span class="meta-label">Location</span
+                          ? html`<span class="meta-label">${t('comp.verify.location')}</span
                               ><span>${sig.location}</span>`
                           : ''}
                         ${sig.contactInfo
-                          ? html`<span class="meta-label">Contact</span
+                          ? html`<span class="meta-label">${t('comp.verify.contact')}</span
                               ><span>${sig.contactInfo}</span>`
                           : ''}
                         ${sig.signDate
-                          ? html`<span class="meta-label">Signed</span><span>${sig.signDate}</span>`
+                          ? html`<span class="meta-label">${t('comp.verify.signed')}</span><span>${sig.signDate}</span>`
                           : ''}
                       </div>
                     </div>
@@ -1143,11 +1159,11 @@ export class AttesttoVerify extends LitElement {
               `
             : r.isPdf
               ? html`
-                  <div class="section-title">Digital Signatures</div>
+                  <div class="section-title">${t('comp.verify.digitalSigs')}</div>
                   <div class="sig-card" part="sig-card">
                     <div class="sig-name">
-                      <span class="badge badge-none">None</span>
-                      No digital signatures found
+                      <span class="badge badge-none">${t('comp.verify.badge.none')}</span>
+                      ${t('comp.verify.noSigs')}
                     </div>
                   </div>
                 `
@@ -1155,14 +1171,14 @@ export class AttesttoVerify extends LitElement {
           </div>
           ${this.pluginResults && this.pluginResults.size > 0
             ? html`
-                <div class="section-title">Extended Verification</div>
+                <div class="section-title">${t('comp.verify.extVerification')}</div>
                 <div class="plugin-results">
                   ${Array.from(this.pluginResults.entries()).map(
                     ([name, result]) => html`
                       <div class="sig-card" part="sig-card">
                         <div class="sig-name">
                           <span class="badge ${result.valid ? 'badge-valid' : 'badge-failed'}">
-                            ${result.valid ? 'Valid' : 'Failed'}
+                            ${result.valid ? t('comp.verify.valid') : t('comp.verify.failed')}
                           </span>
                           ${attesttoPlugins.get(name)?.label ?? name}
                         </div>
@@ -1184,17 +1200,17 @@ export class AttesttoVerify extends LitElement {
         ${this.expectedHash ? this.renderHashMatch() : ''}
 
         <div class="share-actions">
-          <button class="share-btn" @click=${this.shareVerification} title="Share a verification link">
-            ${this.showShareCopied ? 'Link copied!' : 'Share verification link'}
+          <button class="share-btn" @click=${this.shareVerification} title="${t('comp.verify.shareLink')}">
+            ${this.showShareCopied ? t('comp.verify.shareLinkCopied') : t('comp.verify.shareLink')}
           </button>
           <button class="reset-btn" @click=${this.reset}>
-            Verify another document
+            ${t('comp.verify.verifyAnother')}
           </button>
         </div>
 
         ${this.result && !this.expectedHash ? html`
           <div class="share-hint">
-            Share the link so others can verify they have the same document
+            ${t('comp.verify.shareHint')}
           </div>
         ` : ''}
       </div>
@@ -1209,15 +1225,15 @@ export class AttesttoVerify extends LitElement {
         <span class="hash-match-icon">${match ? '✓' : '✗'}</span>
         <div>
           <div class="hash-match-title">
-            ${match ? 'Document matches' : 'Document does not match'}
+            ${match ? t('comp.verify.docMatches') : t('comp.verify.docNoMatch')}
           </div>
           <div class="hash-match-detail">
             ${match
-              ? 'Your copy is identical to the one that was verified.'
-              : 'The hash of your file differs from the shared verification. This may be a different version or a modified copy.'}
+              ? t('comp.verify.matchDetail')
+              : t('comp.verify.noMatchDetail')}
           </div>
           ${match ? html`
-            <a href="/sign" class="hash-match-cta">Sign your own documents →</a>
+            <a href="/sign/" class="hash-match-cta">${t('comp.verify.signYourOwn')} →</a>
           ` : ''}
         </div>
       </div>
@@ -1255,7 +1271,7 @@ export class AttesttoVerify extends LitElement {
 
   private async verify(file: File) {
     this.verifying = true
-    this.verifyStep = 'Reading file...'
+    this.verifyStep = t('comp.verify.readingFile')
     this.result = null
     this.pluginResults = null
 
@@ -1269,16 +1285,16 @@ export class AttesttoVerify extends LitElement {
     )
 
     try {
-      this.verifyStep = 'Computing SHA-256 hash...'
+      this.verifyStep = t('comp.verify.computingHash')
       // Small delay to let the UI render the loading state
       await new Promise((r) => setTimeout(r, 50))
 
       // 1. Core integrity check (always runs — the "sandwich" base layer)
       this.result = await verifyPdf(file, (step, detail) => {
         if (step === 'loading-pdfjs') {
-          this.verifyStep = detail || 'Loading PDF engine...'
+          this.verifyStep = detail || t('comp.verify.loadingPdf')
         } else if (step === 'pdfjs-ready') {
-          this.verifyStep = 'Extracting metadata...'
+          this.verifyStep = t('comp.verify.extractingMeta')
         }
       })
 
@@ -1326,8 +1342,8 @@ export class AttesttoVerify extends LitElement {
     if (!this.result?.hash) return
     const url = `${window.location.origin}${window.location.pathname}#sha256=${this.result.hash}`
     const shareData = {
-      title: 'Document Verification — Attestto',
-      text: 'I verified a document. Drop your copy to confirm it matches.',
+      title: t('comp.verify.shareTitle'),
+      text: t('comp.verify.shareText'),
       url,
     }
 
@@ -1373,11 +1389,11 @@ export class AttesttoVerify extends LitElement {
     if (this.revealedIds.has(sigIndex)) {
       return html`
         <div class="meta-grid" style="margin-top: 0.5rem;">
-          <span class="meta-label">National ID</span>
+          <span class="meta-label">${t('comp.verify.nationalId')}</span>
           <span class="id-revealed">${nationalId}</span>
         </div>
         <div class="id-cta">
-          Protect your own identity — <a href="https://attestto.com/id" target="_blank">Get Attestto ID</a>
+          ${t('comp.verify.protectIdentity')} — <a href="https://attestto.com/id" target="_blank">${t('comp.verify.getAttesttoId')}</a>
         </div>
       `
     }
@@ -1390,22 +1406,22 @@ export class AttesttoVerify extends LitElement {
       if (!this.challengeMethod) {
         return html`
           <div class="id-challenge">
-            <p>To view the signer's identity, prove your relationship:</p>
+            <p>${t('comp.verify.proveRelationship')}</p>
             <div class="id-challenge-options">
               ${hasEmail
                 ? html`<button class="id-option-btn" @click=${() => { this.challengeMethod = 'email' }}>
                     <span class="id-option-icon">✉</span>
-                    <span>I am the signer</span>
-                    <span class="id-option-hint">Enter your email to verify</span>
+                    <span>${t('comp.verify.iAmSigner')}</span>
+                    <span class="id-option-hint">${t('comp.verify.verifyEmail')}</span>
                   </button>`
                 : ''}
               <button class="id-option-btn" @click=${() => { this.challengeMethod = 'knowledge' }}>
                 <span class="id-option-icon">🔑</span>
-                <span>I know the signer</span>
-                <span class="id-option-hint">Enter the full national ID to confirm</span>
+                <span>${t('comp.verify.iKnowSigner')}</span>
+                <span class="id-option-hint">${t('comp.verify.enterNationalId')}</span>
               </button>
             </div>
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Cancel</button>
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.cancel')}</button>
           </div>
         `
       }
@@ -1414,7 +1430,7 @@ export class AttesttoVerify extends LitElement {
       if (this.challengeMethod === 'email') {
         return html`
           <div class="id-challenge">
-            <p>Enter the email address associated with this signature:</p>
+            <p>${t('comp.verify.enterEmailPrompt')}</p>
             <div class="id-challenge-input-row">
               <input
                 type="email"
@@ -1424,10 +1440,10 @@ export class AttesttoVerify extends LitElement {
                 @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
                 @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyEmail(sigIndex, certChain.signerEmail!) }}
               />
-              <button class="id-challenge-confirm" @click=${() => this.verifyEmail(sigIndex, certChain.signerEmail!)}>Verify</button>
+              <button class="id-challenge-confirm" @click=${() => this.verifyEmail(sigIndex, certChain.signerEmail!)}>${t('comp.verify.verify')}</button>
             </div>
             ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Back</button>
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.back')}</button>
           </div>
         `
       }
@@ -1437,20 +1453,20 @@ export class AttesttoVerify extends LitElement {
         const prefix = nationalId.includes('-') ? nationalId.split('-')[0] : ''
         return html`
           <div class="id-challenge">
-            <p>Enter the full national ID to confirm you already have this information:</p>
+            <p>${t('comp.verify.enterIdPrompt')}</p>
             <div class="id-challenge-input-row">
               <input
                 type="text"
                 class="id-challenge-input"
-                placeholder="${prefix ? `${prefix}-...` : 'Full national ID'}"
+                placeholder="${prefix ? `${prefix}-...` : t('comp.verify.fullNationalId')}"
                 .value=${this.challengeInput}
                 @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
                 @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyKnowledge(sigIndex, nationalId) }}
               />
-              <button class="id-challenge-confirm" @click=${() => this.verifyKnowledge(sigIndex, nationalId)}>Confirm</button>
+              <button class="id-challenge-confirm" @click=${() => this.verifyKnowledge(sigIndex, nationalId)}>${t('comp.verify.confirm')}</button>
             </div>
             ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>Back</button>
+            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.back')}</button>
           </div>
         `
       }
@@ -1459,10 +1475,10 @@ export class AttesttoVerify extends LitElement {
     // Default: masked with reveal button
     return html`
       <div class="id-masked">
-        <span class="meta-label">National ID</span>
+        <span class="meta-label">${t('comp.verify.nationalId')}</span>
         <span class="id-masked-value">${masked}</span>
         <button class="id-reveal-btn" @click=${() => { this.challengeTarget = sigIndex; this.challengeMethod = null; this.challengeInput = ''; this.challengeError = '' }}>
-          Reveal
+          ${t('comp.verify.reveal')}
         </button>
       </div>
     `
@@ -1478,9 +1494,9 @@ export class AttesttoVerify extends LitElement {
   /** Tier 1: Verify email matches signer cert */
   private verifyEmail(sigIndex: number, certEmail: string) {
     const input = this.challengeInput.trim().toLowerCase()
-    if (!input) { this.challengeError = 'Please enter an email address'; return }
+    if (!input) { this.challengeError = t('comp.verify.enterEmail'); return }
     if (input !== certEmail.toLowerCase()) {
-      this.challengeError = 'Email does not match the signer certificate'
+      this.challengeError = t('comp.verify.emailNoMatch')
       this.emitChallengeEvent(sigIndex, 'email', 'failed')
       return
     }
@@ -1490,9 +1506,9 @@ export class AttesttoVerify extends LitElement {
   /** Tier 2: Verify national ID matches cert */
   private verifyKnowledge(sigIndex: number, nationalId: string) {
     const input = this.challengeInput.trim()
-    if (!input) { this.challengeError = 'Please enter the full national ID'; return }
+    if (!input) { this.challengeError = t('comp.verify.enterId'); return }
     if (input !== nationalId) {
-      this.challengeError = 'National ID does not match — check the format (e.g. CPF-0123456789)'
+      this.challengeError = t('comp.verify.idNoMatch')
       this.emitChallengeEvent(sigIndex, 'knowledge', 'failed')
       return
     }
@@ -1531,25 +1547,11 @@ export class AttesttoVerify extends LitElement {
   }
 
   private badgeLabel(level: string): string {
-    const labels: Record<string, string> = {
-      detected: 'Detected',
-      parsed: 'Parsed',
-      signed: 'Verified',
-      trusted: 'Trusted',
-      qualified: 'Qualified',
-    }
-    return labels[level] ?? 'Unknown'
+    return t(`comp.verify.badge.${level}`) || t('comp.verify.badge.unknown')
   }
 
   private levelHint(level: string): string {
-    const hints: Record<string, string> = {
-      detected: 'Signature structure found — cryptographic verification pending (v2)',
-      parsed: 'Certificate chain extracted — cryptographic verification pending (v2)',
-      signed: 'Cryptographically valid — signature math verified',
-      trusted: 'Chain reaches a recognized Certificate Authority',
-      qualified: 'Qualified corporate identity — GLEIF vLEI verified',
-    }
-    return hints[level] ?? ''
+    return t(`comp.verify.hint.${level}`) || ''
   }
 
   /** Convert ISO 3166-1 alpha-2 country code to flag emoji */

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
 
 export default defineConfig({
+  appType: 'mpa',
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
