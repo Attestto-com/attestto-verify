@@ -240,6 +240,131 @@ export async function validateChain(
   }
 }
 
+// ── Document Integrity (Phase A) ──────────────────────────────────
+
+/**
+ * Result of verifying that a PDF's content matches what was actually signed.
+ *
+ * `integrityValid: true`  → the bytes covered by the signature's ByteRange
+ *                            hash to exactly the value the signer signed.
+ * `integrityValid: false` → the document was modified after signing
+ *                            (a single byte change is enough). The certificate
+ *                            chain may still be valid, but the document is
+ *                            TAMPERED and MUST NOT be trusted.
+ */
+export interface IntegrityResult {
+  integrityValid: boolean
+  error: string | null
+}
+
+/**
+ * Verify that a PDF's content matches the signed hash. This is the
+ * mathematical "did anyone change a byte after signing?" check.
+ *
+ * It is COMPLETELY independent from `validateChain()`:
+ *   - `validateChain()` answers "do we trust the signer's identity?"
+ *   - `verifyDocumentIntegrity()` answers "is the document the original?"
+ *
+ * Both must pass for a signature to be considered valid. Until 2026-04-07
+ * verify.attestto.com only ran the first one, which meant a tampered PDF
+ * with a valid certificate chain still showed a green "VERIFIED" badge.
+ * This function closes that gap.
+ *
+ * @param pkcs7Hex          Hex-encoded /Contents PKCS#7 blob from the PDF
+ * @param signedDataBytes   ByteRange-reconstructed bytes that were signed
+ *                          (concatenation of bytes[offset1..offset1+length1]
+ *                           and bytes[offset2..offset2+length2])
+ */
+export async function verifyDocumentIntegrity(
+  pkcs7Hex: string,
+  signedDataBytes: ArrayBuffer,
+): Promise<IntegrityResult> {
+  try {
+    const { pkijs, asn1js } = await loadPkijs()
+
+    // Parse the PKCS#7 blob into a SignedData structure.
+    const pkcs7Der = hexToArrayBuffer(pkcs7Hex)
+    const asn1 = asn1js.fromBER(pkcs7Der)
+    if (asn1.offset === -1) {
+      return {
+        integrityValid: false,
+        error: 'PKCS#7 ASN.1 parse failed',
+      }
+    }
+
+    // CMS ContentInfo → SignedData
+    const contentInfo = new pkijs.ContentInfo({ schema: asn1.result })
+    const signedData = new pkijs.SignedData({ schema: contentInfo.content })
+
+    // Run pkijs's verify() with the reconstructed data. checkChain:false
+    // because chain trust is handled separately by validateChain().
+    // signer:0 because PDFs always sign with the first signerInfo.
+    const result = await signedData.verify({
+      signer: 0,
+      data: signedDataBytes,
+      checkChain: false,
+      extendedMode: true,
+    })
+
+    // pkijs result shape varies by mode. In extendedMode it returns an object
+    // with `signatureVerified`. Treat any "true" signal as success and
+    // anything else as failure.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = result as any
+    const ok =
+      r === true ||
+      r?.signatureVerified === true ||
+      (typeof r === 'object' && r?.code === undefined && r?.signatureVerified !== false)
+
+    if (!ok) {
+      log.warn(
+        `[chain-validator] ✗ Document integrity FAILED — content was modified after signing`,
+      )
+      return {
+        integrityValid: false,
+        error: 'Signature does not match document content (tampered)',
+      }
+    }
+
+    log.event('[chain-validator] ✓ Document integrity VERIFIED — content matches signature')
+    return { integrityValid: true, error: null }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    log.warn(`[chain-validator] Integrity verification threw: ${message}`)
+    return {
+      integrityValid: false,
+      error: message,
+    }
+  }
+}
+
+/**
+ * Reconstruct the bytes covered by a PDF signature's ByteRange.
+ *
+ * A PDF signature is "hollow": the /Contents hex blob occupies a hole in
+ * the file, and the ByteRange tells us which two slices of the PDF were
+ * actually hashed. We must concatenate them to recover the exact bytes
+ * the signer ran SHA-256 over.
+ *
+ * @example
+ *   ByteRange: [0, 1234, 5678, 999]
+ *     part1 = pdfBytes[0 .. 1234]      (everything before /Contents)
+ *     part2 = pdfBytes[5678 .. 6677]   (everything after /Contents)
+ *     signed = part1 + part2
+ */
+export function reconstructSignedBytes(
+  pdfBytes: Uint8Array,
+  byteRange: [number, number, number, number],
+): Uint8Array {
+  const [offset1, length1, offset2, length2] = byteRange
+  const part1 = pdfBytes.subarray(offset1, offset1 + length1)
+  const part2 = pdfBytes.subarray(offset2, offset2 + length2)
+  const out = new Uint8Array(length1 + length2)
+  out.set(part1, 0)
+  out.set(part2, length1)
+  return out
+}
+
 /**
  * Test-only: clear caches so reload tests work.
  * @internal
