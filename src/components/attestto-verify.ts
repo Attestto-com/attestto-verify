@@ -202,6 +202,25 @@ export class AttesttoVerify extends LitElement {
         color: var(--attestto-error, #dc2626);
       }
 
+      /* TAMPERED — overrides everything else. The chain may be valid but
+         the document was modified after signing (Phase A — ATT-309). */
+      .badge-tampered {
+        background: #dc2626;
+        color: #ffffff;
+        border: 1px solid #7f1d1d;
+        font-weight: 700;
+        animation: tampered-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes tampered-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+        50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      }
+      .badge-verified {
+        background: #0a2818;
+        color: #69f0ae;
+        border: 1px solid #00c853;
+      }
+
       /* ── DID & Corporate Identity Rows ─────────────────────── */
       .signer-did {
         font-family: 'SF Mono', 'Fira Code', monospace;
@@ -1038,22 +1057,58 @@ export class AttesttoVerify extends LitElement {
                     <div class="sig-card" part="sig-card">
                       <div class="sig-name">
                         <span
-                          class="badge badge-${sig.certChain?.cryptographicallyVerified ? 'verified' : 'detected'}"
+                          class="badge badge-${sig.level === 'tampered'
+                            ? 'tampered'
+                            : sig.level === 'verified'
+                              ? 'verified'
+                              : sig.certChain?.cryptographicallyVerified
+                                ? 'parsed'
+                                : 'detected'}"
                           part="status-badge trust-level"
-                          title=${sig.certChain?.cryptographicallyVerified
-                            ? `Chain cryptographically verified against bundled trust anchor`
-                            : 'Structure parsed only — chain NOT cryptographically verified'}
+                          title=${sig.level === 'tampered'
+                            ? 'DOCUMENT TAMPERED — content was modified after signing'
+                            : sig.level === 'verified'
+                              ? 'Chain cryptographically verified AND document content matches signature'
+                              : sig.certChain?.cryptographicallyVerified
+                                ? 'Chain cryptographically verified — integrity not yet confirmed'
+                                : 'Structure parsed only — chain NOT cryptographically verified'}
                         >
-                          ${sig.certChain?.cryptographicallyVerified
-                            ? 'CRYPTOGRAPHICALLY VERIFIED'
-                            : 'STRUCTURE PARSED'}
+                          ${sig.level === 'tampered'
+                            ? '⚠ TAMPERED'
+                            : sig.level === 'verified'
+                              ? 'CRYPTOGRAPHICALLY VERIFIED'
+                              : sig.certChain?.cryptographicallyVerified
+                                ? 'CHAIN VERIFIED'
+                                : 'STRUCTURE PARSED'}
                         </span>
                         <span part="signer-name">${sig.name}</span>
                         ${sig.subFilter
                           ? html`<span class="sub-filter-tag">${sig.subFilter}</span>`
                           : ''}
                       </div>
-                      ${sig.certChain && !sig.certChain.cryptographicallyVerified
+                      ${sig.level === 'tampered'
+                        ? html`
+                            <div
+                              class="integrity-tampered"
+                              part="integrity-tampered"
+                              style="background:#450a0a;border:2px solid #dc2626;color:#fecaca;
+                                     padding:12px 14px;border-radius:6px;margin:8px 0;font-size:13px;
+                                     line-height:1.5;font-weight:500;"
+                            >
+                              ⚠ <strong>DOCUMENT TAMPERED.</strong>
+                              The bytes covered by this signature do not match the value the
+                              signer signed. The PDF was modified after it was signed and
+                              <strong>must not be trusted</strong>, even if the certificate
+                              chain itself is valid.
+                              ${sig.integrityError
+                                ? html`<div style="margin-top:6px;font-size:12px;opacity:0.85;">
+                                    Reason: ${sig.integrityError}
+                                  </div>`
+                                : ''}
+                            </div>
+                          `
+                        : ''}
+                      ${sig.certChain && !sig.certChain.cryptographicallyVerified && sig.level !== 'tampered'
                         ? html`
                             <div
                               class="crypto-warning"
@@ -1069,7 +1124,7 @@ export class AttesttoVerify extends LitElement {
                             </div>
                           `
                         : ''}
-                      ${sig.certChain?.cryptographicallyVerified
+                      ${sig.level === 'verified'
                         ? html`
                             <div
                               class="crypto-verified"
@@ -1081,8 +1136,9 @@ export class AttesttoVerify extends LitElement {
                               ✓
                               <strong>Cryptographically verified.</strong>
                               The certificate chain has been validated end-to-end against a
-                              bundled trust anchor. The signer's identity is cryptographically
-                              proven by the PKI.
+                              bundled trust anchor, AND the document content matches the
+                              signed hash exactly. The signer's identity is cryptographically
+                              proven and the document is intact.
                             </div>
                           `
                         : ''}

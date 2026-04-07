@@ -13,6 +13,7 @@ import {
   cleanSignerName,
   type CertificateChainResult,
 } from './certificate-parser.js'
+import { verifyDocumentIntegrity, reconstructSignedBytes } from './chain-validator.js'
 
 const log = logger.verify
 
@@ -121,12 +122,21 @@ export interface PdfSignatureInfo {
    * Verification level achieved.
    *   - 'detected'  → signature dictionary present, no certs parsed
    *   - 'parsed'    → certs parsed, chain NOT cryptographically verified
-   *   - 'verified'  → chain cryptographically verified against bundled trust anchor (post-ATT-209)
+   *   - 'verified'  → chain cryptographically verified AND document content matches signature (post-ATT-309)
+   *   - 'tampered'  → chain may be valid but document content was modified after signing — DO NOT TRUST
    *   - 'signed'    → legacy alias, retained for backward compatibility
    *   - 'trusted'   → plugin-elevated (e.g. did-verifier matched)
    *   - 'qualified' → plugin-elevated (e.g. vLEI / GLEIF tier)
    */
-  level: 'detected' | 'parsed' | 'verified' | 'signed' | 'trusted' | 'qualified'
+  level: 'detected' | 'parsed' | 'verified' | 'tampered' | 'signed' | 'trusted' | 'qualified'
+  /**
+   * True iff the bytes covered by the signature's ByteRange hash to the
+   * exact value the signer signed (Phase A — document integrity check).
+   * `null` when no signature was checked.
+   */
+  documentIntegrityVerified: boolean | null
+  /** Reason integrity verification failed, if any */
+  integrityError: string | null
   /** DID URI extracted from cert SubjectAltName (v2) */
   did: string | null
   /** LEI code from cert serialNumber (v2) */
@@ -292,17 +302,62 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       certChain = await parseCertificateChain(pkcs7Hex)
     }
 
+    // Phase A (ATT-309) — Document integrity check.
+    // Even if the certificate chain is valid, if a single byte of the document
+    // was modified after signing, the signature must NOT be trusted.
+    // We extract the ByteRange from THIS signature dictionary (each signature
+    // has its own ByteRange), reconstruct the bytes that were actually signed,
+    // and run pkijs.SignedData.verify() against them.
+    let documentIntegrityVerified: boolean | null = null
+    let integrityError: string | null = null
+    if (pkcs7Hex) {
+      const brMatch = /\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/.exec(rawDict)
+      if (brMatch) {
+        const byteRange: [number, number, number, number] = [
+          parseInt(brMatch[1], 10),
+          parseInt(brMatch[2], 10),
+          parseInt(brMatch[3], 10),
+          parseInt(brMatch[4], 10),
+        ]
+        try {
+          const signedBytes = reconstructSignedBytes(bytes, byteRange)
+          // Copy into a fresh ArrayBuffer so pkijs gets a contiguous view
+          // and the type system gets a plain ArrayBuffer (not SharedArrayBuffer).
+          const signedBuffer = new ArrayBuffer(signedBytes.byteLength)
+          new Uint8Array(signedBuffer).set(signedBytes)
+          const integrity = await verifyDocumentIntegrity(pkcs7Hex, signedBuffer)
+          documentIntegrityVerified = integrity.integrityValid
+          integrityError = integrity.error
+        } catch (err) {
+          documentIntegrityVerified = false
+          integrityError = err instanceof Error ? err.message : String(err)
+        }
+      } else {
+        // No ByteRange found — cannot verify integrity. Mark as failed
+        // because we cannot prove the document is the original.
+        documentIntegrityVerified = false
+        integrityError = 'No ByteRange found in signature dictionary'
+      }
+    }
+
     // Use cert data to enrich signature info
     const rawName = getField('Name') || 'Unknown Signer'
     const displayName = certChain?.signerDisplayName || cleanSignerName(rawName)
-    // Level escalation rules (post-ATT-209):
+    // Level escalation rules (post-ATT-309):
     //   - 'detected'  → no certs found
     //   - 'parsed'    → certs found but chain NOT cryptographically verified
-    //   - 'verified'  → chain cryptographically verified against a bundled BCCR anchor
+    //   - 'tampered'  → chain may be parsed/verified, but document was modified after signing
+    //   - 'verified'  → chain cryptographically verified AND document integrity intact
     // Plugins may further escalate (e.g. did-verifier → 'trusted', vLEI → 'qualified').
-    let level: 'detected' | 'parsed' | 'verified' = 'detected'
+    let level: 'detected' | 'parsed' | 'verified' | 'tampered' = 'detected'
     if (certChain && certChain.certificates.length > 0) {
-      level = certChain.cryptographicallyVerified ? 'verified' : 'parsed'
+      if (documentIntegrityVerified === false) {
+        level = 'tampered'
+      } else if (certChain.cryptographicallyVerified && documentIntegrityVerified === true) {
+        level = 'verified'
+      } else {
+        level = 'parsed'
+      }
     }
 
     sigs.push({
@@ -317,6 +372,8 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       organization: certChain?.signer?.organization || null,
       subFilter: getNameField('SubFilter'),
       certChain,
+      documentIntegrityVerified,
+      integrityError,
     })
   }
 
