@@ -351,6 +351,53 @@
       .toast.err { background: #991b1b; }
 
       .hidden { display: none !important; }
+
+      /* ── Unverified-preview banner (ATT-359) ── */
+      .unverified-banner {
+        background: var(--color-warn-bg);
+        border: 1.5px solid var(--color-warn-border);
+        color: var(--color-warn-ink);
+        padding: 0.875rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.55;
+        margin-bottom: 1.25rem;
+      }
+      .unverified-banner strong {
+        color: var(--color-warn-ink);
+      }
+
+      /* ── Provenance hint (where did the visitor come from?) ── */
+      .provenance {
+        margin-top: 0.875rem;
+        padding: 0.625rem 0.875rem;
+        background: var(--color-surface-alt);
+        border: 1px dashed var(--color-border);
+        border-radius: 0.5rem;
+        font-size: 0.8125rem;
+        color: var(--color-ink-muted);
+        line-height: 1.55;
+      }
+      .provenance-label {
+        font-weight: 600;
+        color: var(--color-ink);
+      }
+      .provenance code {
+        font-family: var(--font-mono);
+        font-size: 0.8125rem;
+        color: var(--color-ink);
+        background: rgba(15, 23, 42, 0.05);
+        padding: 0.0625rem 0.375rem;
+        border-radius: 0.25rem;
+        margin: 0 0.25rem;
+      }
+      .provenance-warn {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: var(--color-warn-ink);
+        font-weight: 500;
+      }
     </style>
   </head>
 
@@ -404,6 +451,16 @@
             wallet para conservarla bajo tu control.
           </p>
 
+          <!-- Unverified-preview banner — ATT-359 hard rule -->
+          <div class="unverified-banner" role="alert">
+            <strong>⚠ Vista previa sin verificar.</strong>
+            La información mostrada abajo (tipo, emisor, nivel) fue
+            <strong>generada por quien te envió esta URL</strong> y todavía
+            <strong>no ha sido verificada criptográficamente</strong>. Solo
+            tu wallet puede validar la firma del emisor. No confíes en estos
+            valores hasta que tu wallet confirme que la credencial es válida.
+          </div>
+
           <div class="cred-teaser">
             <div class="cred-icon" id="cred-icon">★</div>
             <div class="cred-meta">
@@ -416,11 +473,36 @@
             </div>
           </div>
 
+          <!-- Provenance — where did the visitor come from? -->
+          <div id="provenance" class="provenance hidden">
+            <span class="provenance-label">Llegaste aquí desde:</span>
+            <code id="provenance-host">—</code>
+            <span class="provenance-warn">Confirma que reconoces este origen antes de continuar.</span>
+          </div>
+
           <div class="actions">
             <button id="btn-load-cred" class="btn btn-primary btn-block" disabled>
-              Cargar en mi wallet
+              Revisar antes de cargar
             </button>
           </div>
+
+          <!-- Two-step confirm: details panel revealed on first click -->
+          <div id="confirm-panel" class="hidden" style="margin-top: 1rem; padding: 1rem; background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.55;">
+            <div style="font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem;">Esto es lo que va a pasar</div>
+            <ol style="margin: 0 0 0.75rem 1.25rem; padding: 0; color: var(--color-ink-muted);">
+              <li>Tu wallet recibirá la credencial completa, cifrada y opaca para esta página.</li>
+              <li>Tu wallet <strong>verificará la firma criptográfica del emisor</strong> contra el documento DID publicado por ese emisor.</li>
+              <li>Si la firma es válida, tu wallet te pedirá consentimiento explícito antes de almacenarla.</li>
+              <li>Si la firma es inválida o el emisor no se puede resolver, tu wallet la rechazará. Esta página no puede sobreescribir esa decisión.</li>
+            </ol>
+            <div style="font-size: 0.8125rem; color: var(--color-ink-muted); margin-bottom: 0.75rem;">
+              Esta página actúa solo como transporte. La verificación es responsabilidad de tu wallet.
+            </div>
+            <button id="btn-confirm-load" class="btn btn-primary btn-block">
+              Confirmar y enviar a la wallet
+            </button>
+          </div>
+
           <p class="install-hint">
             Sin wallet detectado. Instala cualquier extensión compatible con
             <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener">@attestto/id-wallet-adapter</a> —

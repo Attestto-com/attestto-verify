@@ -47,10 +47,20 @@ function setStatus(state: 'idle' | 'ok' | 'warn' | 'err', text: string): void {
 }
 
 /**
- * Render the discovered wallet(s) inside the status pill, including the
- * wallet-provided icon. Each wallet announces itself via
- * registerWallet() in @attestto/id-wallet-adapter, including an icon URL
- * (typically a chrome-extension://… URL set via chrome.runtime.getURL).
+ * Render the discovered wallet(s) inside the status pill.
+ *
+ * UX rule: show every wallet the user has actually installed, with
+ * its real icon and name. Do NOT render a picker of uninstalled
+ * wallets (the Solana wallet-picker antipattern, where 16 brands
+ * are listed regardless of what's installed). discoverWallets()
+ * already only returns wallets that announced themselves via
+ * registerWallet(), so iterating the result is the right behavior.
+ *
+ * The protocol pluralism (any wallet welcome) and the UX honesty
+ * (display what you actually have, never less, never more) are
+ * complementary. Most users have one wallet; some have two; the
+ * page accommodates whatever they have without inviting them to
+ * shop for more.
  */
 function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   const el = $('wallet-status')
@@ -58,10 +68,12 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   el.classList.add('ok')
   el.innerHTML = ''
 
+  // Render every announced wallet's icon, in announce order.
   for (const w of wallets) {
     const icon = document.createElement('img')
     icon.src = w.icon
     icon.alt = w.name
+    icon.title = w.name
     icon.width = 18
     icon.height = 18
     icon.style.borderRadius = '4px'
@@ -80,7 +92,7 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   label.textContent =
     wallets.length === 1
       ? `Wallet detectada: ${wallets[0].name}`
-      : `${wallets.length} wallets detectadas: ${wallets.map((w) => w.name).join(' · ')}`
+      : `Wallets detectadas: ${wallets.map((w) => w.name).join(' · ')}`
   el.appendChild(label)
 }
 
@@ -212,6 +224,7 @@ async function bootstrap(): Promise<void> {
   if (result.ok) {
     offer = result.offer
     renderCredentialCard(offer.preview)
+    renderProvenance()
   } else if (result.error.code !== 'NO_FRAGMENT') {
     // Fragment was present but malformed. Tell the user.
     renderOfferError(result.error.code, result.error.message)
@@ -241,21 +254,69 @@ async function bootstrap(): Promise<void> {
 }
 
 function enableLoadButton(offer: CredentialOffer): void {
-  const pushBtn = $('btn-load-cred') as HTMLButtonElement
-  pushBtn.disabled = false
-  pushBtn.addEventListener('click', async () => {
-    pushBtn.disabled = true
-    pushBtn.textContent = 'Cargando en la wallet…'
+  // Two-step confirm flow (ATT-359 security hardening):
+  //
+  //   click 1 → reveal the "what is going to happen" panel + confirm button
+  //   click 2 → actually post the credential to the wallet
+  //
+  // Reasoning: every credential push goes through an attacker-controllable
+  // landing page. A single-click flow trains users to trust unverified
+  // teasers. The two-step pattern gives the user a chance to read the
+  // trust-ladder explanation BEFORE committing the action, and forces
+  // an explicit "I understand my wallet is the verifier" confirmation.
+  const reviewBtn = $('btn-load-cred') as HTMLButtonElement
+  const confirmPanel = $('confirm-panel')
+  const confirmBtn = $('btn-confirm-load') as HTMLButtonElement
+
+  reviewBtn.disabled = false
+  reviewBtn.addEventListener('click', () => {
+    confirmPanel.classList.remove('hidden')
+    reviewBtn.disabled = true
+    reviewBtn.textContent = '👇 Lee abajo y confirma'
+    confirmBtn.focus()
+  })
+
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true
+    confirmBtn.textContent = 'Enviando a la wallet…'
     const result = await pushCredentialToWallet(offer.vc, offer.preview)
     if (result.ok) {
-      pushBtn.textContent = '✓ Credencial guardada'
-      toast('Credencial guardada en tu wallet', 'ok')
+      confirmBtn.textContent = '✓ Enviada — revisa tu wallet'
+      toast('Credencial enviada a tu wallet — confirma el consentimiento allí', 'ok')
     } else {
-      pushBtn.disabled = false
-      pushBtn.textContent = 'Cargar en mi wallet'
-      toast(result.error ?? 'Error al cargar la credencial', 'err')
+      confirmBtn.disabled = false
+      confirmBtn.textContent = 'Confirmar y enviar a la wallet'
+      toast(result.error ?? 'Error al enviar la credencial', 'err')
     }
   })
+}
+
+/**
+ * Show a small provenance hint based on document.referrer so the user
+ * can sanity-check whether the URL came from a source they recognize.
+ * Empty referrer is common (URL pasted, opened from email client, QR
+ * scan, link clicked from another tab) and is treated as "unknown
+ * origin" — not as suspicious by itself, just unverifiable.
+ */
+function renderProvenance(): void {
+  const block = document.getElementById('provenance')
+  const host = document.getElementById('provenance-host')
+  if (!block || !host) return
+
+  let label: string
+  try {
+    if (document.referrer) {
+      const u = new URL(document.referrer)
+      // Only show host, not path or query — minimize info exposure.
+      label = u.host
+    } else {
+      label = '(origen desconocido)'
+    }
+  } catch {
+    label = '(origen desconocido)'
+  }
+  host.textContent = label
+  block.classList.remove('hidden')
 }
 
 bootstrap().catch((err) => {
