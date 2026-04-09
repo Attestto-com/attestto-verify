@@ -147,6 +147,13 @@ export interface PdfSignatureInfo {
   subFilter: string | null
   /** Certificate chain extracted from PKCS#7 (v1.5) */
   certChain: CertificateChainResult | null
+  /**
+   * Raw PKCS#7 (CMS SignedData) hex blob from the signature dictionary's
+   * /Contents field. Exposed so downstream consumers (e.g. the desktop's
+   * BCCR trust validator) can re-run validation against their own trust
+   * stores without re-parsing the PDF. `null` when no PKCS#7 was extracted.
+   */
+  pkcs7Hex: string | null
 }
 
 /** Forensic audit data extracted from raw PDF bytes — zero network calls */
@@ -372,6 +379,7 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       organization: certChain?.signer?.organization || null,
       subFilter: getNameField('SubFilter'),
       certChain,
+      pkcs7Hex: pkcs7Hex ?? null,
       documentIntegrityVerified,
       integrityError,
     })
