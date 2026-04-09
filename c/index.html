@@ -14,7 +14,7 @@
     <meta property="og:title" content="Attestto Ark — Login & Credenciales" />
     <meta
       property="og:description"
-      content="Inicia sesión con tu DID o recibe una credencial verificable directamente en tu extensión Attestto."
+      content="Inicia sesión con tu DID o recibe una credencial verificable en cualquier wallet compatible con @attestto/id-wallet-adapter — protocolo abierto."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://verify.attestto.com/c/" />
@@ -382,6 +382,17 @@
         <div id="wallet-status" class="status">
           <span class="status-dot"></span>
           <span id="wallet-status-text">Buscando wallets de credenciales…</span>
+        </div>
+
+        <!-- Dev integration hint — only shown when no wallet is detected -->
+        <div id="dev-hint" class="hidden" style="margin-top: 0.75rem; padding: 0.875rem 1rem; background: var(--color-surface-alt); border: 1px dashed var(--color-border); border-radius: 0.5rem; font-size: 0.8125rem; color: var(--color-ink-muted); line-height: 1.55;">
+          <strong style="color: var(--color-ink);">¿Construyes una wallet o un sitio?</strong>
+          Esta página es una referencia ejecutable de
+          <code style="font-family: var(--font-mono); font-size: 0.8125rem;">@attestto/id-wallet-adapter</code>:
+          un protocolo abierto de descubrimiento, login DID y entrega de
+          credenciales que cualquier extensión wallet puede implementar y
+          cualquier sitio puede consumir. Lee la guía de integración →
+          <a href="https://github.com/Attestto-com/id-wallet-adapter#readme" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">github.com/Attestto-com/id-wallet-adapter</a>
         </div>
 
         <!-- Credential load card (only shown when #vc= fragment present) -->

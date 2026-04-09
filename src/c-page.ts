@@ -173,7 +173,7 @@ function renderCredentialCard(preview: CredentialPreview): void {
   // Update page header to be load-mode-specific
   $('page-title').textContent = 'Recibir credencial'
   $('page-lead').textContent =
-    'Alguien te compartió una credencial verificable. Cárgala en tu extensión Attestto para conservarla bajo tu control.'
+    'Alguien te compartió una credencial verificable. Cárgala en tu wallet de credenciales — cualquier extensión compatible con @attestto/id-wallet-adapter — para conservarla bajo tu control.'
 }
 
 // ── Extension handshake — credential push ──────────────────────
@@ -292,8 +292,14 @@ async function bootstrap(): Promise<void> {
     renderWalletStatus(wallets)
     enableActions(vc, preview)
   } else {
-    setStatus('warn', 'No se detectó ninguna extensión Attestto en este navegador.')
-    // Buttons stay disabled. Install hint is already in the markup.
+    setStatus(
+      'warn',
+      'No se detectó ninguna wallet de credenciales compatible. Instala una extensión que implemente @attestto/id-wallet-adapter.',
+    )
+    // Surface the developer integration hint so site builders and wallet
+    // builders landing on /c/ have a one-click jump into the adapter README.
+    document.getElementById('dev-hint')?.classList.remove('hidden')
+    // Buttons stay disabled. Install hint is also in the credential card markup.
   }
 }
 
@@ -306,7 +312,7 @@ function enableActions(vc: string | null, preview: CredentialPreview | null): vo
     loginBtn.textContent = 'Esperando consentimiento…'
     const result = await requestLogin()
     loginBtn.disabled = false
-    loginBtn.textContent = 'Iniciar sesión con Attestto'
+    loginBtn.textContent = 'Iniciar sesión con mi wallet'
 
     if (!result.ok) {
       toast(result.error ?? 'Login cancelado', 'err')
