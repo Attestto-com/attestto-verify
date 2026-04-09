@@ -12,7 +12,7 @@ import {
 } from '../composables/document-signer.js'
 import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
 import { injectAttestationPage } from '../composables/pdf-attestation.js'
-import { signPdfSelfAttested } from '../composables/attestto-self-sign.js'
+import { signPdfSelfAttested, buildExtensionSigner } from '../composables/attestto-self-sign.js'
 import { t, currentLang, type Lang } from '../i18n.js'
 
 interface PdfMeta {
@@ -765,8 +765,22 @@ export class AttesttoSign extends LitElement {
       // PDF is recognized by verify.attestto.com (post-ATT-361). The old
       // injectAttestationPage path produced a pdf-lib full-rewrite with
       // no embedded keyword payload — verifier reported UNSIGNED.
+      //
+      // Two paths:
+      //   - selectedWallet → route through the extension's Ed25519 vault
+      //     key via the new ATTESTTO_SIGN_PDF_REQUEST flow (ATT-364)
+      //   - no wallet → ephemeral browser keypair, single-use
+      const externalSigner = this.selectedWallet
+        ? buildExtensionSigner({
+            fileName: this.file.name,
+            documentHash: '', // signer composable computes the hash
+            did: this.selectedWallet.did,
+          })
+        : undefined
+
       const { pdfBytes } = await signPdfSelfAttested(this.file, {
         signerName: this.selectedWallet?.name || 'Browser-ephemeral key',
+        externalSigner,
       })
 
       const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' })

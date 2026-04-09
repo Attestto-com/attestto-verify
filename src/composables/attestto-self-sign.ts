@@ -55,6 +55,18 @@ export interface AttesttoPdfSignature {
   }
 }
 
+/**
+ * External signer contract — given the canonical payload bytes,
+ * return the 64-byte Ed25519 signature + 32-byte raw public key
+ * (both base64). The verify-side composable does NOT care where the
+ * key lives (browser-ephemeral, extension vault, hardware token);
+ * it only cares that the resulting signature verifies.
+ */
+export interface ExternalSigner {
+  did: string
+  sign(payload: Uint8Array): Promise<{ signatureB64: string; publicKeyB64: string }>
+}
+
 export interface SelfSignOptions {
   signerName?: string
   signerHandle?: string
@@ -63,6 +75,12 @@ export interface SelfSignOptions {
   location?: string
   /** 'final' locks the doc; 'open' permits counter-signatures. */
   mode?: 'final' | 'open'
+  /**
+   * If provided, the canonical payload is signed by this external signer
+   * (e.g. an Attestto ID extension). If omitted, an ephemeral browser
+   * Ed25519 keypair is generated and used.
+   */
+  externalSigner?: ExternalSigner
 }
 
 export interface SelfSignResult {
@@ -124,34 +142,41 @@ export async function signPdfSelfAttested(
   const buffer = await file.arrayBuffer()
   const documentHash = await sha256Hex(buffer)
 
-  // 2. Generate the ephemeral Ed25519 keypair. This key lives only for
-  //    this signature — we don't persist it. Each signature is bound to
-  //    a fresh key, which is the right semantic for a public no-account
-  //    "sign this once" flow.
-  let keyPair: CryptoKeyPair
-  try {
-    keyPair = (await crypto.subtle.generateKey(
-      { name: 'Ed25519' },
-      true,
-      ['sign', 'verify'],
-    )) as CryptoKeyPair
-  } catch (err) {
-    throw new Error(
-      `Ed25519 not supported in this browser. Use a recent Chrome/Firefox/Safari. (${(err as Error).message})`,
-    )
+  // 2. Determine signer + DID. Two paths:
+  //
+  //    (a) externalSigner provided (e.g. extension vault Ed25519 key)
+  //        — we'll call signer.sign(payload) below; DID comes from
+  //        signer.did.
+  //
+  //    (b) no externalSigner — we generate an ephemeral Ed25519 keypair
+  //        for this single signature. Honest "did:key-ephemeral" DID.
+  let signedKeyPair: CryptoKeyPair | null = null
+  let issuer: string
+
+  if (opts.externalSigner) {
+    issuer = opts.externalSigner.did
+  } else {
+    try {
+      signedKeyPair = (await crypto.subtle.generateKey(
+        { name: 'Ed25519' },
+        true,
+        ['sign', 'verify'],
+      )) as CryptoKeyPair
+    } catch (err) {
+      throw new Error(
+        `Ed25519 not supported in this browser. Use a recent Chrome/Firefox/Safari. (${(err as Error).message})`,
+      )
+    }
+
+    const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', signedKeyPair.publicKey))
+    if (rawPub.length !== 32) {
+      throw new Error(`Unexpected Ed25519 public key length: ${rawPub.length}`)
+    }
+
+    issuer = `did:key-ephemeral:browser-${bytesToHex(rawPub).slice(0, 16)}`
   }
 
-  const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey))
-  if (rawPub.length !== 32) {
-    throw new Error(`Unexpected Ed25519 public key length: ${rawPub.length}`)
-  }
-
-  // 3. Build the unsigned VC payload. The DID is a transparent
-  //    "browser-ephemeral" placeholder — honest about what it is,
-  //    not a fake did:key. The verifier doesn't resolve DIDs; it
-  //    only uses the embedded publicKey for verification.
   const signedAt = new Date().toISOString()
-  const issuer = `did:key-ephemeral:browser-${bytesToHex(rawPub).slice(0, 16)}`
 
   const unsigned: Omit<AttesttoPdfSignature, 'proof'> = {
     v: 1,
@@ -175,14 +200,33 @@ export async function signPdfSelfAttested(
   //    proves the signer asserted the entire VC payload, including the
   //    documentHash, signedAt, and DID, as one atomic statement.
   const payloadBytes = canonicalPayloadBytes(unsigned)
-  const sigBuf = await crypto.subtle.sign(
-    { name: 'Ed25519' },
-    keyPair.privateKey,
-    payloadBytes as BufferSource,
-  )
-  const sigBytes = new Uint8Array(sigBuf)
-  if (sigBytes.length !== 64) {
-    throw new Error(`Unexpected Ed25519 signature length: ${sigBytes.length}`)
+
+  let proofValueB64: string
+  let publicKeyB64: string
+
+  if (opts.externalSigner) {
+    // Hand the canonical bytes to the external signer (e.g. extension
+    // vault). It is responsible for returning a valid 64-byte Ed25519
+    // signature + 32-byte raw public key, both base64.
+    const result = await opts.externalSigner.sign(payloadBytes)
+    proofValueB64 = result.signatureB64
+    publicKeyB64 = result.publicKeyB64
+  } else {
+    if (!signedKeyPair) {
+      throw new Error('internal: no signing keypair available')
+    }
+    const sigBuf = await crypto.subtle.sign(
+      { name: 'Ed25519' },
+      signedKeyPair.privateKey,
+      payloadBytes as BufferSource,
+    )
+    const sigBytes = new Uint8Array(sigBuf)
+    if (sigBytes.length !== 64) {
+      throw new Error(`Unexpected Ed25519 signature length: ${sigBytes.length}`)
+    }
+    proofValueB64 = bytesToBase64(sigBytes)
+    const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', signedKeyPair.publicKey))
+    publicKeyB64 = bytesToBase64(rawPub)
   }
 
   const signature: AttesttoPdfSignature = {
@@ -192,8 +236,8 @@ export async function signPdfSelfAttested(
       created: signedAt,
       verificationMethod: `${issuer}#key-1`,
       proofPurpose: 'assertionMethod',
-      proofValue: bytesToBase64(sigBytes),
-      publicKey: bytesToBase64(rawPub),
+      proofValue: proofValueB64,
+      publicKey: publicKeyB64,
     },
   }
 
@@ -221,4 +265,83 @@ export async function signPdfSelfAttested(
   const pdfBytes = await doc.save({ useObjectStreams: false })
 
   return { pdfBytes, signature, documentHash }
+}
+
+// ── Extension-vault external signer (ATT-364) ─────────────────────
+
+/**
+ * Build an `ExternalSigner` that delegates Ed25519 signing to the
+ * Attestto ID extension via window.postMessage. The extension's
+ * background handler signs the canonical payload bytes with the
+ * vault's Ed25519 key (lazily provisioned per ATT-364) and returns
+ * the 64-byte signature + 32-byte raw public key.
+ *
+ * NOTE: This bypasses the @attestto/id-wallet-adapter package — the
+ * canonical wire is direct postMessage. A `requestAttesttoPdfSignature`
+ * helper should be added to id-wallet-adapter v0.5+ so other consumers
+ * don't have to inline the protocol. Tracked in ATT-364 follow-up.
+ *
+ * The returned signer:
+ *   - posts ATTESTTO_SIGN_PDF_REQUEST with the canonical payload
+ *   - waits for ATTESTTO_SIGN_PDF_RESPONSE (matched by requestId)
+ *   - times out after 120s
+ *   - throws on user denial / extension absence
+ */
+export interface ExtensionSignerOptions {
+  fileName: string
+  documentHash: string
+  /** Wallet DID to display to the user (e.g. eduardo.attestto.id). */
+  did: string
+  /** Override the timeout. Default 120s. */
+  timeoutMs?: number
+}
+
+export function buildExtensionSigner(opts: ExtensionSignerOptions): ExternalSigner {
+  return {
+    did: opts.did,
+    sign(payload: Uint8Array): Promise<{ signatureB64: string; publicKeyB64: string }> {
+      return new Promise((resolve, reject) => {
+        const requestId = `attestto-pdf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+        const payloadB64 = bytesToBase64(payload)
+
+        const onMessage = (event: MessageEvent): void => {
+          if (event.source !== window) return
+          const data = event.data
+          if (!data || data.type !== 'ATTESTTO_SIGN_PDF_RESPONSE') return
+          if (data.requestId !== requestId) return
+
+          window.removeEventListener('message', onMessage)
+          window.clearTimeout(timer)
+
+          if (data.error) {
+            reject(new Error(`Extension signing failed: ${data.error}`))
+            return
+          }
+          if (!data.signature || !data.publicKey) {
+            reject(new Error('Extension response missing signature or publicKey'))
+            return
+          }
+          resolve({ signatureB64: data.signature, publicKeyB64: data.publicKey })
+        }
+
+        window.addEventListener('message', onMessage)
+
+        const timer = window.setTimeout(() => {
+          window.removeEventListener('message', onMessage)
+          reject(new Error('Extension did not respond within timeout'))
+        }, opts.timeoutMs ?? 120_000)
+
+        window.postMessage(
+          {
+            type: 'ATTESTTO_SIGN_PDF_REQUEST',
+            requestId,
+            payloadB64,
+            fileName: opts.fileName,
+            documentHash: opts.documentHash,
+          },
+          window.location.origin,
+        )
+      })
+    },
+  }
 }
