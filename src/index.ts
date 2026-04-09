@@ -62,6 +62,17 @@ export type {
   PkiIdentity,
 } from './composables/certificate-parser.js'
 
+// PDF verifier — full client-side PAdES/PKCS#7 extraction + integrity check.
+// Re-exported so other Attestto repos (e.g. attestto-desktop) can use the
+// canonical implementation instead of hand-copying it.
+export { verifyPdf, formatPdfDate, computeHash } from './composables/pdf-verifier.js'
+export type {
+  PdfSignatureInfo,
+  PdfMetadata,
+  PdfAuditInfo,
+  PdfVerificationResult,
+} from './composables/pdf-verifier.js'
+
 // Built-in plugins
 export { didVerifierPlugin, createDidVerifier } from './plugins/did-verifier.js'
 export type { DidDocument, DidResolver, VerificationMethod } from './plugins/did-verifier.js'

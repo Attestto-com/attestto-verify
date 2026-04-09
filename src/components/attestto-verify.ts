@@ -221,6 +221,15 @@ export class AttesttoVerify extends LitElement {
         border: 1px solid #00c853;
       }
 
+      /* UNKNOWN — integrity check could NOT run (runtime/parser error).
+         NOT a tamper signal. Neutral amber, no animation. (ATT-357) */
+      .badge-unknown {
+        background: #3a2f00;
+        color: #ffe48a;
+        border: 1px solid #d4a017;
+        font-weight: 600;
+      }
+
       /* ── DID & Corporate Identity Rows ─────────────────────── */
       .signer-did {
         font-family: 'SF Mono', 'Fira Code', monospace;
@@ -1061,25 +1070,31 @@ export class AttesttoVerify extends LitElement {
                             ? 'tampered'
                             : sig.level === 'verified'
                               ? 'verified'
-                              : sig.certChain?.cryptographicallyVerified
-                                ? 'parsed'
-                                : 'detected'}"
+                              : sig.level === 'unknown'
+                                ? 'unknown'
+                                : sig.certChain?.cryptographicallyVerified
+                                  ? 'parsed'
+                                  : 'detected'}"
                           part="status-badge trust-level"
                           title=${sig.level === 'tampered'
                             ? 'DOCUMENT TAMPERED — content was modified after signing'
                             : sig.level === 'verified'
                               ? 'Chain cryptographically verified AND document content matches signature'
-                              : sig.certChain?.cryptographicallyVerified
-                                ? 'Chain cryptographically verified — integrity not yet confirmed'
-                                : 'Structure parsed only — chain NOT cryptographically verified'}
+                              : sig.level === 'unknown'
+                                ? 'Integrity check could not run — verification incomplete (NOT a tamper signal)'
+                                : sig.certChain?.cryptographicallyVerified
+                                  ? 'Chain cryptographically verified — integrity not yet confirmed'
+                                  : 'Structure parsed only — chain NOT cryptographically verified'}
                         >
                           ${sig.level === 'tampered'
                             ? '⚠ TAMPERED'
                             : sig.level === 'verified'
                               ? 'CRYPTOGRAPHICALLY VERIFIED'
-                              : sig.certChain?.cryptographicallyVerified
-                                ? 'CHAIN VERIFIED'
-                                : 'STRUCTURE PARSED'}
+                              : sig.level === 'unknown'
+                                ? '◌ INTEGRITY UNKNOWN'
+                                : sig.certChain?.cryptographicallyVerified
+                                  ? 'CHAIN VERIFIED'
+                                  : 'STRUCTURE PARSED'}
                         </span>
                         <span part="signer-name">${sig.name}</span>
                         ${sig.subFilter
@@ -1108,7 +1123,31 @@ export class AttesttoVerify extends LitElement {
                             </div>
                           `
                         : ''}
-                      ${sig.certChain && !sig.certChain.cryptographicallyVerified && sig.level !== 'tampered'
+                      ${sig.level === 'unknown'
+                        ? html`
+                            <div
+                              class="integrity-unknown"
+                              part="integrity-unknown"
+                              style="background:#3a2f00;border:1px solid #d4a017;color:#ffe48a;
+                                     padding:12px 14px;border-radius:6px;margin:8px 0;font-size:13px;
+                                     line-height:1.5;font-weight:500;"
+                            >
+                              ◌ <strong>Integrity check could not be completed.</strong>
+                              The verifier was unable to run the cryptographic
+                              integrity check on this signature (loader, parser
+                              or runtime error). This is <strong>not</strong> a
+                              tamper signal — the document state is unknown.
+                              Please retry, hard-reload, or report the issue
+                              with the reason below.
+                              ${sig.integrityError
+                                ? html`<div style="margin-top:6px;font-size:12px;opacity:0.85;font-family:monospace;word-break:break-all;">
+                                    Reason: ${sig.integrityError}
+                                  </div>`
+                                : ''}
+                            </div>
+                          `
+                        : ''}
+                      ${sig.certChain && !sig.certChain.cryptographicallyVerified && sig.level !== 'tampered' && sig.level !== 'unknown'
                         ? html`
                             <div
                               class="crypto-warning"

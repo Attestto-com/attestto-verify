@@ -124,11 +124,22 @@ export interface PdfSignatureInfo {
    *   - 'parsed'    → certs parsed, chain NOT cryptographically verified
    *   - 'verified'  → chain cryptographically verified AND document content matches signature (post-ATT-309)
    *   - 'tampered'  → chain may be valid but document content was modified after signing — DO NOT TRUST
+   *   - 'unknown'   → certs parsed but integrity check could NOT be run
+   *                   (pkijs load failure, parser exception, missing
+   *                   ByteRange). NOT a tamper signal — render neutral. (ATT-357)
    *   - 'signed'    → legacy alias, retained for backward compatibility
    *   - 'trusted'   → plugin-elevated (e.g. did-verifier matched)
    *   - 'qualified' → plugin-elevated (e.g. vLEI / GLEIF tier)
    */
-  level: 'detected' | 'parsed' | 'verified' | 'tampered' | 'signed' | 'trusted' | 'qualified'
+  level:
+    | 'detected'
+    | 'parsed'
+    | 'verified'
+    | 'tampered'
+    | 'unknown'
+    | 'signed'
+    | 'trusted'
+    | 'qualified'
   /**
    * True iff the bytes covered by the signature's ByteRange hash to the
    * exact value the signer signed (Phase A — document integrity check).
@@ -147,6 +158,13 @@ export interface PdfSignatureInfo {
   subFilter: string | null
   /** Certificate chain extracted from PKCS#7 (v1.5) */
   certChain: CertificateChainResult | null
+  /**
+   * Raw PKCS#7 (CMS SignedData) hex blob from the signature dictionary's
+   * /Contents field. Exposed so downstream consumers (e.g. the desktop's
+   * BCCR trust validator) can re-run validation against their own trust
+   * stores without re-parsing the PDF. `null` when no PKCS#7 was extracted.
+   */
+  pkcs7Hex: string | null
 }
 
 /** Forensic audit data extracted from raw PDF bytes — zero network calls */
@@ -329,13 +347,15 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
           documentIntegrityVerified = integrity.integrityValid
           integrityError = integrity.error
         } catch (err) {
-          documentIntegrityVerified = false
+          // ATT-357: thrown exception (reconstructSignedBytes or anything
+          // upstream) means we couldn't run the check — UNKNOWN, not tamper.
+          documentIntegrityVerified = null
           integrityError = err instanceof Error ? err.message : String(err)
         }
       } else {
-        // No ByteRange found — cannot verify integrity. Mark as failed
-        // because we cannot prove the document is the original.
-        documentIntegrityVerified = false
+        // No ByteRange found — we cannot prove the document is the original
+        // and we cannot prove it was tampered. State is unknown. (ATT-357)
+        documentIntegrityVerified = null
         integrityError = 'No ByteRange found in signature dictionary'
       }
     }
@@ -343,18 +363,25 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
     // Use cert data to enrich signature info
     const rawName = getField('Name') || 'Unknown Signer'
     const displayName = certChain?.signerDisplayName || cleanSignerName(rawName)
-    // Level escalation rules (post-ATT-309):
+    // Level escalation rules (post-ATT-309 / ATT-357):
     //   - 'detected'  → no certs found
     //   - 'parsed'    → certs found but chain NOT cryptographically verified
-    //   - 'tampered'  → chain may be parsed/verified, but document was modified after signing
+    //   - 'unknown'   → certs found but integrity check could NOT run
+    //                   (runtime error — null, NOT false). NEVER 'tampered'.
+    //   - 'tampered'  → integrity check ran AND said the bytes were modified
+    //                   (strict === false). Real cryptographic mismatch.
     //   - 'verified'  → chain cryptographically verified AND document integrity intact
     // Plugins may further escalate (e.g. did-verifier → 'trusted', vLEI → 'qualified').
-    let level: 'detected' | 'parsed' | 'verified' | 'tampered' = 'detected'
+    let level: 'detected' | 'parsed' | 'verified' | 'tampered' | 'unknown' = 'detected'
     if (certChain && certChain.certificates.length > 0) {
       if (documentIntegrityVerified === false) {
+        // Strict false — pkijs ran and rejected. Real tamper.
         level = 'tampered'
       } else if (certChain.cryptographicallyVerified && documentIntegrityVerified === true) {
         level = 'verified'
+      } else if (documentIntegrityVerified === null && integrityError) {
+        // Integrity check could not run (runtime error). UNKNOWN, not tampered.
+        level = 'unknown'
       } else {
         level = 'parsed'
       }
@@ -372,6 +399,7 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       organization: certChain?.signer?.organization || null,
       subFilter: getNameField('SubFilter'),
       certChain,
+      pkcs7Hex: pkcs7Hex ?? null,
       documentIntegrityVerified,
       integrityError,
     })
