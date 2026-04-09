@@ -1,36 +1,35 @@
 /**
- * /c/ — Attestto Ark Extension Bridge page.
+ * /offer/ (alias /c/) — Open Credential Handoff landing page.
  *
- * Two-mode handshake page that talks to the Attestto ID extension via the
- * `@attestto/id-wallet-adapter` discovery protocol and the extension's
- * postMessage API. NEVER sends anything to the server.
+ * Reference implementation of the Open Credential Handoff Fragment
+ * Protocol v1 (see id-wallet-adapter/docs/credential-handoff-protocol.md).
  *
- *   1. LOGIN MODE — always available. User clicks "Login con Attestto",
- *      page generates a random nonce, posts ATTESTTO_AUTH_REQUEST, the
- *      extension prompts the holder for consent, returns a DID-signed
- *      proof of possession.
+ * Job: take a #v=1&vc=…&preview=… URL fragment from any issuer and
+ * hand the credential to whatever compatible wallet the visitor has.
  *
- *   2. CREDENTIAL LOAD MODE — only when `location.hash` carries a
- *      `#vc=…&preview=…` fragment (typically the desktop's
- *      "Verificar en navegador" deep-link). Page renders a sanitized
- *      teaser from `preview` (type / issuer / level / issuedAt — never
- *      PII), and on user click posts ATTESTTO_CREDENTIAL_PUSH with the
- *      full VC. Fragment never reaches the server because the browser
- *      does not transmit URL fragments.
+ *   - Has wallet → render the teaser, push the VC into the wallet on
+ *                  user click, done.
+ *   - No wallet  → render the teaser anyway, plus an install pitch
+ *                  and a link to the adapter spec for site/wallet
+ *                  builders. The credential stays in the URL fragment
+ *                  for when the user installs and returns.
  *
- * Wire protocol references:
- *   - Discovery: `@attestto/id-wallet-adapter` `discoverWallets()`
- *   - Auth:      window.postMessage `ATTESTTO_AUTH_REQUEST` →
- *                `ATTESTTO_AUTH_RESPONSE`
- *   - Cred push: window.postMessage `ATTESTTO_CREDENTIAL_PUSH` →
- *                `ATTESTTO_CREDENTIAL_PUSH_RESPONSE`
+ * Privacy by construction: the URL fragment never reaches any server
+ * (browsers don't transmit anything after `#`). The page is content-
+ * blind — it never parses the VC, only the sanitized preview.
  *
- * The auth and push protocols are not yet exposed via the adapter package.
- * Promote them to `@attestto/id-wallet-adapter` v0.5 (tracked separately)
- * once the wire shapes stabilize.
+ * Issuer-neutral: the page never assumes the issuer is Attestto.
+ * Any issuer that produces a v=1 fragment per the spec can land
+ * holders here.
  */
 
-import { discoverWallets, type WalletAnnouncement } from '@attestto/id-wallet-adapter'
+import {
+  discoverWallets,
+  parseCredentialOffer,
+  type CredentialOffer,
+  type CredentialOfferPreview,
+  type WalletAnnouncement,
+} from '@attestto/id-wallet-adapter'
 
 // ── DOM helpers ────────────────────────────────────────────────
 
@@ -49,9 +48,9 @@ function setStatus(state: 'idle' | 'ok' | 'warn' | 'err', text: string): void {
 
 /**
  * Render the discovered wallet(s) inside the status pill, including the
- * extension-provided icon. The icon URL is a `chrome-extension://…` URL
- * that the extension exposes via `chrome.runtime.getURL` — only resolvable
- * from a page where that extension is installed.
+ * wallet-provided icon. Each wallet announces itself via
+ * registerWallet() in @attestto/id-wallet-adapter, including an icon URL
+ * (typically a chrome-extension://… URL set via chrome.runtime.getURL).
  */
 function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   const el = $('wallet-status')
@@ -59,7 +58,6 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   el.classList.add('ok')
   el.innerHTML = ''
 
-  // No dot — the icon takes its place
   for (const w of wallets) {
     const icon = document.createElement('img')
     icon.src = w.icon
@@ -69,8 +67,6 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
     icon.style.borderRadius = '4px'
     icon.style.display = 'block'
     icon.onerror = () => {
-      // If the chrome-extension:// URL cannot load (e.g. extension restricted
-      // origin permissions) fall back to a green dot so the pill still reads.
       icon.remove()
       const dot = document.createElement('span')
       dot.className = 'status-dot'
@@ -83,8 +79,8 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   label.id = 'wallet-status-text'
   label.textContent =
     wallets.length === 1
-      ? `Extensión detectada: ${wallets[0].name}`
-      : `${wallets.length} extensiones detectadas: ${wallets.map((w) => w.name).join(' · ')}`
+      ? `Wallet detectada: ${wallets[0].name}`
+      : `${wallets.length} wallets detectadas: ${wallets.map((w) => w.name).join(' · ')}`
   el.appendChild(label)
 }
 
@@ -99,59 +95,23 @@ function toast(message: string, kind: 'ok' | 'err' | 'info' = 'info'): void {
   toastTimer = window.setTimeout(() => el.classList.remove('show'), 2500)
 }
 
-// ── Fragment parsing (privacy-critical: # never reaches server) ─
-
-interface CredentialPreview {
-  type: string
-  issuer: string
-  level: string
-  issuedAt?: string
-  icon?: string
-}
-
-interface ParsedFragment {
-  vc: string | null
-  preview: CredentialPreview | null
-}
-
-function parseFragment(): ParsedFragment {
-  const hash = window.location.hash.replace(/^#/, '')
-  if (!hash) return { vc: null, preview: null }
-
-  const params = new URLSearchParams(hash)
-  const vc = params.get('vc')
-  const previewRaw = params.get('preview')
-
-  let preview: CredentialPreview | null = null
-  if (previewRaw) {
-    try {
-      // base64url → bytes → UTF-8 string. Going through TextDecoder is
-      // mandatory because atob() returns a Latin-1 binary string and
-      // multibyte UTF-8 sequences (e.g. "Cédula") would mojibake.
-      const b64 = previewRaw.replace(/-/g, '+').replace(/_/g, '/')
-      const bin = atob(b64)
-      const bytes = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      const json = new TextDecoder('utf-8').decode(bytes)
-      preview = JSON.parse(json) as CredentialPreview
-    } catch (err) {
-      console.warn('[c-page] Failed to decode preview fragment', err)
-    }
-  }
-
-  return { vc, preview }
-}
-
 // ── Credential teaser render ───────────────────────────────────
 
-function renderCredentialCard(preview: CredentialPreview): void {
+function renderCredentialCard(preview: CredentialOfferPreview): void {
   $('credential-card').classList.remove('hidden')
 
-  // Type label — never render PII fields. The desktop is responsible
-  // for putting only safe fields into `preview`.
-  $('cred-type').textContent = preview.type || 'Credencial Verificable'
-  $('cred-level').textContent = preview.level || '—'
-  $('cred-issuer').textContent = preview.issuer || 'Emisor desconocido'
+  // Type label — never render PII fields. The issuer is responsible
+  // for putting only safe fields into preview. The page is content-blind
+  // and renders whatever it gets.
+  $('cred-type').textContent = preview.type
+  $('cred-issuer').textContent = preview.issuer
+
+  if (preview.level) {
+    $('cred-level').textContent = preview.level
+    $('cred-level').classList.remove('hidden')
+  } else {
+    $('cred-level').classList.add('hidden')
+  }
 
   if (preview.issuedAt) {
     const d = new Date(preview.issuedAt)
@@ -164,26 +124,43 @@ function renderCredentialCard(preview: CredentialPreview): void {
     } else {
       $('cred-issued').textContent = preview.issuedAt
     }
+  } else {
+    $('cred-issued').textContent = ''
   }
 
-  if (preview.icon) {
-    $('cred-icon').textContent = preview.icon
-  }
+  $('cred-icon').textContent = preview.icon || '★'
 
-  // Update page header to be load-mode-specific
+  // Update the page header to make the holder's mental state explicit:
+  // they arrived here because an issuer just minted them a credential.
   $('page-title').textContent = 'Recibir credencial'
-  $('page-lead').textContent =
-    'Alguien te compartió una credencial verificable. Cárgala en tu wallet de credenciales — cualquier extensión compatible con @attestto/id-wallet-adapter — para conservarla bajo tu control.'
+  $('page-lead').innerHTML =
+    'Un emisor te compartió una credencial verificable. Cárgala en tu wallet — cualquier extensión compatible con <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">@attestto/id-wallet-adapter</a> — para conservarla bajo tu control.'
+}
+
+function renderOfferError(code: string, message: string): void {
+  // The fragment was present but malformed. Show a friendly error in
+  // place of the credential card so the holder isn't left wondering
+  // what happened.
+  $('credential-card').classList.remove('hidden')
+  $('cred-type').textContent = 'Oferta de credencial inválida'
+  $('cred-issuer').textContent = `Código: ${code}`
+  $('cred-level').classList.add('hidden')
+  $('cred-issued').textContent = message
+  ;($('btn-load-cred') as HTMLButtonElement).disabled = true
 }
 
 // ── Extension handshake — credential push ──────────────────────
+// NOTE: this raw postMessage protocol is implemented today by the
+// reference Attestto ID extension (CORTEX/extension/src/entrypoints/
+// credential-api.content.ts). It will be promoted to a canonical helper
+// in @attestto/id-wallet-adapter v0.5 once the wire shape stabilizes.
 
-function pushCredentialToExtension(
+function pushCredentialToWallet(
   vc: string,
-  preview: CredentialPreview | null,
+  preview: CredentialOfferPreview,
 ): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
-    const requestId = `c-push-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const requestId = `offer-push-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
     const onMessage = (event: MessageEvent) => {
       if (event.source !== window) return
@@ -201,75 +178,25 @@ function pushCredentialToExtension(
         type: 'ATTESTTO_CREDENTIAL_PUSH',
         requestId,
         credential: {
-          format: 'attestto-id',
+          // Wire format pass-through: page does not parse the VC.
+          format: 'jwt-vc',
           raw: vc,
-          issuer: preview?.issuer ?? 'Attestto Platform',
+          issuerName: preview.issuer,
           claims: {
-            type: preview?.type,
-            level: preview?.level,
-            issuedAt: preview?.issuedAt,
+            type: preview.type,
+            level: preview.level,
+            issuedAt: preview.issuedAt,
           },
         },
       },
       window.location.origin,
     )
 
-    // Safety timeout — if extension never replies the user must not be
-    // stuck on a spinner. Fail gracefully.
+    // Safety timeout — if the wallet never replies the user must not
+    // be stuck on a spinner.
     setTimeout(() => {
       window.removeEventListener('message', onMessage)
-      resolve({ ok: false, error: 'Timeout — la extensión no respondió.' })
-    }, 60_000)
-  })
-}
-
-// ── Extension handshake — DID auth (login) ─────────────────────
-
-interface AuthResult {
-  ok: boolean
-  did?: string
-  signature?: string
-  error?: string
-}
-
-function requestLogin(): Promise<AuthResult> {
-  return new Promise((resolve) => {
-    const requestId = `c-auth-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const nonce = crypto.randomUUID()
-    const timestamp = new Date().toISOString()
-
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== window) return
-      const data = event.data
-      if (!data || data.type !== 'ATTESTTO_AUTH_RESPONSE') return
-      if (data.requestId !== requestId) return
-      window.removeEventListener('message', onMessage)
-      if (data.error) {
-        resolve({ ok: false, error: data.error })
-        return
-      }
-      resolve({
-        ok: true,
-        did: data.did,
-        signature: data.signature,
-      })
-    }
-
-    window.addEventListener('message', onMessage)
-
-    window.postMessage(
-      {
-        type: 'ATTESTTO_AUTH_REQUEST',
-        requestId,
-        nonce,
-        timestamp,
-      },
-      window.location.origin,
-    )
-
-    setTimeout(() => {
-      window.removeEventListener('message', onMessage)
-      resolve({ ok: false, error: 'Timeout — la extensión no respondió.' })
+      resolve({ ok: false, error: 'Tiempo agotado — la wallet no respondió.' })
     }, 60_000)
   })
 }
@@ -277,12 +204,21 @@ function requestLogin(): Promise<AuthResult> {
 // ── Bootstrap ──────────────────────────────────────────────────
 
 async function bootstrap(): Promise<void> {
-  const { vc, preview } = parseFragment()
+  // Parse the URL fragment via the canonical adapter helper. The page
+  // never invents its own format — it consumes the spec.
+  const result = parseCredentialOffer(window.location.hash)
 
-  // Render credential card if a fragment was passed in.
-  if (preview) {
-    renderCredentialCard(preview)
+  let offer: CredentialOffer | null = null
+  if (result.ok) {
+    offer = result.offer
+    renderCredentialCard(offer.preview)
+  } else if (result.error.code !== 'NO_FRAGMENT') {
+    // Fragment was present but malformed. Tell the user.
+    renderOfferError(result.error.code, result.error.message)
   }
+  // If NO_FRAGMENT we leave the credential card hidden and only show
+  // the discovery state — visitors who land on /offer/ without an
+  // offer URL still get something useful.
 
   // Discover wallets via the canonical adapter protocol.
   const wallets: WalletAnnouncement[] = await discoverWallets(800)
@@ -290,64 +226,39 @@ async function bootstrap(): Promise<void> {
 
   if (hasWallet) {
     renderWalletStatus(wallets)
-    enableActions(vc, preview)
+    if (offer) enableLoadButton(offer)
   } else {
     setStatus(
       'warn',
       'No se detectó ninguna wallet de credenciales compatible. Instala una extensión que implemente @attestto/id-wallet-adapter.',
     )
-    // Surface the developer integration hint so site builders and wallet
-    // builders landing on /c/ have a one-click jump into the adapter README.
     document.getElementById('dev-hint')?.classList.remove('hidden')
-    // Buttons stay disabled. Install hint is also in the credential card markup.
   }
+
+  // If we landed without an offer fragment AND without a wallet, the
+  // page is being used as a "what is this?" landing — the dev hint
+  // already explains the protocol. Nothing more to do.
 }
 
-function enableActions(vc: string | null, preview: CredentialPreview | null): void {
-  // Login button — always available when extension is present
-  const loginBtn = $('btn-login') as HTMLButtonElement
-  loginBtn.disabled = false
-  loginBtn.addEventListener('click', async () => {
-    loginBtn.disabled = true
-    loginBtn.textContent = 'Esperando consentimiento…'
-    const result = await requestLogin()
-    loginBtn.disabled = false
-    loginBtn.textContent = 'Iniciar sesión con mi wallet'
-
-    if (!result.ok) {
-      toast(result.error ?? 'Login cancelado', 'err')
-      return
+function enableLoadButton(offer: CredentialOffer): void {
+  const pushBtn = $('btn-load-cred') as HTMLButtonElement
+  pushBtn.disabled = false
+  pushBtn.addEventListener('click', async () => {
+    pushBtn.disabled = true
+    pushBtn.textContent = 'Cargando en la wallet…'
+    const result = await pushCredentialToWallet(offer.vc, offer.preview)
+    if (result.ok) {
+      pushBtn.textContent = '✓ Credencial guardada'
+      toast('Credencial guardada en tu wallet', 'ok')
+    } else {
+      pushBtn.disabled = false
+      pushBtn.textContent = 'Cargar en mi wallet'
+      toast(result.error ?? 'Error al cargar la credencial', 'err')
     }
-
-    $('login-result').classList.remove('hidden')
-    $('login-did').textContent = result.did ?? '—'
-    $('login-sig').textContent = result.signature
-      ? `${result.signature.slice(0, 32)}…${result.signature.slice(-8)}`
-      : '—'
-    toast('Sesión verificada', 'ok')
   })
-
-  // Credential push button — only meaningful if a VC was provided
-  if (vc) {
-    const pushBtn = $('btn-load-cred') as HTMLButtonElement
-    pushBtn.disabled = false
-    pushBtn.addEventListener('click', async () => {
-      pushBtn.disabled = true
-      pushBtn.textContent = 'Cargando en la extensión…'
-      const result = await pushCredentialToExtension(vc, preview)
-      if (result.ok) {
-        pushBtn.textContent = '✓ Credencial guardada'
-        toast('Credencial guardada en tu extensión', 'ok')
-      } else {
-        pushBtn.disabled = false
-        pushBtn.textContent = 'Cargar en mi extensión'
-        toast(result.error ?? 'Error al cargar la credencial', 'err')
-      }
-    })
-  }
 }
 
 bootstrap().catch((err) => {
-  console.error('[c-page] bootstrap failed', err)
+  console.error('[offer-page] bootstrap failed', err)
   setStatus('err', 'Error al inicializar la página.')
 })
