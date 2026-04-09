@@ -251,9 +251,15 @@ export async function validateChain(
  *                            (a single byte change is enough). The certificate
  *                            chain may still be valid, but the document is
  *                            TAMPERED and MUST NOT be trusted.
+ * `integrityValid: null`  → the integrity check could NOT be run (e.g. pkijs
+ *                            failed to load, ASN.1 parser threw, network
+ *                            error). This is NOT a tamper signal — the
+ *                            document state is unknown and the UI must
+ *                            render an "unknown" state, never "tampered".
+ *                            (ATT-357)
  */
 export interface IntegrityResult {
-  integrityValid: boolean
+  integrityValid: boolean | null
   error: string | null
 }
 
@@ -286,8 +292,10 @@ export async function verifyDocumentIntegrity(
     const pkcs7Der = hexToArrayBuffer(pkcs7Hex)
     const asn1 = asn1js.fromBER(pkcs7Der)
     if (asn1.offset === -1) {
+      // ASN.1 structure could not be parsed — this is a runtime/parser
+      // failure, NOT a tamper signal. We have no proof either way.
       return {
-        integrityValid: false,
+        integrityValid: null,
         error: 'PKCS#7 ASN.1 parse failed',
       }
     }
@@ -329,10 +337,15 @@ export async function verifyDocumentIntegrity(
     log.event('[chain-validator] ✓ Document integrity VERIFIED — content matches signature')
     return { integrityValid: true, error: null }
   } catch (err) {
+    // ATT-357: a thrown exception means the integrity check could not run
+    // (pkijs dynamic import failure, network blip, asn1js bug, …). We have
+    // NO information about whether the document was tampered. Returning
+    // `false` here would falsely accuse a real signer of forgery.
+    // Use `null` so the caller can render an "unknown" state.
     const message = err instanceof Error ? err.message : String(err)
     log.warn(`[chain-validator] Integrity verification threw: ${message}`)
     return {
-      integrityValid: false,
+      integrityValid: null,
       error: message,
     }
   }
