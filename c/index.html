@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a1628" />
+
+    <title>Attestto Ark — Login & Credenciales</title>
+    <meta
+      name="description"
+      content="Inicia sesión con tu DID o recibe una credencial verificable directamente en tu extensión Attestto. Sin servidor, sin cuenta, sin contraseña."
+    />
+    <link rel="canonical" href="https://verify.attestto.com/c/" />
+    <meta property="og:title" content="Attestto Ark — Login & Credenciales" />
+    <meta
+      property="og:description"
+      content="Inicia sesión con tu DID o recibe una credencial verificable directamente en tu extensión Attestto."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://verify.attestto.com/c/" />
+    <meta property="og:site_name" content="Attestto" />
+    <meta property="og:image" content="https://verify.attestto.com/og-verify.png" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ── Ark theme tokens (mirrored from attestto.org/assets/css/main.css) ── */
+      :root {
+        --color-ink: #0f172a;
+        --color-ink-muted: #475569;
+        --color-ink-subtle: #94a3b8;
+        --color-surface: #ffffff;
+        --color-surface-alt: #f0fdf4;
+        --color-border: #e2e8f0;
+        --color-accent: #15803d;
+        --color-accent-light: #bbf7d0;
+        --color-accent-bg: #ecfdf5;
+        --color-dark: #0a1628;
+        --color-warn-bg: #fef3c7;
+        --color-warn-border: #f59e0b;
+        --color-warn-ink: #92400e;
+        --color-error-bg: #fee2e2;
+        --color-error-ink: #991b1b;
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        font-family: var(--font-sans);
+        color: var(--color-ink);
+        background: var(--color-surface);
+        line-height: 1.7;
+        font-size: 1rem;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── Nav (Ark style) ── */
+      nav {
+        border-bottom: 1px solid var(--color-border);
+        background: #ffffff;
+      }
+      nav .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem clamp(1rem, 5vw, 4rem);
+        max-width: 110rem;
+        margin: 0 auto;
+      }
+      .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: var(--color-ink);
+        text-decoration: none;
+        font-size: 1rem;
+      }
+      .nav-brand img { height: 1.75rem; }
+      .nav-brand .ark-tag {
+        font-weight: 500;
+        color: var(--color-ink-muted);
+      }
+
+      /* ── Hero (light Ark, not the dark verify hero) ── */
+      .hero {
+        flex: 1;
+        background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-alt) 100%);
+        padding: clamp(3rem, 8vw, 5rem) 0;
+      }
+      .hero .container {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 0 clamp(1rem, 5vw, 4rem);
+      }
+
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-accent);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+      }
+
+      h1 {
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-weight: 800;
+        line-height: 1.15;
+        color: var(--color-ink);
+        margin-bottom: 0.75rem;
+      }
+
+      .lead {
+        font-size: 1.0625rem;
+        color: var(--color-ink-muted);
+        max-width: 52ch;
+        margin-bottom: 2rem;
+      }
+
+      /* ── Card ── */
+      .card {
+        background: #ffffff;
+        border: 1px solid var(--color-border);
+        border-radius: 0.75rem;
+        padding: clamp(1.5rem, 3vw, 2rem);
+        box-shadow:
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 8px 24px rgba(15, 23, 42, 0.04);
+        margin-bottom: 1.25rem;
+      }
+      .card h2 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+      .card p.card-desc {
+        font-size: 0.9375rem;
+        color: var(--color-ink-muted);
+        margin-bottom: 1.25rem;
+      }
+
+      /* ── Credential teaser ── */
+      .cred-teaser {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        padding: 1rem;
+        background: var(--color-accent-bg);
+        border: 1px solid var(--color-accent-light);
+        border-radius: 0.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .cred-icon {
+        flex: 0 0 auto;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: var(--color-accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+      .cred-meta { flex: 1; min-width: 0; }
+      .cred-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--color-ink);
+        margin: 0 0 0.125rem 0;
+      }
+      .cred-issuer {
+        font-size: 0.8125rem;
+        color: var(--color-accent);
+        font-weight: 600;
+      }
+      .cred-row {
+        font-size: 0.8125rem;
+        color: var(--color-ink-muted);
+        margin-top: 0.25rem;
+      }
+      .level-badge {
+        display: inline-block;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.125rem 0.5rem;
+        border-radius: 0.25rem;
+        background: var(--color-accent);
+        color: #fff;
+        margin-left: 0.5rem;
+      }
+
+      /* ── Buttons (Ark) ── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        font-family: var(--font-sans);
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: var(--color-ink);
+        color: #ffffff;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: #1e293b;
+      }
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        background: transparent;
+        color: var(--color-ink);
+        border: 1px solid var(--color-border);
+      }
+      .btn-secondary:hover { background: var(--color-surface-alt); }
+      .btn-block { width: 100%; }
+      .btn + .btn { margin-left: 0.5rem; }
+
+      /* ── Status pill ── */
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-family: var(--font-mono);
+        background: var(--color-surface-alt);
+        border: 1px solid var(--color-border);
+        color: var(--color-ink-muted);
+      }
+      .status-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--color-ink-subtle);
+      }
+      .status.ok { background: var(--color-accent-bg); border-color: var(--color-accent-light); color: var(--color-accent); }
+      .status.ok .status-dot { background: var(--color-accent); }
+      .status.warn { background: var(--color-warn-bg); border-color: var(--color-warn-border); color: var(--color-warn-ink); }
+      .status.warn .status-dot { background: var(--color-warn-border); }
+      .status.err { background: var(--color-error-bg); border-color: #fca5a5; color: var(--color-error-ink); }
+      .status.err .status-dot { background: #dc2626; }
+
+      .wallet-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--color-border);
+      }
+      .wallet-row:last-child { border-bottom: none; }
+      .wallet-row img { width: 1.75rem; height: 1.75rem; border-radius: 0.375rem; }
+      .wallet-row .wallet-name { font-weight: 600; font-size: 0.9375rem; }
+      .wallet-row .wallet-did {
+        font-family: var(--font-mono);
+        font-size: 0.6875rem;
+        color: var(--color-ink-subtle);
+      }
+
+      .actions { margin-top: 1rem; }
+
+      .install-hint {
+        font-size: 0.875rem;
+        color: var(--color-ink-muted);
+        margin-top: 0.75rem;
+      }
+      .install-hint a {
+        color: var(--color-accent);
+        font-weight: 600;
+      }
+
+      .privacy-footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--color-border);
+        font-size: 0.8125rem;
+        color: var(--color-ink-subtle);
+        text-align: center;
+      }
+
+      footer.site {
+        background: var(--color-dark);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 2rem 0;
+        margin-top: auto;
+      }
+      footer.site .container {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 0 clamp(1rem, 5vw, 4rem);
+        font-size: 0.8125rem;
+        text-align: center;
+      }
+      footer.site a { color: #4ade80; }
+
+      /* ── Toast ── */
+      .toast {
+        position: fixed;
+        top: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.75rem 1.25rem;
+        background: var(--color-ink);
+        color: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+        font-size: 0.875rem;
+        font-weight: 500;
+        z-index: 9999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      .toast.show { opacity: 1; }
+      .toast.ok { background: var(--color-accent); }
+      .toast.err { background: #991b1b; }
+
+      .hidden { display: none !important; }
+    </style>
+  </head>
+
+  <body>
+    <nav>
+      <div class="container">
+        <a href="https://attestto.org/ark" class="nav-brand">
+          <img src="/logo-full-purple.svg" alt="Attestto" />
+          <span class="ark-tag">Ark</span>
+        </a>
+        <a href="/" class="status" style="text-decoration: none;">verify.attestto.com</a>
+      </div>
+    </nav>
+
+    <main class="hero">
+      <div class="container">
+        <div class="eyebrow">Attestto Ark · Extension Bridge</div>
+        <h1 id="page-title">Login & Credenciales</h1>
+        <p class="lead" id="page-lead">
+          Inicia sesión con tu identidad descentralizada o recibe credenciales
+          verificables directamente en tu extensión Attestto. Sin servidor, sin
+          cuenta, sin contraseña.
+        </p>
+
+        <!-- Wallet status -->
+        <div id="wallet-status" class="status">
+          <span class="status-dot"></span>
+          <span id="wallet-status-text">Buscando extensión Attestto…</span>
+        </div>
+
+        <!-- Credential load card (only shown when #vc= fragment present) -->
+        <section id="credential-card" class="card hidden">
+          <h2>Recibir credencial</h2>
+          <p class="card-desc">
+            Alguien te compartió una credencial verificable. Cárgala en tu
+            extensión para conservarla bajo tu control.
+          </p>
+
+          <div class="cred-teaser">
+            <div class="cred-icon" id="cred-icon">★</div>
+            <div class="cred-meta">
+              <div class="cred-title">
+                <span id="cred-type">Credencial Verificable</span>
+                <span class="level-badge" id="cred-level">—</span>
+              </div>
+              <div class="cred-issuer" id="cred-issuer">—</div>
+              <div class="cred-row" id="cred-issued">—</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="btn-load-cred" class="btn btn-primary btn-block" disabled>
+              Cargar en mi extensión
+            </button>
+          </div>
+          <p class="install-hint">
+            Sin extensión instalada. <a href="https://github.com/Attestto-com/attestto-id-extension" target="_blank" rel="noopener">Instalar Attestto ID</a> y vuelve a esta página — la credencial sigue aquí, en el fragmento de URL, sin enviar nada al servidor.
+          </p>
+        </section>
+
+        <!-- Login with Attestto demo card (always shown) -->
+        <section class="card">
+          <h2>Login con Attestto</h2>
+          <p class="card-desc">
+            Demuestra el flujo de inicio de sesión sin contraseña: tu extensión
+            firma un reto criptográfico con tu DID. El sitio nunca recibe tu
+            clave privada.
+          </p>
+
+          <div class="actions">
+            <button id="btn-login" class="btn btn-primary btn-block" disabled>
+              Iniciar sesión con Attestto
+            </button>
+          </div>
+
+          <div id="login-result" class="hidden" style="margin-top: 1.25rem; padding: 1rem; background: var(--color-accent-bg); border: 1px solid var(--color-accent-light); border-radius: 0.5rem; font-size: 0.875rem;">
+            <div style="font-weight: 700; color: var(--color-accent); margin-bottom: 0.5rem;">✓ Sesión verificada</div>
+            <div><strong>DID:</strong> <code id="login-did" style="font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all;"></code></div>
+            <div style="margin-top: 0.25rem;"><strong>Firma:</strong> <code id="login-sig" style="font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all;"></code></div>
+          </div>
+        </section>
+
+        <p class="privacy-footer">
+          Esta página no envía nada al servidor. Las credenciales viajan en el
+          fragmento de URL (<code>#</code>) que tu navegador nunca transmite.
+          Toda la verificación ocurre localmente entre esta página y tu extensión.
+        </p>
+      </div>
+    </main>
+
+    <footer class="site">
+      <div class="container">
+        Open source · Apache 2.0 ·
+        <a href="https://github.com/Attestto-com/verify">github.com/Attestto-com/verify</a>
+      </div>
+    </footer>
+
+    <div id="toast" class="toast">…</div>
+
+    <script type="module" src="/src/c-page.ts"></script>
+  </body>
+</html>
