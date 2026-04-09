@@ -142,9 +142,8 @@ function renderCredentialCard(preview: CredentialOfferPreview): void {
 
   $('cred-icon').textContent = preview.icon || '★'
 
-  // Update the page header to make the holder's mental state explicit:
-  // they arrived here because an issuer just minted them a credential.
-  $('page-title').textContent = 'Recibir credencial'
+  // Replace the generic protocol blurb with a holder-friendly lead now
+  // that we know an offer is in the URL.
   $('page-lead').innerHTML =
     'Un emisor te compartió una credencial verificable. Cárgala en tu wallet — cualquier extensión compatible con <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">@attestto/id-wallet-adapter</a> — para conservarla bajo tu control.'
 }
@@ -246,6 +245,7 @@ async function bootstrap(): Promise<void> {
       'No se detectó ninguna wallet de credenciales compatible. Instala una extensión que implemente @attestto/id-wallet-adapter.',
     )
     document.getElementById('dev-hint')?.classList.remove('hidden')
+    document.getElementById('install-hint')?.classList.remove('hidden')
   }
 
   // If we landed without an offer fragment AND without a wallet, the
