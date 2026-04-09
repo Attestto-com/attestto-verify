@@ -20,6 +20,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         sign: resolve(__dirname, 'sign/index.html'),
         dev: resolve(__dirname, 'dev/index.html'),
+        c: resolve(__dirname, 'c/index.html'),
       },
     },
   },
