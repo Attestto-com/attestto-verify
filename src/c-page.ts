@@ -47,6 +47,47 @@ function setStatus(state: 'idle' | 'ok' | 'warn' | 'err', text: string): void {
   $('wallet-status-text').textContent = text
 }
 
+/**
+ * Render the discovered wallet(s) inside the status pill, including the
+ * extension-provided icon. The icon URL is a `chrome-extension://…` URL
+ * that the extension exposes via `chrome.runtime.getURL` — only resolvable
+ * from a page where that extension is installed.
+ */
+function renderWalletStatus(wallets: WalletAnnouncement[]): void {
+  const el = $('wallet-status')
+  el.classList.remove('warn', 'err')
+  el.classList.add('ok')
+  el.innerHTML = ''
+
+  // No dot — the icon takes its place
+  for (const w of wallets) {
+    const icon = document.createElement('img')
+    icon.src = w.icon
+    icon.alt = w.name
+    icon.width = 18
+    icon.height = 18
+    icon.style.borderRadius = '4px'
+    icon.style.display = 'block'
+    icon.onerror = () => {
+      // If the chrome-extension:// URL cannot load (e.g. extension restricted
+      // origin permissions) fall back to a green dot so the pill still reads.
+      icon.remove()
+      const dot = document.createElement('span')
+      dot.className = 'status-dot'
+      el.insertBefore(dot, el.firstChild)
+    }
+    el.appendChild(icon)
+  }
+
+  const label = document.createElement('span')
+  label.id = 'wallet-status-text'
+  label.textContent =
+    wallets.length === 1
+      ? `Extensión detectada: ${wallets[0].name}`
+      : `${wallets.length} extensiones detectadas: ${wallets.map((w) => w.name).join(' · ')}`
+  el.appendChild(label)
+}
+
 let toastTimer: number | null = null
 function toast(message: string, kind: 'ok' | 'err' | 'info' = 'info'): void {
   const el = $('toast')
@@ -84,7 +125,14 @@ function parseFragment(): ParsedFragment {
   let preview: CredentialPreview | null = null
   if (previewRaw) {
     try {
-      const json = atob(previewRaw.replace(/-/g, '+').replace(/_/g, '/'))
+      // base64url → bytes → UTF-8 string. Going through TextDecoder is
+      // mandatory because atob() returns a Latin-1 binary string and
+      // multibyte UTF-8 sequences (e.g. "Cédula") would mojibake.
+      const b64 = previewRaw.replace(/-/g, '+').replace(/_/g, '/')
+      const bin = atob(b64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const json = new TextDecoder('utf-8').decode(bytes)
       preview = JSON.parse(json) as CredentialPreview
     } catch (err) {
       console.warn('[c-page] Failed to decode preview fragment', err)
@@ -241,8 +289,7 @@ async function bootstrap(): Promise<void> {
   const hasWallet = wallets.length > 0
 
   if (hasWallet) {
-    const names = wallets.map((w) => w.name).join(' · ')
-    setStatus('ok', `Extensión detectada: ${names}`)
+    renderWalletStatus(wallets)
     enableActions(vc, preview)
   } else {
     setStatus('warn', 'No se detectó ninguna extensión Attestto en este navegador.')
