@@ -47,10 +47,20 @@ function setStatus(state: 'idle' | 'ok' | 'warn' | 'err', text: string): void {
 }
 
 /**
- * Render the discovered wallet(s) inside the status pill, including the
- * wallet-provided icon. Each wallet announces itself via
- * registerWallet() in @attestto/id-wallet-adapter, including an icon URL
- * (typically a chrome-extension://… URL set via chrome.runtime.getURL).
+ * Render the discovered wallet(s) inside the status pill.
+ *
+ * UX rule: show every wallet the user has actually installed, with
+ * its real icon and name. Do NOT render a picker of uninstalled
+ * wallets (the Solana wallet-picker antipattern, where 16 brands
+ * are listed regardless of what's installed). discoverWallets()
+ * already only returns wallets that announced themselves via
+ * registerWallet(), so iterating the result is the right behavior.
+ *
+ * The protocol pluralism (any wallet welcome) and the UX honesty
+ * (display what you actually have, never less, never more) are
+ * complementary. Most users have one wallet; some have two; the
+ * page accommodates whatever they have without inviting them to
+ * shop for more.
  */
 function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   const el = $('wallet-status')
@@ -58,10 +68,12 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   el.classList.add('ok')
   el.innerHTML = ''
 
+  // Render every announced wallet's icon, in announce order.
   for (const w of wallets) {
     const icon = document.createElement('img')
     icon.src = w.icon
     icon.alt = w.name
+    icon.title = w.name
     icon.width = 18
     icon.height = 18
     icon.style.borderRadius = '4px'
@@ -80,7 +92,7 @@ function renderWalletStatus(wallets: WalletAnnouncement[]): void {
   label.textContent =
     wallets.length === 1
       ? `Wallet detectada: ${wallets[0].name}`
-      : `${wallets.length} wallets detectadas: ${wallets.map((w) => w.name).join(' · ')}`
+      : `Wallets detectadas: ${wallets.map((w) => w.name).join(' · ')}`
   el.appendChild(label)
 }
 
