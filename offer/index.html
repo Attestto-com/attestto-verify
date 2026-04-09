@@ -445,11 +445,6 @@
 
         <!-- Credential load card (only shown when #vc= fragment present) -->
         <section id="credential-card" class="card hidden">
-          <h2>Recibir credencial</h2>
-          <p class="card-desc">
-            Alguien te compartió una credencial verificable. Cárgala en tu
-            wallet para conservarla bajo tu control.
-          </p>
 
           <!-- Unverified-preview banner — ATT-359 hard rule -->
           <div class="unverified-banner" role="alert">
@@ -503,7 +498,25 @@
             </button>
           </div>
 
-          <p class="install-hint">
+          <!-- "What can I do with this?" — answers the implicit question -->
+          <div id="next-steps" style="margin-top: 1.25rem; padding: 1rem 1.125rem; background: var(--color-surface-alt); border: 1px solid var(--color-accent-light); border-radius: 0.5rem;">
+            <div style="font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem; font-size: 0.9375rem;">
+              ¿Para qué sirve esta credencial?
+            </div>
+            <p style="margin: 0 0 0.75rem 0; font-size: 0.8125rem; color: var(--color-ink-muted); line-height: 1.55;">
+              Una vez almacenada en tu wallet, puedes usarla para iniciar sesión en sitios sin contraseñas, firmar documentos como persona verificada, y presentar pruebas selectivas (edad, nacionalidad, profesión) sin revelar tu cédula completa.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <a href="/dev/" class="btn btn-primary btn-block" style="text-decoration: none; text-align: center;">
+                ▶ Probar inicio de sesión con DID
+              </a>
+              <a href="/sign/" class="btn btn-block" style="text-decoration: none; text-align: center; background: transparent; border: 1px solid var(--color-border); color: var(--color-ink);">
+                ✍ Firmar un PDF con tu credencial
+              </a>
+            </div>
+          </div>
+
+          <p id="install-hint" class="install-hint hidden">
             Sin wallet detectado. Instala cualquier extensión compatible con
             <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener">@attestto/id-wallet-adapter</a> —
             por ejemplo
