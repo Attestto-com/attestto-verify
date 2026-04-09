@@ -112,14 +112,14 @@ describe('verifyDocumentIntegrity', () => {
   const fakeHex = 'deadbeef'
   const fakeData = new ArrayBuffer(8)
 
-  it('returns integrityValid=false when ASN.1 parse fails', async () => {
+  it('returns integrityValid=null when ASN.1 parse fails (UNKNOWN, not tampered) — ATT-357', async () => {
     vi.mocked(asn1js.fromBER).mockReturnValueOnce({
       offset: -1,
       result: null,
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
-    expect(r.integrityValid).toBe(false)
+    expect(r.integrityValid).toBeNull()
     expect(r.error).toMatch(/ASN\.1 parse failed/)
   })
 
@@ -178,27 +178,27 @@ describe('verifyDocumentIntegrity', () => {
     expect(r.integrityValid).toBe(true)
   })
 
-  it('catches thrown errors and surfaces them as integrityValid=false', async () => {
+  it('catches thrown errors and surfaces them as integrityValid=null (UNKNOWN, not tampered) — ATT-357', async () => {
     vi.mocked(asn1js.fromBER).mockImplementationOnce(() => {
       throw new Error('boom')
     })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
-    expect(r.integrityValid).toBe(false)
+    expect(r.integrityValid).toBeNull()
     expect(r.error).toBe('boom')
   })
 
-  it('catches non-Error throws and stringifies them', async () => {
+  it('catches non-Error throws and stringifies them as null (UNKNOWN) — ATT-357', async () => {
     vi.mocked(asn1js.fromBER).mockImplementationOnce(() => {
       throw 'literal-string-error'
     })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
-    expect(r.integrityValid).toBe(false)
+    expect(r.integrityValid).toBeNull()
     expect(r.error).toBe('literal-string-error')
   })
 
-  it('catches errors thrown by pkijs.SignedData.verify itself', async () => {
+  it('catches errors thrown by pkijs.SignedData.verify itself as null (UNKNOWN) — ATT-357', async () => {
     vi.mocked(asn1js.fromBER).mockReturnValueOnce({
       offset: 0,
       result: { schema: 'fake' },
@@ -210,7 +210,25 @@ describe('verifyDocumentIntegrity', () => {
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
-    expect(r.integrityValid).toBe(false)
+    expect(r.integrityValid).toBeNull()
     expect(r.error).toBe('verify exploded')
+  })
+
+  it('still reports integrityValid=false for REAL crypto mismatch (regression guard) — ATT-357', async () => {
+    // pkijs ran cleanly and said the signature does not match. This is the
+    // ONLY path that should produce `false` — anything thrown is `null`.
+    vi.mocked(asn1js.fromBER).mockReturnValueOnce({
+      offset: 0,
+      result: { schema: 'fake' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: false })
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(
+      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+    )
+
+    const r = await verifyDocumentIntegrity(fakeHex, fakeData)
+    expect(r.integrityValid).toBe(false)
+    expect(r.error).toMatch(/tampered/i)
   })
 })
