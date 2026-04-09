@@ -12,6 +12,7 @@ import {
 } from '../composables/document-signer.js'
 import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
 import { injectAttestationPage } from '../composables/pdf-attestation.js'
+import { signPdfSelfAttested } from '../composables/attestto-self-sign.js'
 import { t, currentLang, type Lang } from '../i18n.js'
 
 interface PdfMeta {
@@ -750,7 +751,7 @@ export class AttesttoSign extends LitElement {
   }
 
   private async downloadSignedPdf() {
-    if (!this.file || !this.signedCredential) return
+    if (!this.file) return
 
     const date = new Date().toISOString().slice(0, 10)
     const baseName = this.file.name.replace(/\.pdf$/i, '')
@@ -760,21 +761,25 @@ export class AttesttoSign extends LitElement {
     this.showDownloadModal = true
 
     try {
-      const buffer = await this.file.arrayBuffer()
-      const modifiedBytes = await injectAttestationPage(buffer, {
-        credential: this.signedCredential,
-        originalFileName: this.file.name,
-        signerName: this.selectedWallet?.name || (this.useBrowserKey ? 'Browser Key (self-issued)' : undefined),
+      // Use the canonical Attestto self-attested signer so the resulting
+      // PDF is recognized by verify.attestto.com (post-ATT-361). The old
+      // injectAttestationPage path produced a pdf-lib full-rewrite with
+      // no embedded keyword payload — verifier reported UNSIGNED.
+      const { pdfBytes } = await signPdfSelfAttested(this.file, {
+        signerName: this.selectedWallet?.name || 'Browser-ephemeral key',
       })
 
-      const blob = new Blob([modifiedBytes as unknown as BlobPart], { type: 'application/pdf' })
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = fileName
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
+    } catch (err) {
+      this.error = err instanceof Error ? err.message : 'Failed to sign PDF'
+      // Fall back to the original unsigned file so the user at least
+      // gets their document back.
       const blob = new Blob([this.file], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
