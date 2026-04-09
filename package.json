@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && tsc -p tsconfig.build.json && vite build",
+    "build": "tsc && vite build && tsc -p tsconfig.build.json",
     "build:pages": "vite build --config vite.config.pages.ts",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts",
