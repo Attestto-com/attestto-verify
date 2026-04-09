@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@attestto/id-wallet-adapter':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.4.0
+        version: 0.4.0
       asn1js:
         specifier: ^3.0.5
         version: 3.0.7
@@ -48,8 +48,8 @@ importers:
 
 packages:
 
-  '@attestto/id-wallet-adapter@0.3.0':
-    resolution: {integrity: sha512-wFIkrzW+Moa8InpnFqCRc6yzojW7j7iqyw3KvIv4CMdfBtEGl2iLnLouyMhqzkaxym39J38qXidWA6pNyWWgGg==}
+  '@attestto/id-wallet-adapter@0.4.0':
+    resolution: {integrity: sha512-6VeV/wK6YxfjhC6ocjTuJYfUY0BZYlC/KvXvaqYAYi/SwsmzIpYz74F8HJ3Z7GWZFpN81KoSPA4HPEAbu42uIw==}
 
   '@emnapi/core@1.9.2':
     resolution: {integrity: sha512-UC+ZhH3XtczQYfOlu3lNEkdW/p4dsJ1r/bP7H8+rhao3TTTMO1ATq/4DdIi23XuGoFY+Cz0JmCbdVl0hz9jZcA==}
@@ -1240,7 +1240,7 @@ packages:
 
 snapshots:
 
-  '@attestto/id-wallet-adapter@0.3.0': {}
+  '@attestto/id-wallet-adapter@0.4.0': {}
 
   '@emnapi/core@1.9.2':
     dependencies:

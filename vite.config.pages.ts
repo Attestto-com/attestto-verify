@@ -20,6 +20,10 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         sign: resolve(__dirname, 'sign/index.html'),
         dev: resolve(__dirname, 'dev/index.html'),
+        // Open Credential Handoff landing page — canonical at /offer/,
+        // legacy alias /c/ kept for backwards compat with existing
+        // desktop and issuer URLs.
+        offer: resolve(__dirname, 'offer/index.html'),
         c: resolve(__dirname, 'c/index.html'),
       },
     },
