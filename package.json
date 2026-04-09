@@ -39,7 +39,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@attestto/id-wallet-adapter": "^0.4.0",
+    "@attestto/id-wallet-adapter": "^0.4.1",
     "asn1js": "^3.0.5",
     "lit": "^3.2.0",
     "pdf-lib": "^1.17.1",
