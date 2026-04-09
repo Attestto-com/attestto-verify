@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a1628" />
 
-    <title>Attestto Ark — Login & Credenciales</title>
+    <title>Attestto Ark — Login & Credenciales · Open Wallet Bridge</title>
     <meta
       name="description"
-      content="Inicia sesión con tu DID o recibe una credencial verificable directamente en tu extensión Attestto. Sin servidor, sin cuenta, sin contraseña."
+      content="Inicia sesión con tu DID o recibe una credencial verificable en cualquier extensión wallet compatible con @attestto/id-wallet-adapter. Protocolo abierto. Sin servidor, sin cuenta, sin contraseña."
     />
     <link rel="canonical" href="https://verify.attestto.com/c/" />
     <meta property="og:title" content="Attestto Ark — Login & Credenciales" />
@@ -367,18 +367,21 @@
 
     <main class="hero">
       <div class="container">
-        <div class="eyebrow">Attestto Ark · Extension Bridge</div>
+        <div class="eyebrow">Attestto Ark · Open Wallet Bridge</div>
         <h1 id="page-title">Login & Credenciales</h1>
         <p class="lead" id="page-lead">
           Inicia sesión con tu identidad descentralizada o recibe credenciales
-          verificables directamente en tu extensión Attestto. Sin servidor, sin
-          cuenta, sin contraseña.
+          verificables en cualquier extensión wallet compatible. Esta página
+          habla con tu wallet a través de
+          <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">@attestto/id-wallet-adapter</a>
+          — un protocolo abierto para descubrimiento, login y entrega de
+          credenciales. Sin servidor, sin cuenta, sin contraseña.
         </p>
 
         <!-- Wallet status -->
         <div id="wallet-status" class="status">
           <span class="status-dot"></span>
-          <span id="wallet-status-text">Buscando extensión Attestto…</span>
+          <span id="wallet-status-text">Buscando wallets de credenciales…</span>
         </div>
 
         <!-- Credential load card (only shown when #vc= fragment present) -->
@@ -386,7 +389,7 @@
           <h2>Recibir credencial</h2>
           <p class="card-desc">
             Alguien te compartió una credencial verificable. Cárgala en tu
-            extensión para conservarla bajo tu control.
+            wallet para conservarla bajo tu control.
           </p>
 
           <div class="cred-teaser">
@@ -403,26 +406,32 @@
 
           <div class="actions">
             <button id="btn-load-cred" class="btn btn-primary btn-block" disabled>
-              Cargar en mi extensión
+              Cargar en mi wallet
             </button>
           </div>
           <p class="install-hint">
-            Sin extensión instalada. <a href="https://github.com/Attestto-com/attestto-id-extension" target="_blank" rel="noopener">Instalar Attestto ID</a> y vuelve a esta página — la credencial sigue aquí, en el fragmento de URL, sin enviar nada al servidor.
+            Sin wallet detectado. Instala cualquier extensión compatible con
+            <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener">@attestto/id-wallet-adapter</a> —
+            por ejemplo
+            <a href="https://github.com/Attestto-com/attestto-id-extension" target="_blank" rel="noopener">Attestto ID</a> —
+            y vuelve a esta página. La credencial sigue aquí, en el fragmento
+            de URL, sin enviar nada al servidor.
           </p>
         </section>
 
-        <!-- Login with Attestto demo card (always shown) -->
+        <!-- Login with DID demo card (always shown) -->
         <section class="card">
-          <h2>Login con Attestto</h2>
+          <h2>Login con DID</h2>
           <p class="card-desc">
-            Demuestra el flujo de inicio de sesión sin contraseña: tu extensión
+            Demuestra el flujo de inicio de sesión sin contraseña: tu wallet
             firma un reto criptográfico con tu DID. El sitio nunca recibe tu
-            clave privada.
+            clave privada. Compatible con cualquier wallet que implemente
+            <code style="font-family: var(--font-mono); font-size: 0.8125rem;">@attestto/id-wallet-adapter</code>.
           </p>
 
           <div class="actions">
             <button id="btn-login" class="btn btn-primary btn-block" disabled>
-              Iniciar sesión con Attestto
+              Iniciar sesión con mi wallet
             </button>
           </div>
 
@@ -433,10 +442,30 @@
           </div>
         </section>
 
+        <!-- Open protocol footer -->
+        <section class="card" style="background: var(--color-surface-alt); border-color: var(--color-accent-light);">
+          <h2 style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.25rem;">🔌</span> Protocolo abierto
+          </h2>
+          <p class="card-desc" style="margin-bottom: 0.75rem;">
+            <code style="font-family: var(--font-mono); font-size: 0.875rem;">@attestto/id-wallet-adapter</code>
+            es un paquete npm pequeño que estandariza descubrimiento de
+            wallets, login DID, firma de documentos y entrega de credenciales
+            para extensiones de navegador y dApps.
+            Cualquier wallet puede implementarlo y aparecer aquí — no es
+            específico de Attestto.
+          </p>
+          <p class="card-desc" style="margin-bottom: 0;">
+            <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">github.com/Attestto-com/id-wallet-adapter</a>
+            · Apache 2.0
+          </p>
+        </section>
+
         <p class="privacy-footer">
           Esta página no envía nada al servidor. Las credenciales viajan en el
           fragmento de URL (<code>#</code>) que tu navegador nunca transmite.
-          Toda la verificación ocurre localmente entre esta página y tu extensión.
+          Toda la verificación ocurre localmente entre esta página y tu wallet
+          a través del protocolo abierto.
         </p>
       </div>
     </main>
