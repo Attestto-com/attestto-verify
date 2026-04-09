@@ -648,15 +648,22 @@
         const isSafe = noJS && noAutoAction
         const isEncrypted = !!audit.encrypted
         const hasLtv = !!audit.hasLtvData
+        // ATT-361: derived locking flags from the signed event detail
+        const documentLocked = !!e.detail.documentLocked
+        const canCounterSign = !!e.detail.canCounterSign
 
         const badges = []
         if (hasSigs) badges.push(['green', t('audit.signed')])
         else badges.push(['muted', t('audit.unsigned')])
 
-        if (!isEncrypted) badges.push(['blue', t('audit.editable')])
-        else badges.push(['amber', t('audit.locked')])
+        // EDITABLE / LOCKED — driven by signature locking, not just encryption.
+        // A signed document with mode=final (or any PAdES sig) is locked
+        // because modifying its bytes breaks the embedded digest.
+        if (isEncrypted || documentLocked) badges.push(['amber', t('audit.locked')])
+        else badges.push(['blue', t('audit.editable')])
 
-        if (!isEncrypted) badges.push(['blue', t('audit.canSign')])
+        // CAN SIGN — only when nothing already locks the doc and not encrypted.
+        if (canCounterSign) badges.push(['blue', t('audit.canSign')])
 
         if (isSafe) badges.push(['green', t('audit.safe')])
         else if (audit.hasJavaScript) badges.push(['red', t('audit.hasScripts')])

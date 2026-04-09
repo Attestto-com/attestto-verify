@@ -14,6 +14,7 @@ import {
   type CertificateChainResult,
 } from './certificate-parser.js'
 import { verifyDocumentIntegrity, reconstructSignedBytes } from './chain-validator.js'
+import { extractAttesttoSelfAttestedSignatures } from './attestto-self-attested.js'
 
 const log = logger.verify
 
@@ -156,6 +157,26 @@ export interface PdfSignatureInfo {
   organization: string | null
   /** SubFilter from PDF signature dictionary */
   subFilter: string | null
+  /**
+   * Attestto self-attested signature metadata (ATT-361). Populated only
+   * when `subFilter === 'attestto.self-attested.v1'`. Lets the renderer
+   * show the country flag, KYC source, locking state, and proof type
+   * the way the desktop verifier sidebar does.
+   */
+  attesttoMeta?: {
+    /** Document mode at signing — 'final' means closed/locked. */
+    mode: 'final' | 'open'
+    /** ISO 3166-1 alpha-2 country code from the signer's KYC. */
+    country?: string
+    /** W3C VC proof.type — typically `Ed25519Signature2020`. */
+    proofType: string
+    /** Human-readable Attestto handle (e.g. cr-111290877.attestto.id). */
+    issuerHandle?: string
+    /** True when the signing tier was demo/mock, not a real card. */
+    mock: boolean
+    /** Self-declared signing level from the embedded VC. */
+    levelDeclared: 'self-attested' | 'firma-digital-mocked' | 'firma-digital-pkcs11'
+  }
   /** Certificate chain extracted from PKCS#7 (v1.5) */
   certChain: CertificateChainResult | null
   /**
@@ -510,6 +531,21 @@ export async function verifyPdf(
     log.info(
       `[3/4] PAdES scan: ${signatures.length} signature${signatures.length !== 1 ? 's' : ''} found${signatures.length > 0 ? ' — ' + signatures.map((s) => s.name).join(', ') : ''}`,
     )
+
+    // ATT-361: Attestto self-attested signatures live in /Keywords as
+    // an `attestto-sig-v1:<base64>` token, not in a /Sig dict, so the
+    // PAdES scan above misses them. Run the parallel extractor and
+    // merge results into the same `signatures` array — the UI badge
+    // pipeline keys off `signatures.length` and `level`, so a verified
+    // Attestto sig automatically lights up the SIGNED + VERIFIED
+    // badges with no further changes downstream.
+    const attesttoSigs = await extractAttesttoSelfAttestedSignatures(pdfBytes)
+    if (attesttoSigs.length > 0) {
+      log.info(
+        `[3/4] Attestto self-attested scan: ${attesttoSigs.length} signature(s) — ${attesttoSigs.map((s) => `${s.name} (${s.level})`).join(', ')}`,
+      )
+      signatures = signatures.concat(attesttoSigs)
+    }
 
     // Forensic security scan
     audit = scanPdfAudit(pdfBytes, pdfText)

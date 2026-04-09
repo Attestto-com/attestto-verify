@@ -192,8 +192,21 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.hint.detected': 'Signature structure found — cryptographic verification pending (v2)',
     'comp.verify.hint.parsed': 'Certificate chain extracted — cryptographic verification pending (v2)',
     'comp.verify.hint.signed': 'Cryptographically valid — signature math verified',
+    'comp.verify.hint.verified': 'Cryptographically valid — signature math verified and document content intact',
+    'comp.verify.hint.tampered': 'Document content has been modified after signing — DO NOT TRUST',
+    'comp.verify.hint.unknown': 'Integrity check could not be completed — neither valid nor tampered',
     'comp.verify.hint.trusted': 'Chain reaches a recognized Certificate Authority',
     'comp.verify.hint.qualified': 'Qualified corporate identity — GLEIF vLEI verified',
+    // ATT-361 — Attestto self-attested signatures
+    'comp.verify.attestto.title': 'Attestto self-attested signature',
+    'comp.verify.attestto.verified': 'Cryptographically verified.',
+    'comp.verify.attestto.verifiedBody': "The signer's ed25519 key proved possession of their Attestto vault, and the signed payload is byte-identical to the document hash. This is a Nivel B self-attested credential — trust is anchored in the signer's verified KYC, not in a third-party Certificate Authority.",
+    'comp.verify.attestto.kycSource': 'KYC source',
+    'comp.verify.attestto.padronCR': 'Padrón Electoral · Tribunal Supremo de Elecciones',
+    'comp.verify.attestto.proofType': 'Proof type',
+    'comp.verify.attestto.modeFinal': 'Document final · locked',
+    'comp.verify.attestto.modeOpen': 'Open · counter-signatures allowed',
+    'comp.verify.attestto.demoWarning': 'DEMO signature — not legally binding',
 
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Discovering credential wallets...',
@@ -415,8 +428,21 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.hint.detected': 'Estructura de firma encontrada — verificación criptográfica pendiente (v2)',
     'comp.verify.hint.parsed': 'Cadena de certificados extraída — verificación criptográfica pendiente (v2)',
     'comp.verify.hint.signed': 'Criptográficamente válida — matemáticas de firma verificadas',
+    'comp.verify.hint.verified': 'Criptográficamente válida — firma verificada y contenido del documento íntegro',
+    'comp.verify.hint.tampered': 'El contenido del documento fue modificado después de firmarse — NO CONFIAR',
+    'comp.verify.hint.unknown': 'No se pudo completar la verificación de integridad — ni válida ni manipulada',
     'comp.verify.hint.trusted': 'La cadena alcanza una Autoridad de Certificación reconocida',
     'comp.verify.hint.qualified': 'Identidad corporativa cualificada — vLEI de GLEIF verificada',
+    // ATT-361 — Firmas Attestto auto-atestadas
+    'comp.verify.attestto.title': 'Firma Attestto auto-atestada',
+    'comp.verify.attestto.verified': 'Criptográficamente verificada.',
+    'comp.verify.attestto.verifiedBody': 'La clave ed25519 del firmante demostró posesión de su bóveda Attestto, y el contenido firmado coincide byte a byte con el hash del documento. Esta es una credencial Nivel B auto-atestada — la confianza se ancla en el KYC verificado del firmante, no en una Autoridad de Certificación de terceros.',
+    'comp.verify.attestto.kycSource': 'Fuente KYC',
+    'comp.verify.attestto.padronCR': 'Padrón Electoral · Tribunal Supremo de Elecciones',
+    'comp.verify.attestto.proofType': 'Tipo de prueba',
+    'comp.verify.attestto.modeFinal': 'Documento final · bloqueado',
+    'comp.verify.attestto.modeOpen': 'Abierto · permite contrafirmas',
+    'comp.verify.attestto.demoWarning': 'Firma DEMO — no vinculante legalmente',
 
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Descubriendo billeteras de credenciales...',

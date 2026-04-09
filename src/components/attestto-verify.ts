@@ -1163,7 +1163,7 @@ export class AttesttoVerify extends LitElement {
                             </div>
                           `
                         : ''}
-                      ${sig.level === 'verified'
+                      ${sig.level === 'verified' && sig.subFilter === 'attestto.self-attested.v1'
                         ? html`
                             <div
                               class="crypto-verified"
@@ -1173,11 +1173,64 @@ export class AttesttoVerify extends LitElement {
                                      line-height:1.45;"
                             >
                               ✓
-                              <strong>Cryptographically verified.</strong>
-                              The certificate chain has been validated end-to-end against a
-                              bundled trust anchor, AND the document content matches the
-                              signed hash exactly. The signer's identity is cryptographically
-                              proven and the document is intact.
+                              <strong>${t('comp.verify.attestto.verified')}</strong>
+                              ${t('comp.verify.attestto.verifiedBody')}
+                            </div>
+                          `
+                        : sig.level === 'verified'
+                          ? html`
+                              <div
+                                class="crypto-verified"
+                                part="crypto-verified"
+                                style="background:#0a2818;border:1px solid #00c853;color:#69f0ae;
+                                       padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
+                                       line-height:1.45;"
+                              >
+                                ✓
+                                <strong>Cryptographically verified.</strong>
+                                The certificate chain has been validated end-to-end against a
+                                bundled trust anchor, AND the document content matches the
+                                signed hash exactly. The signer's identity is cryptographically
+                                proven and the document is intact.
+                              </div>
+                            `
+                          : ''}
+
+                      ${sig.attesttoMeta && sig.subFilter === 'attestto.self-attested.v1'
+                        ? html`
+                            <div
+                              class="attestto-provenance"
+                              part="attestto-provenance"
+                              style="background:#0d1f24;border:1px solid #1f4855;border-radius:6px;
+                                     padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.5;
+                                     color:#9fcfd9;"
+                            >
+                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:600;color:#cfe9ef;">
+                                ${sig.attesttoMeta.country
+                                  ? html`<span style="font-size:16px;">${this.countryFlag(sig.attesttoMeta.country)}</span>`
+                                  : ''}
+                                <span>${t('comp.verify.attestto.title')}</span>
+                              </div>
+                              ${sig.attesttoMeta.country === 'CR'
+                                ? html`<div style="margin:4px 0;">
+                                    <strong style="color:#cfe9ef;">${t('comp.verify.attestto.kycSource')}:</strong>
+                                    ${t('comp.verify.attestto.padronCR')}
+                                  </div>`
+                                : ''}
+                              <div style="margin:4px 0;">
+                                <strong style="color:#cfe9ef;">${t('comp.verify.attestto.proofType')}:</strong>
+                                VC · ${sig.attesttoMeta.proofType}
+                              </div>
+                              <div style="margin:4px 0;">
+                                ${sig.attesttoMeta.mode === 'final'
+                                  ? html`<span style="color:#69f0ae;">🔒 ${t('comp.verify.attestto.modeFinal')}</span>`
+                                  : html`<span style="color:#ffb84d;">${t('comp.verify.attestto.modeOpen')}</span>`}
+                              </div>
+                              ${sig.attesttoMeta.mock
+                                ? html`<div style="margin-top:6px;padding:6px 8px;background:#3a1f00;border:1px solid #ff9500;border-radius:4px;color:#ffb84d;">
+                                    ⚠ ${t('comp.verify.attestto.demoWarning')}
+                                  </div>`
+                                : ''}
                             </div>
                           `
                         : ''}
@@ -1443,6 +1496,24 @@ export class AttesttoVerify extends LitElement {
         })
       }
 
+      // ATT-361: derive locking state from signatures so the audit
+      // badge panel knows when to flip EDITABLE → LOCKED and hide
+      // CAN SIGN. A document is "locked" when at least one verified
+      // signature with mode='final' (Attestto self-attested) or any
+      // PAdES sig is present — modifying the bytes would break the
+      // /ByteRange digest or the embedded documentHash.
+      const sigList = this.result.signatures
+      const hasPadesSig = sigList.some(
+        (s) => s.subFilter !== null && !s.subFilter.startsWith('attestto.'),
+      )
+      const hasAttesttoFinal = sigList.some(
+        (s) =>
+          s.subFilter === 'attestto.self-attested.v1' &&
+          s.attesttoMeta?.mode === 'final' &&
+          (s.level === 'verified' || s.level === 'parsed'),
+      )
+      const documentLocked = hasPadesSig || hasAttesttoFinal
+
       // Dispatch result event
       this.dispatchEvent(
         new CustomEvent('verification-complete', {
@@ -1451,6 +1522,10 @@ export class AttesttoVerify extends LitElement {
             signatures: this.result.signatures.length,
             plugins: this.pluginResults ? Object.fromEntries(this.pluginResults) : {},
             audit: this.result.audit ?? null,
+            /** ATT-361 — true when any signature locks the document. */
+            documentLocked,
+            /** ATT-361 — true when the current sig set still allows another sig. */
+            canCounterSign: !documentLocked && !this.result.audit?.encrypted,
           },
           composed: true,
           bubbles: true,
