@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0a1628" />
+    <meta name="theme-color" content="#0f0f1a" />
 
     <title>Recibir credencial · Open Credential Handoff</title>
     <meta
@@ -31,23 +31,25 @@
     />
 
     <style>
-      /* ── Ark theme tokens (mirrored from attestto.org/assets/css/main.css) ── */
+      /* ── Dark theme tokens (matched to verify page) ── */
       :root {
-        --color-ink: #0f172a;
-        --color-ink-muted: #475569;
-        --color-ink-subtle: #94a3b8;
-        --color-surface: #ffffff;
-        --color-surface-alt: #f0fdf4;
-        --color-border: #e2e8f0;
-        --color-accent: #15803d;
-        --color-accent-light: #bbf7d0;
-        --color-accent-bg: #ecfdf5;
-        --color-dark: #0a1628;
-        --color-warn-bg: #fef3c7;
-        --color-warn-border: #f59e0b;
-        --color-warn-ink: #92400e;
-        --color-error-bg: #fee2e2;
-        --color-error-ink: #991b1b;
+        --color-ink: #e2e8f0;
+        --color-ink-muted: #94a3b8;
+        --color-ink-subtle: #64748b;
+        --color-surface: #0f0f1a;
+        --color-surface-alt: #1e293b;
+        --color-border: #334155;
+        --color-accent: #4ade80;
+        --color-accent-light: #16a34a;
+        --color-accent-bg: #052e16;
+        --color-dark: #0a0a14;
+        --color-warn-bg: #422006;
+        --color-warn-border: #d97706;
+        --color-warn-ink: #fbbf24;
+        --color-error-bg: #450a0a;
+        --color-error-ink: #f87171;
+        --color-primary: #594FD3;
+        --color-primary-hover: #7B72ED;
         --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
       }
@@ -72,10 +74,10 @@
         flex-direction: column;
       }
 
-      /* ── Nav (Ark style) ── */
+      /* ── Nav (dark, matching verify) ── */
       nav {
         border-bottom: 1px solid var(--color-border);
-        background: #ffffff;
+        background: var(--color-surface);
       }
       nav .container {
         display: flex;
@@ -100,10 +102,10 @@
         color: var(--color-ink-muted);
       }
 
-      /* ── Hero (light Ark, not the dark verify hero) ── */
+      /* ── Hero (dark gradient) ── */
       .hero {
         flex: 1;
-        background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-alt) 100%);
+        background: linear-gradient(180deg, var(--color-surface) 0%, #0a0f1e 100%);
         padding: clamp(3rem, 8vw, 5rem) 0;
       }
       .hero .container {
@@ -136,21 +138,28 @@
         max-width: 52ch;
         margin-bottom: 2rem;
       }
+      .lead a { color: var(--color-accent); font-weight: 600; }
+      .lead code {
+        font-family: var(--font-mono);
+        background: var(--color-surface-alt);
+        padding: 0.0625rem 0.375rem;
+        border-radius: 0.25rem;
+        color: var(--color-ink);
+      }
 
       /* ── Card ── */
       .card {
-        background: #ffffff;
+        background: var(--color-surface-alt);
         border: 1px solid var(--color-border);
         border-radius: 0.75rem;
         padding: clamp(1.5rem, 3vw, 2rem);
-        box-shadow:
-          0 1px 2px rgba(15, 23, 42, 0.04),
-          0 8px 24px rgba(15, 23, 42, 0.04);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
         margin-bottom: 1.25rem;
       }
       .card h2 {
         font-size: 1.125rem;
         font-weight: 700;
+        color: var(--color-ink);
         margin-bottom: 0.25rem;
       }
       .card p.card-desc {
@@ -175,7 +184,7 @@
         width: 2.5rem;
         height: 2.5rem;
         border-radius: 50%;
-        background: var(--color-accent);
+        background: var(--color-accent-light);
         color: #fff;
         display: flex;
         align-items: center;
@@ -208,12 +217,12 @@
         letter-spacing: 0.04em;
         padding: 0.125rem 0.5rem;
         border-radius: 0.25rem;
-        background: var(--color-accent);
-        color: #fff;
+        background: var(--color-accent-light);
+        color: var(--color-accent);
         margin-left: 0.5rem;
       }
 
-      /* ── Buttons (Ark) ── */
+      /* ── Buttons (dark theme) ── */
       .btn {
         display: inline-flex;
         align-items: center;
@@ -230,11 +239,11 @@
         text-decoration: none;
       }
       .btn-primary {
-        background: var(--color-ink);
+        background: var(--color-primary);
         color: #ffffff;
       }
       .btn-primary:hover:not(:disabled) {
-        background: #1e293b;
+        background: var(--color-primary-hover);
       }
       .btn-primary:disabled {
         opacity: 0.5;
@@ -245,7 +254,7 @@
         color: var(--color-ink);
         border: 1px solid var(--color-border);
       }
-      .btn-secondary:hover { background: var(--color-surface-alt); }
+      .btn-secondary:hover { background: rgba(89, 79, 211, 0.15); }
       .btn-block { width: 100%; }
       .btn + .btn { margin-left: 0.5rem; }
 
@@ -273,7 +282,7 @@
       .status.ok .status-dot { background: var(--color-accent); }
       .status.warn { background: var(--color-warn-bg); border-color: var(--color-warn-border); color: var(--color-warn-ink); }
       .status.warn .status-dot { background: var(--color-warn-border); }
-      .status.err { background: var(--color-error-bg); border-color: #fca5a5; color: var(--color-error-ink); }
+      .status.err { background: var(--color-error-bg); border-color: #dc2626; color: var(--color-error-ink); }
       .status.err .status-dot { background: #dc2626; }
 
       .wallet-row {
@@ -285,7 +294,7 @@
       }
       .wallet-row:last-child { border-bottom: none; }
       .wallet-row img { width: 1.75rem; height: 1.75rem; border-radius: 0.375rem; }
-      .wallet-row .wallet-name { font-weight: 600; font-size: 0.9375rem; }
+      .wallet-row .wallet-name { font-weight: 600; font-size: 0.9375rem; color: var(--color-ink); }
       .wallet-row .wallet-did {
         font-family: var(--font-mono);
         font-size: 0.6875rem;
@@ -312,12 +321,20 @@
         color: var(--color-ink-subtle);
         text-align: center;
       }
+      .privacy-footer code {
+        font-family: var(--font-mono);
+        background: var(--color-surface-alt);
+        padding: 0.0625rem 0.375rem;
+        border-radius: 0.25rem;
+        color: var(--color-ink);
+      }
 
       footer.site {
         background: var(--color-dark);
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.5);
         padding: 2rem 0;
         margin-top: auto;
+        border-top: 1px solid var(--color-border);
       }
       footer.site .container {
         max-width: 56rem;
@@ -326,7 +343,7 @@
         font-size: 0.8125rem;
         text-align: center;
       }
-      footer.site a { color: #4ade80; }
+      footer.site a { color: var(--color-accent); }
 
       /* ── Toast ── */
       .toast {
@@ -335,10 +352,10 @@
         left: 50%;
         transform: translateX(-50%);
         padding: 0.75rem 1.25rem;
-        background: var(--color-ink);
-        color: #fff;
+        background: var(--color-surface-alt);
+        color: var(--color-ink);
         border-radius: 0.5rem;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         font-size: 0.875rem;
         font-weight: 500;
         z-index: 9999;
@@ -347,8 +364,8 @@
         transition: opacity 0.2s;
       }
       .toast.show { opacity: 1; }
-      .toast.ok { background: var(--color-accent); }
-      .toast.err { background: #991b1b; }
+      .toast.ok { background: var(--color-accent-light); color: #fff; }
+      .toast.err { background: #dc2626; }
 
       .hidden { display: none !important; }
 
@@ -364,14 +381,14 @@
         margin-bottom: 1.25rem;
       }
       .unverified-banner strong {
-        color: var(--color-warn-ink);
+        color: #fbbf24;
       }
 
       /* ── Provenance hint (where did the visitor come from?) ── */
       .provenance {
         margin-top: 0.875rem;
         padding: 0.625rem 0.875rem;
-        background: var(--color-surface-alt);
+        background: rgba(30, 41, 59, 0.6);
         border: 1px dashed var(--color-border);
         border-radius: 0.5rem;
         font-size: 0.8125rem;
@@ -386,7 +403,7 @@
         font-family: var(--font-mono);
         font-size: 0.8125rem;
         color: var(--color-ink);
-        background: rgba(15, 23, 42, 0.05);
+        background: rgba(255, 255, 255, 0.08);
         padding: 0.0625rem 0.375rem;
         border-radius: 0.25rem;
         margin: 0 0.25rem;
@@ -405,10 +422,10 @@
     <nav>
       <div class="container">
         <a href="https://attestto.org/ark" class="nav-brand">
-          <img src="/logo-full-purple.svg" alt="Attestto" />
+          <img src="/logo-full-white.svg" alt="Attestto" />
           <span class="ark-tag">Ark</span>
         </a>
-        <a href="/" class="status" style="text-decoration: none;">verify.attestto.com</a>
+        <a href="/" class="status" style="text-decoration: none; color: var(--color-ink-muted);">verify.attestto.com</a>
       </div>
     </nav>
 
@@ -420,7 +437,7 @@
           Esta página es un punto de entrega genérico para credenciales
           verificables. Cualquier emisor puede generar una URL de oferta y
           cualquier wallet compatible con
-          <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">@attestto/id-wallet-adapter</a>
+          <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener">@attestto/id-wallet-adapter</a>
           puede recibirla. Sin servidor, sin cuenta, sin contraseña.
           La credencial viaja en el fragmento (<code>#</code>) de la URL,
           que tu navegador nunca transmite.
@@ -436,7 +453,7 @@
         <div id="dev-hint" class="hidden" style="margin-top: 0.75rem; padding: 0.875rem 1rem; background: var(--color-surface-alt); border: 1px dashed var(--color-border); border-radius: 0.5rem; font-size: 0.8125rem; color: var(--color-ink-muted); line-height: 1.55;">
           <strong style="color: var(--color-ink);">¿Construyes una wallet o un sitio?</strong>
           Esta página es una referencia ejecutable de
-          <code style="font-family: var(--font-mono); font-size: 0.8125rem;">@attestto/id-wallet-adapter</code>:
+          <code style="font-family: var(--font-mono); font-size: 0.8125rem; background: rgba(255,255,255,0.08); padding: 0.0625rem 0.375rem; border-radius: 0.25rem; color: var(--color-ink);">@attestto/id-wallet-adapter</code>:
           un protocolo abierto de descubrimiento, login DID y entrega de
           credenciales que cualquier extensión wallet puede implementar y
           cualquier sitio puede consumir. Lee la guía de integración →
@@ -482,11 +499,11 @@
           </div>
 
           <!-- Two-step confirm: details panel revealed on first click -->
-          <div id="confirm-panel" class="hidden" style="margin-top: 1rem; padding: 1rem; background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.55;">
+          <div id="confirm-panel" class="hidden" style="margin-top: 1rem; padding: 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--color-border); border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.55;">
             <div style="font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem;">Esto es lo que va a pasar</div>
             <ol style="margin: 0 0 0.75rem 1.25rem; padding: 0; color: var(--color-ink-muted);">
               <li>Tu wallet recibirá la credencial completa, cifrada y opaca para esta página.</li>
-              <li>Tu wallet <strong>verificará la firma criptográfica del emisor</strong> contra el documento DID publicado por ese emisor.</li>
+              <li>Tu wallet <strong style="color: var(--color-ink);">verificará la firma criptográfica del emisor</strong> contra el documento DID publicado por ese emisor.</li>
               <li>Si la firma es válida, tu wallet te pedirá consentimiento explícito antes de almacenarla.</li>
               <li>Si la firma es inválida o el emisor no se puede resolver, tu wallet la rechazará. Esta página no puede sobreescribir esa decisión.</li>
             </ol>
@@ -499,7 +516,7 @@
           </div>
 
           <!-- "What can I do with this?" — answers the implicit question -->
-          <div id="next-steps" style="margin-top: 1.25rem; padding: 1rem 1.125rem; background: var(--color-surface-alt); border: 1px solid var(--color-accent-light); border-radius: 0.5rem;">
+          <div id="next-steps" style="margin-top: 1.25rem; padding: 1rem 1.125rem; background: var(--color-accent-bg); border: 1px solid var(--color-accent-light); border-radius: 0.5rem;">
             <div style="font-weight: 700; color: var(--color-ink); margin-bottom: 0.5rem; font-size: 0.9375rem;">
               ¿Para qué sirve esta credencial?
             </div>
@@ -508,10 +525,10 @@
             </p>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <a href="/dev/" class="btn btn-primary btn-block" style="text-decoration: none; text-align: center;">
-                ▶ Probar inicio de sesión con DID
+                Probar inicio de sesión con DID
               </a>
               <a href="/sign/" class="btn btn-block" style="text-decoration: none; text-align: center; background: transparent; border: 1px solid var(--color-border); color: var(--color-ink);">
-                ✍ Firmar un PDF con tu credencial
+                Firmar un PDF con tu credencial
               </a>
             </div>
           </div>
@@ -527,12 +544,12 @@
         </section>
 
         <!-- Open protocol footer -->
-        <section class="card" style="background: var(--color-surface-alt); border-color: var(--color-accent-light);">
+        <section class="card" style="border-color: var(--color-accent-light);">
           <h2 style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 1.25rem;">🔌</span> Protocolo abierto
+            Protocolo abierto
           </h2>
           <p class="card-desc" style="margin-bottom: 0.75rem;">
-            <code style="font-family: var(--font-mono); font-size: 0.875rem;">@attestto/id-wallet-adapter</code>
+            <code style="font-family: var(--font-mono); font-size: 0.875rem; background: rgba(255,255,255,0.08); padding: 0.125rem 0.5rem; border-radius: 0.25rem; color: var(--color-ink);">@attestto/id-wallet-adapter</code>
             es un paquete npm pequeño que estandariza descubrimiento de
             wallets, login DID, firma de documentos y entrega de credenciales
             para extensiones de navegador y dApps.
@@ -541,7 +558,7 @@
           </p>
           <p class="card-desc" style="margin-bottom: 0;">
             <a href="https://github.com/Attestto-com/id-wallet-adapter" target="_blank" rel="noopener" style="color: var(--color-accent); font-weight: 600;">github.com/Attestto-com/id-wallet-adapter</a>
-            · Apache 2.0
+            <span style="color: var(--color-ink-subtle);">· Apache 2.0</span>
           </p>
         </section>
 
