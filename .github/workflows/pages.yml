@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: Attestto-com/attestto-trust
+          path: ../attestto-trust
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9
