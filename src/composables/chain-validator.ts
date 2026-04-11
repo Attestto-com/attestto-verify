@@ -23,7 +23,9 @@ import { logger } from '../logger.js'
 // They are bundled into the dist at build time — zero runtime fetches.
 import RAIZ_NACIONAL_PEM from '../trust-store/bccr/CA_RAIZ_NACIONAL_-_COSTA_RICA_v2.pem?raw'
 import POLITICA_PJ_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_JURIDICA_-_COSTA_RICA_v2.pem?raw'
+import POLITICA_PF_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_FISICA_-_COSTA_RICA_v2.pem?raw'
 import SINPE_PJ_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_JURIDICA_v2.pem?raw'
+import SINPE_PF_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_FISICA_v2.pem?raw'
 
 const log = logger.verify
 
@@ -107,7 +109,9 @@ async function loadTrustAnchors(): Promise<LoadedAnchor[]> {
   const pems: Array<{ pem: string; label: string }> = [
     { pem: RAIZ_NACIONAL_PEM, label: 'CA RAIZ NACIONAL - COSTA RICA v2' },
     { pem: POLITICA_PJ_PEM, label: 'CA POLITICA PERSONA JURIDICA - COSTA RICA v2' },
+    { pem: POLITICA_PF_PEM, label: 'CA POLITICA PERSONA FISICA - COSTA RICA v2' },
     { pem: SINPE_PJ_PEM, label: 'CA SINPE - PERSONA JURIDICA v2' },
+    { pem: SINPE_PF_PEM, label: 'CA SINPE - PERSONA FISICA v2' },
   ]
 
   const loaded: LoadedAnchor[] = []
