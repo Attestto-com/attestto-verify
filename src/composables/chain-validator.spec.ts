@@ -65,6 +65,7 @@ import * as pkijs from 'pkijs'
 import {
   verifyDocumentIntegrity,
   reconstructSignedBytes,
+  validateChain,
   _resetChainValidatorCache,
 } from './chain-validator'
 
@@ -228,5 +229,165 @@ describe('verifyDocumentIntegrity', () => {
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBe(false)
     expect(r.error).toMatch(/tampered/i)
+  })
+})
+
+// ── validateChain ─────────────────────────────────────────────────
+
+describe('validateChain', () => {
+  it('returns trusted=false with "No trust anchors bundled" when all anchor loads fail', async () => {
+    // The mock pkijs.Certificate constructor works (returns {subject:{typesAndValues:[]}}),
+    // but asn1js.fromBER returns offset:-1 for every anchor PEM parse, so no anchors load.
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: -1,
+      result: null,
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(false)
+    expect(r.error).toMatch(/No trust anchors/)
+    expect(r.chainLength).toBe(0)
+  })
+
+  it('returns trusted=false when signer cert ASN.1 parse fails', async () => {
+    // First 6 calls: anchor loading succeeds
+    for (let i = 0; i < 6; i++) {
+      vi.mocked(asn1js.fromBER).mockReturnValueOnce({
+        offset: 0,
+        result: { mock: `anchor-${i}` },
+      } as unknown as ReturnType<typeof asn1js.fromBER>)
+    }
+    // 7th call: signer cert parse fails
+    vi.mocked(asn1js.fromBER).mockReturnValueOnce({
+      offset: -1,
+      result: null,
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(false)
+    expect(r.error).toMatch(/Signer certificate ASN\.1 parse failed/)
+  })
+
+  it('returns trusted=false with resultMessage when engine.verify fails', async () => {
+    // All fromBER calls succeed
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: 0,
+      result: { mock: 'cert' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    // Engine verify returns failure
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
+      () =>
+        ({
+          verify: vi.fn().mockResolvedValue({
+            result: false,
+            resultMessage: 'Certificate expired',
+          }),
+        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
+    )
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(false)
+    expect(r.error).toBe('Certificate expired')
+    expect(r.chainLength).toBe(0)
+  })
+
+  it('returns trusted=true with anchor CN when chain validates', async () => {
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: 0,
+      result: { mock: 'cert' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    const fakeCert = {
+      subject: {
+        typesAndValues: [
+          { type: '2.5.4.3', value: { valueBlock: { value: 'CA RAIZ NACIONAL' } } },
+        ],
+      },
+    }
+
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
+      () =>
+        ({
+          verify: vi.fn().mockResolvedValue({
+            result: true,
+            certificatePath: [{ subject: { typesAndValues: [] } }, fakeCert],
+          }),
+        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
+    )
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(true)
+    expect(r.anchorCommonName).toBe('CA RAIZ NACIONAL')
+    expect(r.chainLength).toBe(2)
+  })
+
+  it('returns trusted=true with null CN when root has no CN attribute', async () => {
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: 0,
+      result: { mock: 'cert' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
+      () =>
+        ({
+          verify: vi.fn().mockResolvedValue({
+            result: true,
+            certificatePath: [{ subject: { typesAndValues: [] } }],
+          }),
+        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
+    )
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(true)
+    expect(r.anchorCommonName).toBeNull()
+    expect(r.chainLength).toBe(1)
+  })
+
+  it('catches thrown errors and returns trusted=false', async () => {
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: 0,
+      result: { mock: 'cert' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(() => {
+      throw new Error('engine construction boom')
+    })
+
+    const r = await validateChain('aabb', [])
+    expect(r.trusted).toBe(false)
+    expect(r.error).toBe('engine construction boom')
+  })
+
+  it('skips malformed intermediate certs without failing', async () => {
+    // Anchors load fine
+    vi.mocked(asn1js.fromBER).mockReturnValue({
+      offset: 0,
+      result: { mock: 'cert' },
+    } as unknown as ReturnType<typeof asn1js.fromBER>)
+
+    // After anchors + signer, the intermediate parse throws
+    let callCount = 0
+    vi.mocked(asn1js.fromBER).mockImplementation(() => {
+      callCount++
+      // 8th call is intermediate — make it fail with offset:-1
+      if (callCount === 8) {
+        return { offset: -1, result: null } as unknown as ReturnType<typeof asn1js.fromBER>
+      }
+      return { offset: 0, result: { mock: `cert-${callCount}` } } as unknown as ReturnType<typeof asn1js.fromBER>
+    })
+
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
+      () =>
+        ({
+          verify: vi.fn().mockResolvedValue({
+            result: true,
+            certificatePath: [{ subject: { typesAndValues: [] } }],
+          }),
+        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
+    )
+
+    const r = await validateChain('aabb', ['ccdd'])
+    expect(r.trusted).toBe(true)
   })
 })
