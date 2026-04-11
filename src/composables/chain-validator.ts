@@ -195,10 +195,12 @@ export async function validateChain(
 
     // Build the chain validation engine
     // - trustedCerts: our bundled anchors (the only certs we will accept as roots)
-    // - certs: candidate intermediates from the PDF + the signer
+    // - certs: candidate intermediates from the PDF + the signer + bundled anchors
+    //   (anchors are also added as certs so pkijs can use them as intermediates
+    //    when the PDF doesn't embed the full chain)
     const engine = new pkijs.CertificateChainValidationEngine({
       trustedCerts: anchors.map((a) => a.cert),
-      certs: [signerCert, ...intermediates],
+      certs: [signerCert, ...intermediates, ...anchors.map((a) => a.cert)],
     })
 
     const result = await engine.verify()
