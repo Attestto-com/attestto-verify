@@ -19,14 +19,16 @@
 
 import { logger } from '../logger.js'
 
-// Trust anchors are imported as raw PEM strings via Vite's `?raw` loader.
-// They are bundled into the dist at build time — zero runtime fetches.
-import RAIZ_NACIONAL_PEM from '../trust-store/bccr/CA_RAIZ_NACIONAL_-_COSTA_RICA_v2.pem?raw'
-import POLITICA_PJ_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_JURIDICA_-_COSTA_RICA_v2.pem?raw'
-import POLITICA_PF_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_FISICA_-_COSTA_RICA_v2.pem?raw'
-import SINPE_PJ_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_JURIDICA_v2.pem?raw'
-import SINPE_PF_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_FISICA_v2.pem?raw'
-import SINPE_PF_2023_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_FISICA_v2_2023.pem?raw'
+// Trust anchors from the centralized @attestto/trust package.
+// PEM strings are bundled into the dist at build time — zero runtime fetches.
+import {
+  CA_RAIZ_NACIONAL_COSTA_RICA_V2 as RAIZ_NACIONAL_PEM,
+  CA_POLITICA_PERSONA_JURIDICA_COSTA_RICA_V2 as POLITICA_PJ_PEM,
+  CA_POLITICA_PERSONA_FISICA_COSTA_RICA_V2 as POLITICA_PF_PEM,
+  CA_SINPE_PERSONA_JURIDICA_V2 as SINPE_PJ_PEM,
+  CA_SINPE_PERSONA_FISICA_V2 as SINPE_PF_PEM,
+  CA_SINPE_PERSONA_FISICA_V2_2023 as SINPE_PF_2023_PEM,
+} from '@attestto/trust/cr'
 
 const log = logger.verify
 

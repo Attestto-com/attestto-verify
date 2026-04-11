@@ -1,0 +1,173 @@
+# @attestto/verify
+
+> Web Components for document verification and signing. Drop a PDF — verify its integrity, digital signatures, and security properties entirely in your browser. No login. No backend. No data transmitted.
+
+Part of the [Attestto Open](https://attestto.org) ecosystem. Live at [verify.attestto.com](https://verify.attestto.com) and [sign.attestto.com](https://sign.attestto.com).
+
+## Install
+
+### CDN (zero config)
+
+```html
+<script type="module" src="https://unpkg.com/@attestto/verify"></script>
+<attestto-verify></attestto-verify>
+```
+
+### npm
+
+```bash
+npm install @attestto/verify
+```
+
+```typescript
+import '@attestto/verify'
+// <attestto-verify></attestto-verify>
+// <attestto-sign></attestto-sign>
+```
+
+## Components
+
+### `<attestto-verify>`
+
+Drop a document to verify its integrity, signatures, and security properties.
+
+```html
+<attestto-verify></attestto-verify>
+<!-- deep-link mode: pre-fill hash from URL -->
+<attestto-verify hash="sha256:a1b2c3..."></attestto-verify>
+```
+
+**What v1 does:**
+- SHA-256 hash computation
+- PAdES / PKCS#7 signature detection and metadata extraction
+- SubFilter detection (`adbe.pkcs7.detached`, `ETSI.CAdES.detached`, `adbe.pkcs7.sha1`)
+- ByteRange extraction for signature integrity audit
+- Forensic security scan: JavaScript injection, OpenAction, embedded files, encryption type, external links
+
+**What v2 adds (ATT-209):**
+- Cryptographic verification via pkijs (ByteRange + CA chain math)
+- LTV offline revocation checking (`/DSS` extraction)
+- DID and vLEI identity extraction from X.509 certificates
+
+**Events:**
+```javascript
+element.addEventListener('verification-started', e => console.log(e.detail)) // { fileName, fileSize }
+element.addEventListener('verification-complete', e => console.log(e.detail)) // { hash, signatures, plugins }
+```
+
+### `<attestto-sign>`
+
+Sign a document with a browser-generated key or a DID wallet.
+
+```html
+<attestto-sign></attestto-sign>
+```
+
+Produces a W3C `DocumentSignatureCredential` (Verifiable Credential) containing the document hash, signer's DID, and cryptographic proof. Uses `@attestto/id-wallet-adapter` for wallet discovery. Browser-key signing uses WebCrypto ECDSA P-256 to produce a self-issued `did:key` credential.
+
+### Composable API (headless)
+
+```typescript
+import { hashFile, signWithBrowserKey, signWithWallet } from '@attestto/verify'
+
+const hash = await hashFile(file)                    // SHA-256 as hex string
+const result = await signWithBrowserKey(file, hash)  // { credential: VerifiableCredential }
+```
+
+All signing logic is in `src/composables/document-signer.ts` — the component is UI only.
+
+## Verification levels
+
+| Level | Badge | Meaning |
+|---|---|---|
+| Detected | Amber | Signature structure found (v1 byte scan) |
+| Verified | Green | Cryptographic math verified (v2) |
+| Trusted | Blue | Chain reaches a recognized CA |
+| Qualified | Gold | GLEIF vLEI — verified legal entity |
+
+## Forensic scan
+
+Runs on local bytes. Nothing sent externally.
+
+| Check | Safe | Warning |
+|---|---|---|
+| JavaScript | None found | Scripts detected |
+| Auto Actions | None | OpenAction present |
+| Embedded Files | None | Files attached |
+| Encryption | None or AES-256 | RC4 (weak) |
+| ByteRange | Offsets displayed | — |
+
+## CSS Parts (external styling)
+
+```css
+attestto-verify::part(drop-zone) { border-color: #your-brand; }
+attestto-verify::part(status-badge) { font-size: 0.8rem; }
+attestto-verify::part(vlei-badge) { background: gold; }
+```
+
+Available parts: `drop-zone`, `result-card`, `hash-display`, `sig-card`, `status-badge`, `signer-name`, `did-link`, `vlei-badge`, `corporate-info`, `trust-level`, `audit-section`, `audit-grid`, `button`
+
+## Plugin system
+
+Extend with custom trust sources. Plugins can add trust signals — they cannot bypass the core integrity check.
+
+```typescript
+import { attesttoPlugins } from '@attestto/verify'
+
+attesttoPlugins.register({
+  name: 'my-trust-source',
+  label: 'My Custom Trust',
+  type: 'verifier',
+  verify: async (hash, context) => ({ valid: true }),
+})
+```
+
+Plugin types: `parser`, `crypto`, `trust`, `verifier`. Built-in: DID verifier (`did:web`, `did:jwk`).
+
+## Debug logging
+
+```javascript
+Attestto.debug = true  // color-coded step logs, scopes: sign verify plugin wallet
+```
+
+## Source layout
+
+```
+src/
+  index.ts             — public exports, component registration
+  components/          — Lit Web Components (<attestto-verify>, <attestto-sign>)
+  composables/
+    document-signer.ts — all signing logic (headless, framework-agnostic)
+  plugins/             — built-in plugin implementations
+  trust-store/         — bundled trust roots (uses attestto-trust)
+  styles/              — component CSS
+  logger.ts            — structured debug logger
+  i18n.ts              — internationalization
+  types.ts             — TypeScript interfaces
+```
+
+## Architecture notes
+
+- **Lit Web Components** — W3C standard, works in any framework (React, Vue, vanilla)
+- **Shadow DOM** — encapsulated styles; use CSS Parts for external customization
+- **Zero backend** — all verification is client-side; `pdfjs-dist` is lazy-loaded for metadata only
+- **Composed events** — bubble across shadow DOM boundaries for framework integration
+
+## Roadmap
+
+- [x] ATT-208: v1 signature detection + forensic scanner (19 tests)
+- [ ] ATT-209: v2 cryptographic verification (pkijs + ByteRange + CA chain)
+- [ ] ATT-210: Solana anchor verifier plugin
+- [ ] ATT-212: vLEI Trust Plugin (GLEIF)
+
+## Related packages
+
+| Repo | Purpose |
+|---|---|
+| `attestto-trust` | PKI trust roots used by the CA chain validator |
+| `@attestto/id-wallet-adapter` | Wallet discovery used by `<attestto-sign>` |
+| `@attestto-com/vc-sdk` | VC format for `DocumentSignatureCredential` output |
+
+## License
+
+Apache 2.0 — [Attestto Open](https://attestto.org)

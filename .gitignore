@@ -1,5 +1,7 @@
 node_modules
 dist
 dist-pages
+coverage
+data
 *.local
 .DS_Store

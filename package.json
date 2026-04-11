@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@attestto/id-wallet-adapter": "^0.4.1",
+    "@attestto/trust": "link:../attestto-trust",
     "asn1js": "^3.0.5",
     "lit": "^3.2.0",
     "pdf-lib": "^1.17.1",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.0.0",
     "prettier": "^3.8.1",
     "typescript": "^5.7.0",

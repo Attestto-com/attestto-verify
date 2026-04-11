@@ -39,16 +39,14 @@ vi.mock('asn1js', () => {
   }
 })
 
-// Stub the bundled PEM imports — vite's `?raw` loader is not available in
-// vitest's default Node env, so we shim them.
-vi.mock('../trust-store/bccr/CA_RAIZ_NACIONAL_-_COSTA_RICA_v2.pem?raw', () => ({
-  default: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-}))
-vi.mock('../trust-store/bccr/CA_POLITICA_PERSONA_JURIDICA_-_COSTA_RICA_v2.pem?raw', () => ({
-  default: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-}))
-vi.mock('../trust-store/bccr/CA_SINPE_-_PERSONA_JURIDICA_v2.pem?raw', () => ({
-  default: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+// Stub the bundled PEM imports from the centralized trust package.
+vi.mock('@attestto/trust/cr', () => ({
+  CA_RAIZ_NACIONAL_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_POLITICA_PERSONA_JURIDICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_POLITICA_PERSONA_FISICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_SINPE_PERSONA_JURIDICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_SINPE_PERSONA_FISICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_SINPE_PERSONA_FISICA_V2_2023: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
 }))
 
 // Silence the verify logger noise during tests.
