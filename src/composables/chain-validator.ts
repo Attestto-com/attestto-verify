@@ -26,6 +26,7 @@ import POLITICA_PJ_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_JURIDICA_-_
 import POLITICA_PF_PEM from '../trust-store/bccr/CA_POLITICA_PERSONA_FISICA_-_COSTA_RICA_v2.pem?raw'
 import SINPE_PJ_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_JURIDICA_v2.pem?raw'
 import SINPE_PF_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_FISICA_v2.pem?raw'
+import SINPE_PF_2023_PEM from '../trust-store/bccr/CA_SINPE_-_PERSONA_FISICA_v2_2023.pem?raw'
 
 const log = logger.verify
 
@@ -111,7 +112,8 @@ async function loadTrustAnchors(): Promise<LoadedAnchor[]> {
     { pem: POLITICA_PJ_PEM, label: 'CA POLITICA PERSONA JURIDICA - COSTA RICA v2' },
     { pem: POLITICA_PF_PEM, label: 'CA POLITICA PERSONA FISICA - COSTA RICA v2' },
     { pem: SINPE_PJ_PEM, label: 'CA SINPE - PERSONA JURIDICA v2' },
-    { pem: SINPE_PF_PEM, label: 'CA SINPE - PERSONA FISICA v2' },
+    { pem: SINPE_PF_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2019)' },
+    { pem: SINPE_PF_2023_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2023)' },
   ]
 
   const loaded: LoadedAnchor[] = []
