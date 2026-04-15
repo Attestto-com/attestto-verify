@@ -3,9 +3,17 @@
 [![npm version](https://img.shields.io/npm/v/@attestto/verify.svg)](https://www.npmjs.com/package/@attestto/verify)
 [![license](https://img.shields.io/npm/l/@attestto/verify.svg)](./LICENSE)
 
+![Works with: Vanilla JS](https://img.shields.io/badge/Vanilla_JS-✓-F7DF1E?logo=javascript&logoColor=black)
+![Works with: React](https://img.shields.io/badge/React-✓-61DAFB?logo=react&logoColor=black)
+![Works with: Vue](https://img.shields.io/badge/Vue-✓-4FC08D?logo=vuedotjs&logoColor=white)
+![Works with: Svelte](https://img.shields.io/badge/Svelte-✓-FF3E00?logo=svelte&logoColor=white)
+![Works with: Angular](https://img.shields.io/badge/Angular-✓-DD0031?logo=angular&logoColor=white)
+![Works with: WordPress](https://img.shields.io/badge/WordPress-✓-21759B?logo=wordpress&logoColor=white)
+![No framework required](https://img.shields.io/badge/No_framework_required-✓-gray)
+
 > Web Components for document verification and signing. Drop a PDF — verify its integrity, digital signatures, and security properties entirely in your browser. No login. No backend. No data transmitted.
 
-A zero-trust, client-side document verification suite built on W3C Web Components. Part of the [Attestto](https://attestto.org) identity infrastructure. Live at [verify.attestto.com](https://verify.attestto.com).
+A zero-trust, client-side document verification suite built on [W3C Web Components](https://developer.mozilla.org/en-US/docs/Web/API/Web_components). Works in **any HTML page** — no framework, no build tools, no backend. Part of the [Attestto](https://attestto.org) identity infrastructure. Live at [verify.attestto.com](https://verify.attestto.com).
 
 **[Documentation](https://attestto.org/docs/verify/)** · **[Playground](https://attestto.org/docs/verify/playground/)** · **[Quickstart](https://attestto.org/docs/quickstart/verify-a-document/)**
 
@@ -26,22 +34,20 @@ graph TD
 
 ## Quick start
 
-### Prerequisites
+No build tools, no backend, no API keys. Just HTML.
 
-- Modern browser (Chrome, Safari, Firefox, Edge)
-- No server or backend required
+### Option 1: Copy-paste (any website, WordPress, Joomla, static HTML)
 
-### Install
-
-#### CDN (zero config)
+Add two lines to any HTML page:
 
 ```html
 <script type="module" src="https://unpkg.com/@attestto/verify"></script>
-
 <attestto-verify></attestto-verify>
 ```
 
-#### npm
+That's it. The component renders a drop zone, handles file hashing, signature detection, and forensic scanning — all client-side.
+
+### Option 2: npm (React, Vue, Svelte, Angular, Node.js)
 
 ```bash
 npm install @attestto/verify
@@ -49,15 +55,14 @@ npm install @attestto/verify
 
 ```typescript
 import '@attestto/verify'
-
-// Use in HTML
-// <attestto-verify></attestto-verify>
-// <attestto-sign></attestto-sign>
+// Now use <attestto-verify> and <attestto-sign> in your templates
 ```
 
-### Try it
+Works natively in every framework — [Web Components](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) are a browser standard, not a library.
 
-Drop a PDF on `<attestto-verify>` in your browser at [verify.attestto.com](https://verify.attestto.com). The component computes the hash, detects signatures, scans for security issues, and displays the results — all in your browser, locally.
+### Try it live
+
+Drop any PDF at [verify.attestto.com](https://verify.attestto.com). The component hashes the file, detects signatures, scans for security issues, and displays results — entirely in your browser.
 
 ## Components
 
