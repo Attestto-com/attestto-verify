@@ -241,56 +241,67 @@ export function bytesToHex(bytes: Uint8Array): string {
 
 // ── PKCS#7 / CMS Parsing ─────────────────────────────────────────
 
+/** Issuer + serial extracted from PKCS#7 SignerInfo — identifies the actual signer cert */
+export interface SignerIdentifier {
+  issuerCN: string
+  serial: string
+}
+
 /**
  * Parse a PKCS#7 SignedData structure and extract all embedded certificates.
+ * Also extracts the SignerInfo issuer+serial to correctly identify the signer cert
+ * when multiple non-CA certificates are present (e.g., CAdES with system + person certs).
  */
-export function parsePkcs7Certificates(derBytes: Uint8Array): CertificateInfo[] {
+export function parsePkcs7Certificates(derBytes: Uint8Array): {
+  certs: CertificateInfo[]
+  signerIdentifier: SignerIdentifier | null
+} {
   try {
     const root = parseAsn1(derBytes)
 
     // ContentInfo ::= SEQUENCE { contentType OID, content [0] EXPLICIT }
     if (root.tag !== ASN1_TAG.SEQUENCE || root.children.length < 2) {
       log.warn('PKCS#7: not a valid ContentInfo SEQUENCE')
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     const contentTypeNode = root.children[0]
     if (contentTypeNode.tag !== ASN1_TAG.OID) {
       log.warn('PKCS#7: first child is not an OID')
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     const contentType = decodeOid(contentTypeNode.content)
     if (contentType !== OID_SIGNED_DATA) {
       log.warn(`PKCS#7: contentType is ${contentType}, not SignedData`)
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     // content [0] EXPLICIT → contains the SignedData SEQUENCE
     const contentWrapper = root.children[1]
     if (contentWrapper.tagClass !== 2 || contentWrapper.tagNumber !== 0) {
       log.warn('PKCS#7: missing [0] EXPLICIT wrapper for SignedData')
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     const signedData = contentWrapper.children[0]
     if (!signedData || signedData.tag !== ASN1_TAG.SEQUENCE) {
       log.warn('PKCS#7: SignedData is not a SEQUENCE')
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     // SignedData ::= SEQUENCE {
     //   version, digestAlgorithms, encapContentInfo,
     //   certificates [0] IMPLICIT,  <-- what we want
     //   crls [1] IMPLICIT (optional),
-    //   signerInfos
+    //   signerInfos SET
     // }
 
     // Find certificates [0] IMPLICIT — tag 0xA0
     const certsNode = findContext(signedData, 0)
     if (!certsNode) {
       log.warn('PKCS#7: no certificates [0] found in SignedData')
-      return []
+      return { certs: [], signerIdentifier: null }
     }
 
     // Parse each certificate in the set
@@ -311,10 +322,40 @@ export function parsePkcs7Certificates(derBytes: Uint8Array): CertificateInfo[] 
       }
     }
 
-    return certs
+    // Extract SignerInfo issuer+serial to identify the actual signer cert.
+    // signerInfos is the last SET in SignedData.
+    // SignerInfo ::= SEQUENCE { version, sid SignerIdentifier, ... }
+    // SignerIdentifier ::= CHOICE { issuerAndSerialNumber IssuerAndSerialNumber }
+    // IssuerAndSerialNumber ::= SEQUENCE { issuer Name, serialNumber INTEGER }
+    let signerIdentifier: SignerIdentifier | null = null
+    try {
+      const signerInfosNode = signedData.children.find(
+        (c) => c.tag === ASN1_TAG.SET && c !== signedData.children[1],
+      )
+      if (signerInfosNode && signerInfosNode.children.length > 0) {
+        const firstSignerInfo = signerInfosNode.children[0]
+        if (firstSignerInfo.tag === ASN1_TAG.SEQUENCE && firstSignerInfo.children.length >= 2) {
+          // Skip version (INTEGER), next should be issuerAndSerialNumber (SEQUENCE)
+          const sidNode = firstSignerInfo.children[1]
+          if (sidNode.tag === ASN1_TAG.SEQUENCE && sidNode.children.length >= 2) {
+            const issuerFields = parseRdnSequence(sidNode.children[0])
+            const serial = decodeInteger(sidNode.children[1])
+            signerIdentifier = {
+              issuerCN: issuerFields.CN || issuerFields.O || '',
+              serial,
+            }
+            log.info(`[cert] SignerInfo identifies: issuer=${signerIdentifier.issuerCN}, serial=${serial.substring(0, 20)}...`)
+          }
+        }
+      }
+    } catch (e) {
+      log.warn(`[cert] Could not extract SignerInfo identifier: ${e}`)
+    }
+
+    return { certs, signerIdentifier }
   } catch (e) {
     log.warn(`PKCS#7 parse error: ${e}`)
-    return []
+    return { certs: [], signerIdentifier: null }
   }
 }
 
@@ -578,8 +619,15 @@ function parseExtension(
 /**
  * Build the certificate chain from signer to root.
  * Assigns roles: end-entity, intermediate, root.
+ *
+ * When `signerIdentifier` is provided (from PKCS#7 SignerInfo), uses it to
+ * disambiguate between multiple non-CA certificates (e.g., CAdES signatures
+ * that embed both a system/service cert and the actual person's cert).
  */
-function buildChain(certs: CertificateInfo[]): CertificateInfo[] {
+function buildChain(
+  certs: CertificateInfo[],
+  signerIdentifier?: SignerIdentifier | null,
+): CertificateInfo[] {
   if (certs.length === 0) return []
 
   // Identify roles
@@ -590,6 +638,30 @@ function buildChain(certs: CertificateInfo[]): CertificateInfo[] {
       cert.role = 'intermediate'
     } else {
       cert.role = 'end-entity'
+    }
+  }
+
+  // When multiple end-entity certs exist, use SignerInfo to pick the real signer.
+  // The SignerInfo contains the issuer+serial of the cert that actually signed.
+  const endEntities = certs.filter((c) => c.role === 'end-entity')
+  if (endEntities.length > 1 && signerIdentifier) {
+    const matched = endEntities.find(
+      (c) =>
+        c.serialNumber === signerIdentifier.serial ||
+        (c.issuerCommonName === signerIdentifier.issuerCN &&
+          c.serialNumber === signerIdentifier.serial),
+    )
+    if (matched) {
+      // Demote all other end-entities — they are ancillary certs (service certs, TSA, etc.)
+      for (const ee of endEntities) {
+        if (ee !== matched) {
+          ee.role = 'intermediate' // or could be 'ancillary' but intermediate keeps the chain logic working
+          log.info(`[cert] Demoted ${ee.commonName} — not the SignerInfo signer`)
+        }
+      }
+      log.info(`[cert] SignerInfo matched signer: ${matched.commonName}`)
+    } else {
+      log.warn(`[cert] SignerInfo serial did not match any end-entity cert`)
     }
   }
 
@@ -781,13 +853,13 @@ export async function parseCertificateChain(
     const derBytes = hexToBytes(pkcs7Hex)
     log.info(`[cert] Parsing PKCS#7 blob (${derBytes.length} bytes)`)
 
-    const certificates = parsePkcs7Certificates(derBytes)
+    const { certs: certificates, signerIdentifier } = parsePkcs7Certificates(derBytes)
     log.info(`[cert] Found ${certificates.length} certificate(s) in SignedData`)
 
     if (certificates.length === 0) return empty
 
-    // Build chain
-    const chain = buildChain(certificates)
+    // Build chain — pass signerIdentifier so it can disambiguate multiple end-entity certs
+    const chain = buildChain(certificates, signerIdentifier)
     const signer = chain.find((c) => c.role === 'end-entity') || null
 
     // Log chain
