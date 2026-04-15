@@ -22,7 +22,8 @@ import {
   type Asn1Node,
 } from './asn1-parser.js'
 import { logger } from '../logger.js'
-import { validateChain } from './chain-validator.js'
+import { validateChain, validateChainWithResolver } from './chain-validator.js'
+import { derivePkiDids } from './pki-did-derivation.js'
 
 const log = logger.verify
 
@@ -115,6 +116,17 @@ export interface CertificateChainResult {
    * by a UI. Set whenever `cryptographicallyVerified === false`.
    */
   cryptoVerificationWarning: string | null
+  /**
+   * The did:pki identifier derived for the issuing CA (ATT-438).
+   * Set when PKI is identified and a did:pki path can be derived.
+   * Used for resolver-backed trust anchor resolution.
+   */
+  pkiDid: string | null
+  /**
+   * How trust was established: 'bundled' (local certs) or 'resolver'
+   * (dynamic resolution via resolver.attestto.com). ATT-438.
+   */
+  trustSource: 'bundled' | 'resolver' | null
 }
 
 export interface PkiIdentity {
@@ -759,6 +771,8 @@ export async function parseCertificateChain(
     cryptographicallyVerified: false,
     cryptoVerificationWarning:
       'Certificate parser v1.5: ASN.1 structure parsed only — chain signatures NOT cryptographically verified against bundled trust anchors. Treat results as informational, not as proof of trust. v2 (pkijs) wiring tracked in ATT-209.',
+    pkiDid: null,
+    trustSource: null,
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -801,30 +815,49 @@ export async function parseCertificateChain(
     // Extract signer email — from Subject RDN email field or SAN
     const signerEmail = extractSignerEmail(signer)
 
-    // ── REAL chain validation against bundled BCCR trust anchors ──
-    // Uses pkijs.CertificateChainValidationEngine. Closes ATT-209.
+    // ── Derive did:pki for resolver-backed validation (ATT-438) ──
+    const pkiDids = derivePkiDids(chain, pki)
+    const pkiDid = pkiDids.issuingCaDid
+    if (pkiDid) {
+      log.info(`[cert] Derived did:pki: ${pkiDid} (via ${pkiDids.derivedVia})`)
+    }
+
+    // ── Chain validation: resolver-backed with bundled fallback ──
+    // Uses resolver.attestto.com for dynamic trust anchor resolution (ATT-438),
+    // falling back to bundled BCCR trust anchors (ATT-209).
     let cryptographicallyVerified = false
     let cryptoVerificationWarning: string | null =
       'Chain validation has not been attempted (no signer cert).'
+    let trustSource: 'bundled' | 'resolver' | null = null
 
     if (signer && signer.rawDerHex) {
       try {
         const intermediates = chain
           .filter((c) => c !== signer && c.rawDerHex)
           .map((c) => c.rawDerHex)
-        const result = await validateChain(signer.rawDerHex, intermediates)
+
+        // Use resolver-backed validation (falls back to bundled internally)
+        const result = await validateChainWithResolver(
+          signer.rawDerHex,
+          intermediates,
+          pkiDid,
+        )
 
         if (result.trusted) {
           cryptographicallyVerified = true
           cryptoVerificationWarning = null
+          trustSource = result.trustSource || 'bundled'
           log.event(
-            `[cert] ✓ Chain CRYPTOGRAPHICALLY VERIFIED — anchor: ${result.anchorCommonName} (length: ${result.chainLength})`,
+            `[cert] ✓ Chain CRYPTOGRAPHICALLY VERIFIED — anchor: ${result.anchorCommonName} ` +
+              `(length: ${result.chainLength}, source: ${trustSource}` +
+              `${result.pkiDid ? `, did: ${result.pkiDid}` : ''})`,
           )
         } else {
           cryptographicallyVerified = false
           cryptoVerificationWarning =
             `Cryptographic chain validation FAILED: ${result.error || 'unknown error'}. ` +
-            'Structure was parsed but the chain does not link to any bundled BCCR trust anchor. ' +
+            'Structure was parsed but the chain does not link to any trusted anchor ' +
+            '(checked resolver.attestto.com and bundled certs). ' +
             'The signature may be forged, self-signed, or issued by a CA we do not trust.'
           log.warn(`[cert] ✗ Chain validation failed: ${result.error}`)
         }
@@ -851,6 +884,8 @@ export async function parseCertificateChain(
       signerEmail,
       cryptographicallyVerified,
       cryptoVerificationWarning,
+      pkiDid,
+      trustSource,
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)

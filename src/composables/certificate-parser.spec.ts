@@ -71,6 +71,8 @@ describe('certificate-parser', () => {
       expect(result.keyUsage).toEqual([])
       expect(result.extKeyUsage).toEqual([])
       expect(result.cryptographicallyVerified).toBe(false)
+      expect(result.pkiDid).toBeNull()
+      expect(result.trustSource).toBeNull()
     })
 
     it('returns empty result for empty string', async () => {
@@ -79,6 +81,8 @@ describe('certificate-parser', () => {
       expect(result.keyUsage).toEqual([])
       expect(result.extKeyUsage).toEqual([])
       expect(result.cryptographicallyVerified).toBe(false)
+      expect(result.pkiDid).toBeNull()
+      expect(result.trustSource).toBeNull()
     })
 
     it('returns empty result for non-SignedData structure', async () => {
@@ -86,6 +90,8 @@ describe('certificate-parser', () => {
       const result = await parseCertificateChain('3003020101')
       expect(result.certificates).toHaveLength(0)
       expect(result.cryptographicallyVerified).toBe(false)
+      expect(result.pkiDid).toBeNull()
+      expect(result.trustSource).toBeNull()
     })
 
     it('handles malformed DER gracefully', async () => {
@@ -93,6 +99,8 @@ describe('certificate-parser', () => {
       const result = await parseCertificateChain('FFFFFFFFFFFF')
       expect(result.certificates).toHaveLength(0)
       expect(result.cryptographicallyVerified).toBe(false)
+      expect(result.pkiDid).toBeNull()
+      expect(result.trustSource).toBeNull()
     })
   })
 

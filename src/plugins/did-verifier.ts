@@ -22,6 +22,7 @@
  */
 
 import type { VerifierPlugin, VerificationResult } from './registry.js'
+import { resolvePkiDid } from '../composables/pki-resolver.js'
 
 // ── DID Resolution Types ─────────────────────────────────────────────
 
@@ -105,6 +106,33 @@ const didJwkResolver: DidResolver = {
   },
 }
 
+/** Resolve did:pki via resolver.attestto.com (ATT-438) */
+const didPkiResolver: DidResolver = {
+  method: 'pki',
+  resolve: async (did: string): Promise<DidDocument | null> => {
+    try {
+      const result = await resolvePkiDid(did)
+      if (!result) return null
+
+      // Map the resolver response to the standard DidDocument interface
+      const verificationMethod: VerificationMethod[] = result.keys.map((k) => ({
+        id: `${did}${k.keyId}`,
+        type: 'JsonWebKey2020',
+        controller: did,
+        publicKeyJwk: k.publicKeyJwk,
+      }))
+
+      return {
+        id: did,
+        verificationMethod,
+        assertionMethod: verificationMethod.map((vm) => vm.id),
+      }
+    } catch {
+      return null
+    }
+  },
+}
+
 // ── DID Verifier Plugin Factory ──────────────────────────────────────
 
 export function createDidVerifier(options: DidVerifierOptions = {}): VerifierPlugin {
@@ -113,6 +141,7 @@ export function createDidVerifier(options: DidVerifierOptions = {}): VerifierPlu
   // Register built-in resolvers
   resolvers.set('web', didWebResolver)
   resolvers.set('jwk', didJwkResolver)
+  resolvers.set('pki', didPkiResolver)
 
   // Register custom resolvers (override built-in if same method)
   for (const r of options.resolvers ?? []) {

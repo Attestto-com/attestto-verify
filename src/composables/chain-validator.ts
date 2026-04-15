@@ -18,6 +18,7 @@
  */
 
 import { logger } from '../logger.js'
+import { resolveAndMatchChain, type PkiResolverOptions } from './pki-resolver.js'
 
 // Trust anchors from the centralized @attestto/trust package.
 // PEM strings are bundled into the dist at build time — zero runtime fetches.
@@ -43,6 +44,10 @@ export interface ChainValidationResult {
   error: string | null
   /** Length of the validated chain (signer → … → root), 0 if not trusted. */
   chainLength: number
+  /** How trust was established: 'bundled' (local certs) or 'resolver' (resolver.attestto.com) */
+  trustSource?: 'bundled' | 'resolver'
+  /** The did:pki that was resolved, if trust came from resolver */
+  pkiDid?: string
 }
 
 // ── PEM ↔ DER Helpers ─────────────────────────────────────────────
@@ -386,6 +391,228 @@ export function reconstructSignedBytes(
   out.set(part1, 0)
   out.set(part2, length1)
   return out
+}
+
+// ── Resolver-Backed Validation (ATT-438) ──────────────────────────────
+
+/**
+ * Validate a certificate chain using resolver.attestto.com for dynamic
+ * trust anchor resolution, with fallback to bundled certs.
+ *
+ * Flow:
+ * 1. If pkiDid provided, resolve via resolver.attestto.com
+ * 2. Match resolved key fingerprints against CA certs from the PDF
+ * 3. If match found, use the matched CA cert as a pkijs trust anchor
+ * 4. If no match or resolver fails, fall back to bundled BCCR certs
+ *
+ * @param signerCertHex         DER hex of the signer cert
+ * @param intermediateCertsHex  DER hex of intermediate CA certs from the PDF
+ * @param pkiDid                The did:pki identifier for the issuing CA (optional)
+ * @param resolverOptions       Resolver configuration
+ */
+export async function validateChainWithResolver(
+  signerCertHex: string,
+  intermediateCertsHex: string[],
+  pkiDid?: string | null,
+  resolverOptions?: PkiResolverOptions,
+): Promise<ChainValidationResult> {
+  // Try resolver-backed validation first if we have a did:pki
+  if (pkiDid) {
+    try {
+      log.info(`[chain-validator] Attempting resolver-backed validation: ${pkiDid}`)
+
+      // The CA certs to match are the intermediates + we also try building
+      // from the full candidate pool (intermediates may include the issuing CA)
+      const allCaCerts = [...intermediateCertsHex]
+
+      const { matched, matchedCertIndex, matchedKey, resolution } =
+        await resolveAndMatchChain(pkiDid, allCaCerts, resolverOptions)
+
+      if (matched && matchedKey && matchedCertIndex >= 0) {
+        // We have a fingerprint-verified CA cert. Use it as a trust anchor
+        // in pkijs to validate the full chain cryptographically.
+        const trustedCertHex = allCaCerts[matchedCertIndex]
+
+        const result = await validateChainWithDynamicAnchor(
+          signerCertHex,
+          intermediateCertsHex,
+          trustedCertHex,
+        )
+
+        if (result.trusted) {
+          log.event(
+            `[chain-validator] ✓ Chain VERIFIED via resolver — ` +
+              `${pkiDid} → ${matchedKey.keyId} (${matchedKey.status})`,
+          )
+          return {
+            ...result,
+            trustSource: 'resolver',
+            pkiDid,
+          }
+        }
+
+        // Fingerprint matched but chain validation failed — cert might be
+        // the wrong level in the hierarchy. Log and fall through to bundled.
+        log.warn(
+          `[chain-validator] Fingerprint matched but chain validation failed: ${result.error}. ` +
+            `Falling back to bundled anchors.`,
+        )
+      } else if (resolution) {
+        log.info(
+          `[chain-validator] Resolver returned ${resolution.keys.length} key(s) ` +
+            `but no fingerprint matched. Falling back to bundled anchors.`,
+        )
+      }
+
+      // Also try resolving the parent DID (e.g., policy CA) if the issuing CA
+      // DID didn't match. The PDF might embed the policy CA cert instead.
+      if (!matched && resolution?.metadata?.parentDid) {
+        log.info(`[chain-validator] Trying parent DID: ${resolution.metadata.parentDid}`)
+        const parentResult = await resolveAndMatchChain(
+          resolution.metadata.parentDid,
+          allCaCerts,
+          resolverOptions,
+        )
+
+        if (parentResult.matched && parentResult.matchedCertIndex >= 0) {
+          const trustedCertHex = allCaCerts[parentResult.matchedCertIndex]
+          const result = await validateChainWithDynamicAnchor(
+            signerCertHex,
+            intermediateCertsHex,
+            trustedCertHex,
+          )
+
+          if (result.trusted) {
+            log.event(
+              `[chain-validator] ✓ Chain VERIFIED via resolver (parent DID) — ` +
+                `${resolution.metadata.parentDid}`,
+            )
+            return {
+              ...result,
+              trustSource: 'resolver',
+              pkiDid: resolution.metadata.parentDid,
+            }
+          }
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      log.warn(`[chain-validator] Resolver-backed validation error: ${message}. Falling back.`)
+    }
+  }
+
+  // Fallback: bundled trust anchors (existing behavior)
+  const result = await validateChain(signerCertHex, intermediateCertsHex)
+  return {
+    ...result,
+    trustSource: result.trusted ? 'bundled' : undefined,
+  }
+}
+
+/**
+ * Validate a chain using a dynamically resolved trust anchor.
+ * The anchor is a CA cert from the PDF whose fingerprint was verified
+ * against the resolver.
+ */
+async function validateChainWithDynamicAnchor(
+  signerCertHex: string,
+  intermediateCertsHex: string[],
+  trustedAnchorHex: string,
+): Promise<ChainValidationResult> {
+  try {
+    const { pkijs, asn1js } = await loadPkijs()
+
+    // Parse the trusted anchor
+    const anchorDer = hexToArrayBuffer(trustedAnchorHex)
+    const anchorAsn1 = asn1js.fromBER(anchorDer)
+    if (anchorAsn1.offset === -1) {
+      return {
+        trusted: false,
+        anchorCommonName: null,
+        error: 'Resolver-matched anchor cert ASN.1 parse failed',
+        chainLength: 0,
+      }
+    }
+    const anchorCert = new pkijs.Certificate({ schema: anchorAsn1.result })
+    const anchorCnAttr = anchorCert.subject.typesAndValues.find(
+      (t: { type: string }) => t.type === '2.5.4.3',
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anchorCn = ((anchorCnAttr?.value as any)?.valueBlock?.value as string) || null
+
+    // Parse signer
+    const signerDer = hexToArrayBuffer(signerCertHex)
+    const signerAsn1 = asn1js.fromBER(signerDer)
+    if (signerAsn1.offset === -1) {
+      return {
+        trusted: false,
+        anchorCommonName: null,
+        error: 'Signer certificate ASN.1 parse failed',
+        chainLength: 0,
+      }
+    }
+    const signerCert = new pkijs.Certificate({ schema: signerAsn1.result })
+
+    // Parse intermediates
+    const intermediates: import('pkijs').Certificate[] = []
+    for (const hex of intermediateCertsHex) {
+      try {
+        const der = hexToArrayBuffer(hex)
+        const asn1 = asn1js.fromBER(der)
+        if (asn1.offset === -1) continue
+        intermediates.push(new pkijs.Certificate({ schema: asn1.result }))
+      } catch {
+        // skip malformed
+      }
+    }
+
+    // Also load bundled anchors so pkijs can complete chains that go
+    // through the resolved anchor up to a bundled root
+    const bundledAnchors = await loadTrustAnchors()
+
+    // Build the chain validation engine with the resolved anchor + bundled anchors
+    const engine = new pkijs.CertificateChainValidationEngine({
+      trustedCerts: [anchorCert, ...bundledAnchors.map((a) => a.cert)],
+      certs: [signerCert, ...intermediates, anchorCert, ...bundledAnchors.map((a) => a.cert)],
+    })
+
+    const result = await engine.verify()
+
+    if (!result.result) {
+      return {
+        trusted: false,
+        anchorCommonName: anchorCn,
+        error: result.resultMessage || 'Chain validation failed with dynamic anchor',
+        chainLength: 0,
+      }
+    }
+
+    const builtChain = result.certificatePath || []
+    const root = builtChain[builtChain.length - 1]
+    let rootCn: string | null = null
+    if (root) {
+      const cnAttr = root.subject.typesAndValues.find(
+        (t: { type: string }) => t.type === '2.5.4.3',
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rootCn = ((cnAttr?.value as any)?.valueBlock?.value as string) || null
+    }
+
+    return {
+      trusted: true,
+      anchorCommonName: rootCn || anchorCn,
+      error: null,
+      chainLength: builtChain.length,
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      trusted: false,
+      anchorCommonName: null,
+      error: message,
+      chainLength: 0,
+    }
+  }
 }
 
 /**
