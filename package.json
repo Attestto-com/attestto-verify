@@ -1,6 +1,6 @@
 {
   "name": "@attestto/verify",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web Components for document verification and signing — verify.attestto.com",
   "license": "Apache-2.0",
   "type": "module",
@@ -40,7 +40,7 @@
   "homepage": "https://verify.attestto.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Attestto-com/attestto-verify.git"
+    "url": "https://github.com/attestto/verify"
   },
   "files": [
     "dist",
@@ -76,11 +76,6 @@
     "vite": "^8.0.8",
     "vitest": "^3.2.4"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/attestto/verify"
-  },
-  "homepage": "https://verify.attestto.com",
   "author": "Eduardo Chongkan <eduardo@attestto.com>",
   "contributors": [
     "Guillermo Chavarria <guillermocc@attestto.com>"
