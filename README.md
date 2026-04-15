@@ -1,8 +1,13 @@
 # @attestto/verify
 
+[![npm version](https://img.shields.io/npm/v/@attestto/verify.svg)](https://www.npmjs.com/package/@attestto/verify)
+[![license](https://img.shields.io/npm/l/@attestto/verify.svg)](./LICENSE)
+
 > Web Components for document verification and signing. Drop a PDF — verify its integrity, digital signatures, and security properties entirely in your browser. No login. No backend. No data transmitted.
 
-A zero-trust, client-side document verification suite built on W3C Web Components. Part of the [Attestto Open](https://attestto.org) ecosystem. Live at [verify.attestto.com](https://verify.attestto.com) and [sign.attestto.com](https://sign.attestto.com).
+A zero-trust, client-side document verification suite built on W3C Web Components. Part of the [Attestto](https://attestto.org) identity infrastructure. Live at [verify.attestto.com](https://verify.attestto.com).
+
+**[Documentation](https://attestto.org/docs/verify/)** · **[Playground](https://attestto.org/docs/verify/playground/)** · **[Quickstart](https://attestto.org/docs/quickstart/verify-a-document/)**
 
 ## Architecture
 
@@ -67,17 +72,16 @@ Drop a document to verify its integrity, signatures, and security properties.
 <attestto-verify hash="sha256:a1b2c3..."></attestto-verify>
 ```
 
-**What v1 does:**
+**Capabilities:**
 - SHA-256 hash computation
 - PAdES / PKCS#7 signature detection and metadata extraction
 - SubFilter detection (`adbe.pkcs7.detached`, `ETSI.CAdES.detached`, `adbe.pkcs7.sha1`)
 - ByteRange extraction for signature integrity audit
 - Forensic security scan: JavaScript injection, OpenAction, embedded files, encryption type, external links
-
-**What v2 adds (ATT-209):**
 - Cryptographic verification via pkijs (ByteRange + CA chain math)
 - LTV offline revocation checking (`/DSS` extraction)
 - DID and vLEI identity extraction from X.509 certificates
+- `did:pki` resolution via [resolver.attestto.com](https://resolver.attestto.com) for dynamic trust anchor lookup
 
 **Attributes:**
 - `hash` — Pre-filled hash for deep-link mode
@@ -240,42 +244,25 @@ src/
 
 ## Ecosystem
 
-| Repo | Role | Relationship |
+| Package | Role | Relationship |
 |---|---|---|
-| `attestto-trust` | PKI trust roots | Used by the CA chain validator for cryptographic verification |
-| `@attestto/id-wallet-adapter` | Wallet discovery | Used by `<attestto-sign>` for DID wallet integration |
-| `@attestto-com/vc-sdk` | VC format | Provides `DocumentSignatureCredential` output format |
-| `attestto-anchor` | Solana hash anchoring | Verifies anchored hashes via plugin |
+| [`attestto-trust`](https://github.com/Attestto-com/attestto-trust) | PKI trust roots | Used by the CA chain validator for cryptographic verification |
+| [`did-pki-resolver`](https://github.com/Attestto-com/did-pki-resolver) | DID resolution | Resolves `did:pki` identifiers for trust anchor matching |
+| [`@attestto/id-wallet-adapter`](https://www.npmjs.com/package/@attestto/id-wallet-adapter) | Wallet discovery | Used by `<attestto-sign>` for DID wallet integration |
+| [`@attestto-com/vc-sdk`](https://www.npmjs.com/package/@attestto-com/vc-sdk) | VC format | Provides `DocumentSignatureCredential` output format |
+| [`attestto-anchor`](https://github.com/Attestto-com/attestto-anchor) | Solana anchoring | Verifies anchored hashes via plugin |
 
-## Build with an LLM
+## LLM context
 
-This repo ships a [`llms.txt`](./llms.txt) context file — a machine-readable summary of the API, data structures, and integration patterns designed to be read by AI coding assistants.
-
-### Recommended setup
-
-Use the [`attestto-dev-mcp`](../attestto-dev-mcp) server to give your LLM active access to the ecosystem:
-
-```bash
-cd ../attestto-dev-mcp
-npm install && npm run build
-```
-
-Then add it to your Claude / Cursor / Windsurf config and ask:
-
-> *"Explore the Attestto ecosystem and help me set up [this component]"*
-
-### Which model?
-
-We recommend **[Claude](https://claude.ai) Pro** (5× usage vs free) or higher. Long context and strong TypeScript reasoning handle this codebase well. The MCP server works with any LLM that supports tool use.
-
-> **Quick start:** Ask your LLM to read `llms.txt` in this repo, then describe what you want to build. It will find the right archetype, generate boilerplate, and walk you through the first run.
+This repo ships a [`llms.txt`](./llms.txt) file — a machine-readable summary of the API, data structures, and integration patterns for AI coding assistants.
 
 ## Roadmap
 
-- [x] ATT-208: v1 signature detection + forensic scanner (19 tests)
-- [ ] ATT-209: v2 cryptographic verification (pkijs + ByteRange + CA chain)
-- [ ] ATT-210: Solana anchor verifier plugin
-- [ ] ATT-212: vLEI Trust Plugin (GLEIF)
+- [x] Signature detection + forensic scanner
+- [x] Cryptographic verification (pkijs + ByteRange + CA chain)
+- [x] `did:pki` resolution and trust anchor matching
+- [ ] Solana anchor verifier plugin
+- [ ] vLEI Trust Plugin (GLEIF)
 
 ## Contributing
 

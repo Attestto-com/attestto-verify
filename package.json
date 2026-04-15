@@ -22,6 +22,26 @@
       "import": "./dist/plugins/did-verifier.js"
     }
   },
+  "keywords": [
+    "document-verification",
+    "digital-signatures",
+    "web-components",
+    "pdf-verification",
+    "pades",
+    "pkcs7",
+    "did",
+    "verifiable-credentials",
+    "pki",
+    "forensic-audit",
+    "client-side",
+    "zero-trust",
+    "attestto"
+  ],
+  "homepage": "https://verify.attestto.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Attestto-com/verify.git"
+  },
   "files": [
     "dist",
     "LICENSE",
