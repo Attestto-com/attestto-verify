@@ -36,22 +36,111 @@
 
     <!-- Structured Data -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Attestto Verify",
-      "url": "https://verify.attestto.com",
-      "description": "Verify PDF integrity, digital signatures, and document security properties. Open source, client-side only.",
-      "applicationCategory": "SecurityApplication",
-      "operatingSystem": "Any (browser-based)",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "license": "https://www.apache.org/licenses/LICENSE-2.0",
-      "creator": {
-        "@type": "Organization",
-        "name": "Attestto",
-        "url": "https://attestto.com"
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Attestto Verify",
+        "url": "https://verify.attestto.com",
+        "description": "Verify PDF integrity, digital signatures, and document security properties. Open source, client-side only. Supports Costa Rica Firma Digital (BCCR PKI) and national PKIs via did:pki resolution.",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Any (browser-based)",
+        "browserRequirements": "Requires a modern browser with Web Crypto API support",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "softwareVersion": "1.0",
+        "creator": {
+          "@type": "Organization",
+          "name": "Attestto",
+          "url": "https://attestto.org",
+          "logo": "https://attestto.org/logo.svg"
+        },
+        "featureList": [
+          "Digital signature verification (PAdES, CAdES)",
+          "Certificate chain validation against national PKI roots",
+          "Document integrity check (SHA-256 hash verification)",
+          "Costa Rica Firma Digital (BCCR) support",
+          "Cross-border PKI bridging via did:pki resolver",
+          "100% client-side — no file upload, no backend",
+          "Open source (Apache 2.0)"
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to verify a digitally signed PDF",
+        "description": "Check the digital signature, certificate chain, and integrity of any signed PDF document — entirely in your browser, no upload required.",
+        "totalTime": "PT30S",
+        "tool": { "@type": "HowToTool", "name": "Any modern web browser (Chrome, Firefox, Safari, Edge)" },
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Open Attestto Verify",
+            "text": "Navigate to verify.attestto.com. No account, login, or installation required.",
+            "url": "https://verify.attestto.com"
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Drop your signed PDF",
+            "text": "Drag and drop a digitally signed PDF file onto the page, or click to select a file. The document stays in your browser — nothing is uploaded to any server."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Review verification results",
+            "text": "The verifier checks: digital signature validity, certificate chain against national PKI trust anchors (Costa Rica BCCR, and others via did:pki), document integrity (SHA-256), and signing timestamp. Results appear in seconds."
+          }
+        ]
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is the PDF uploaded to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Attestto Verify runs 100% in your browser. Your PDF file never leaves your device. All signature verification, certificate chain validation, and integrity checks happen client-side using the Web Crypto API. No backend, no data transmission."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What digital signatures can Attestto Verify check?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Attestto Verify supports PAdES (PDF Advanced Electronic Signatures), CAdES, and standard PKCS#7 signatures. It validates against Costa Rica's Firma Digital PKI (BCCR/SINPE/MICITT) and can bridge to any national PKI via the did:pki resolver at resolver.attestto.com."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does cross-border PKI verification work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "When you verify a document signed by a foreign PKI, Attestto derives a did:pki identifier from the certificate and resolves it via resolver.attestto.com. If the resolver knows that country's PKI, it returns the CA's public key and the verifier can validate the entire chain — no manual trust store configuration needed."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Attestto Verify free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, completely free and open source under the Apache 2.0 license. Document verification is a citizen right in the Attestto architecture — it will never have a paywall. Source code is available at github.com/Attestto-com/attestto-verify."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I verify Costa Rica Firma Digital documents?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Costa Rica's full BCCR PKI hierarchy is supported — including Persona Física, Persona Jurídica, and SINPE certificates. The verifier validates the certificate chain, checks document integrity, and shows the signer's certificate details. It works with any PDF signed using Firma Digital."
+            }
+          }
+        ]
       }
-    }
+    ]
     </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }

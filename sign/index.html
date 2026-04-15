@@ -31,6 +31,58 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Attestto Sign",
+        "url": "https://verify.attestto.com/sign",
+        "description": "Sign PDF documents with your DID wallet or browser-generated key. Client-side only — your document never leaves your device.",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Any (browser-based)",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "creator": {
+          "@type": "Organization",
+          "name": "Attestto",
+          "url": "https://attestto.org"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What keys can I sign with?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can sign with a browser-generated Ed25519 key or connect a DID wallet (like the Attestto Station desktop app) via the id-wallet-adapter protocol. The private key never leaves your device."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is the signed document uploaded anywhere?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Like Attestto Verify, the signing process runs entirely in your browser. Your PDF never leaves your device. The signature is embedded directly into the document metadata."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can the signature be verified later?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Any document signed with Attestto Sign can be verified at verify.attestto.com or by any verifier that supports W3C Verifiable Credentials and DID-based signatures."
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
