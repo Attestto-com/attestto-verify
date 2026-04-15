@@ -584,8 +584,6 @@
           <nav>
             <a href="/" class="active" data-i18n="nav.verify">Verify</a>
             <a href="/sign/" data-i18n="nav.sign">Sign</a>
-            <a href="/dev/" data-i18n="nav.developers">Developers</a>
-            <a href="https://github.com/Attestto-com/verify" target="_blank">GitHub</a>
           </nav>
           <button id="lang-switch" style="background: none; border: 1px solid #334155; color: #94a3b8; padding: 0.25rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.15s;" onmouseover="this.style.borderColor='#594FD3';this.style.color='#e2e8f0'" onmouseout="this.style.borderColor='#334155';this.style.color='#94a3b8'">ES</button>
         </div>
@@ -632,7 +630,7 @@
         <div class="footer-col">
           <h4 data-i18n="verify.footer.privacy">Privacy</h4>
           <p data-i18n="verify.footer.privacyText">Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend, no tracking.</p>
-          <p><a href="https://github.com/Attestto-com/verify" data-i18n="verify.footer.viewSource">View source</a> &rarr;</p>
+          <p><a href="https://github.com/Attestto-com/attestto-verify" data-i18n="verify.footer.viewSource">View source</a> &rarr;</p>
         </div>
       </div>
       <div class="footer-badges">
@@ -646,8 +644,7 @@
           <h4 data-i18n="verify.footer.recognizedPki">Recognized PKI</h4>
           <div class="badge-grid">
             <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
-            <span class="pill pill-outline">EU eIDAS</span>
-            <span class="pill pill-outline">AATL</span>
+            <span class="pill pill-outline" data-i18n="verify.footer.morePki">More via did:pki</span>
           </div>
         </div>
         <div class="footer-badge-group">
@@ -670,10 +667,17 @@
       </div>
       <div class="transparency-note">
         <h4 data-i18n="verify.footer.networkTransparency">Network Transparency</h4>
-        <p><span data-i18n="verify.footer.networkText">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.</span> <a href="https://github.com/Attestto-com/verify"><span data-i18n="verify.footer.verifySource">Verify in the source code</span> &rarr;</a></p>
+        <p><span data-i18n="verify.footer.networkText">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.</span> <a href="https://github.com/Attestto-com/attestto-verify"><span data-i18n="verify.footer.verifySource">Verify in the source code</span> &rarr;</a></p>
+      </div>
+      <div class="footer-links" style="display: flex; gap: 2rem; justify-content: center; padding: 1rem 0; border-top: 1px solid #1e293b; margin-top: 1rem;">
+        <a href="https://attestto.org" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">attestto.org</a>
+        <a href="/dev/" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;" data-i18n="nav.developers">Developers</a>
+        <a href="https://github.com/Attestto-com/attestto-verify" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">GitHub</a>
+        <a href="https://resolver.attestto.com" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">DID Resolver</a>
+        <a href="https://attestto.org/standards" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;" data-i18n="verify.footer.standardsLink">Standards</a>
       </div>
       <div class="footer-bottom">
-        <span data-i18n="verify.footer.license">Open source under Apache 2.0</span> — <a href="https://github.com/Attestto-com/verify">attestto/verify</a>
+        <span data-i18n="verify.footer.license">Open source under Apache 2.0</span> — <a href="https://github.com/Attestto-com/attestto-verify">attestto/verify</a>
         &middot; <span data-i18n="verify.footer.fileNeverLeaves">Your file never leaves your device.</span>
       </div>
     </footer>
