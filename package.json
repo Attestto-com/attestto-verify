@@ -40,7 +40,7 @@
   "homepage": "https://verify.attestto.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Attestto-com/verify.git"
+    "url": "https://github.com/Attestto-com/attestto-verify.git"
   },
   "files": [
     "dist",
