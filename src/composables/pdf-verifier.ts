@@ -13,7 +13,7 @@ import {
   cleanSignerName,
   type CertificateChainResult,
 } from './certificate-parser.js'
-import { verifyDocumentIntegrity, reconstructSignedBytes } from './chain-validator.js'
+import { verifyDocumentIntegrity, reconstructSignedBytes } from './chain-validator-client.js'
 import { extractAttesttoSelfAttestedSignatures } from './attestto-self-attested.js'
 
 const log = logger.verify

@@ -22,7 +22,7 @@ import {
   type Asn1Node,
 } from './asn1-parser.js'
 import { logger } from '../logger.js'
-import { validateChain, validateChainWithResolver } from './chain-validator.js'
+import { validateChain, validateChainWithResolver } from './chain-validator-client.js'
 import { derivePkiDids } from './pki-did-derivation.js'
 
 const log = logger.verify
