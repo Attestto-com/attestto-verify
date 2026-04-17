@@ -4,6 +4,24 @@ Security-relevant changes to `@attestto/verify`. Each entry describes the vulner
 
 ---
 
+## 2026-04-17 — ATT-313: Offline revocation checking via embedded DSS
+
+**Vector:** `attestto-verify` verified certificate chain integrity and trust but never checked whether the signer's certificate had been revoked. A fired employee's cert, or a compromised key that was revoked by the CA, would still show a green badge.
+
+**Impact:** High — revoked certificates treated as trusted.
+
+**Fix:** Added offline revocation checking by parsing the PDF's `/DSS` (Document Security Store) dictionary. PAdES B-LT and B-LTA documents embed OCSP responses and CRLs at signing time. The new `dss-parser.ts` extracts these blobs, and `revocation-checker.ts` parses the ASN.1 structures to check if the signer cert serial appears as revoked. Zero network calls — all data from the document itself.
+
+`PdfSignatureInfo` now includes:
+- `revocationStatus`: `'good'` | `'revoked'` | `'unknown'` | `'no-data'` | `'parse-error'`
+- `revocationMessage`: human-readable explanation
+
+Non-LTV documents get `'no-data'` — the UI should render this as a yellow "Revocation not verified" hint, not green.
+
+**Test:** `revocation-checker.spec.ts` — 18 tests covering OCSP parsing (good/revoked/unknown), CRL parsing, serial normalization, DSS extraction, and no-data fallback.
+
+---
+
 ## 2026-04-17 — ATT-312: Plugin security hardening (3 flaws)
 
 ### Flaw 1: Plugin level escalation — no crypto floor
