@@ -44,6 +44,7 @@ vi.mock('@attestto/trust/cr', () => ({
   CA_RAIZ_NACIONAL_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
   CA_POLITICA_PERSONA_JURIDICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
   CA_POLITICA_PERSONA_FISICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  CA_POLITICA_SELLADO_DE_TIEMPO_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
   CA_SINPE_PERSONA_JURIDICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
   CA_SINPE_PERSONA_FISICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
   CA_SINPE_PERSONA_FISICA_V2_2023: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
@@ -257,14 +258,14 @@ describe('validateChain', () => {
   })
 
   it('returns trusted=false when signer cert ASN.1 parse fails', async () => {
-    // First 6 calls: anchor loading succeeds
-    for (let i = 0; i < 6; i++) {
+    // First 7 calls: anchor loading succeeds
+    for (let i = 0; i < 7; i++) {
       vi.mocked(asn1js.fromBER).mockReturnValueOnce({
         offset: 0,
         result: { mock: `anchor-${i}` },
       } as unknown as ReturnType<typeof asn1js.fromBER>)
     }
-    // 7th call: signer cert parse fails
+    // 8th call: signer cert parse fails
     vi.mocked(asn1js.fromBER).mockReturnValueOnce({
       offset: -1,
       result: null,
@@ -377,8 +378,8 @@ describe('validateChain', () => {
     let callCount = 0
     vi.mocked(asn1js.fromBER).mockImplementation(() => {
       callCount++
-      // 8th call is intermediate — make it fail with offset:-1
-      if (callCount === 8) {
+      // 9th call is intermediate — make it fail with offset:-1
+      if (callCount === 9) {
         return { offset: -1, result: null } as unknown as ReturnType<typeof asn1js.fromBER>
       }
       return { offset: 0, result: { mock: `cert-${callCount}` } } as unknown as ReturnType<typeof asn1js.fromBER>
