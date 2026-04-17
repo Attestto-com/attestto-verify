@@ -15,6 +15,8 @@ import {
 } from './certificate-parser.js'
 import { verifyDocumentIntegrity, reconstructSignedBytes } from './chain-validator-client.js'
 import { extractAttesttoSelfAttestedSignatures } from './attestto-self-attested.js'
+import { extractDss } from './dss-parser.js'
+import { checkRevocation, type RevocationStatus } from './revocation-checker.js'
 
 const log = logger.verify
 
@@ -177,6 +179,17 @@ export interface PdfSignatureInfo {
     /** Self-declared signing level from the embedded VC. */
     levelDeclared: 'self-attested' | 'firma-digital-mocked' | 'firma-digital-pkcs11'
   }
+  /**
+   * Revocation status from embedded DSS data (ATT-313).
+   *   - 'good'        → OCSP/CRL confirms cert was valid at signing time
+   *   - 'revoked'     → cert was revoked
+   *   - 'unknown'     → OCSP returned unknown
+   *   - 'no-data'     → no LTV data embedded in PDF
+   *   - 'parse-error' → could not parse embedded revocation data
+   */
+  revocationStatus: RevocationStatus
+  /** Human-readable revocation message */
+  revocationMessage: string | null
   /** Certificate chain extracted from PKCS#7 (v1.5) */
   certChain: CertificateChainResult | null
   /**
@@ -408,6 +421,28 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       }
     }
 
+    // Phase C (ATT-313) — Revocation check from embedded DSS data.
+    // Extract /DSS once (document-level), check each signer cert serial.
+    let revocationStatus: RevocationStatus = 'no-data'
+    let revocationMessage: string | null = null
+    if (certChain?.signer) {
+      const dss = extractDss(bytes)
+      if (dss.found && (dss.ocspResponses.length > 0 || dss.crls.length > 0)) {
+        try {
+          const result = checkRevocation(
+            certChain.signer.serialNumber,
+            dss.ocspResponses,
+            dss.crls,
+          )
+          revocationStatus = result.status
+          revocationMessage = result.message
+        } catch (err) {
+          revocationStatus = 'parse-error'
+          revocationMessage = err instanceof Error ? err.message : String(err)
+        }
+      }
+    }
+
     sigs.push({
       name: displayName,
       reason: getField('Reason'),
@@ -423,6 +458,8 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       pkcs7Hex: pkcs7Hex ?? null,
       documentIntegrityVerified,
       integrityError,
+      revocationStatus,
+      revocationMessage,
     })
   }
 
