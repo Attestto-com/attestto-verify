@@ -40,7 +40,7 @@
   "homepage": "https://verify.attestto.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/attestto/verify"
+    "url": "https://github.com/Attestto-com/attestto-verify.git"
   },
   "files": [
     "dist",
@@ -56,7 +56,8 @@
     "format": "prettier --write 'src/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts'",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@attestto/id-wallet-adapter": "^0.4.1",
