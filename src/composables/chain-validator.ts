@@ -37,6 +37,10 @@ import {
   AC_RAIZ_ICP_BRASIL_V11 as BR_RAIZ_V11_PEM,
   AC_RAIZ_ICP_BRASIL_V12 as BR_RAIZ_V12_PEM,
 } from '@attestto/trust/br'
+import {
+  AC_RAIZ_REPUBLICA_ARGENTINA as AR_RAIZ_PEM,
+  AUTORIDAD_CERTIFICANTE_FIRMA_DIGITAL as AR_ACFD_PEM,
+} from '@attestto/trust/ar'
 
 const log = logger.verify
 
@@ -134,6 +138,9 @@ async function loadTrustAnchors(): Promise<LoadedAnchor[]> {
     { pem: BR_RAIZ_V10_PEM, label: 'AC Raiz ICP-Brasil v10' },
     { pem: BR_RAIZ_V11_PEM, label: 'AC Raiz ICP-Brasil v11' },
     { pem: BR_RAIZ_V12_PEM, label: 'AC Raiz ICP-Brasil v12' },
+    // Argentina — AC Raíz Nacional (ATT-314)
+    { pem: AR_RAIZ_PEM, label: 'AC Raíz de la República Argentina' },
+    { pem: AR_ACFD_PEM, label: 'Autoridad Certificante de Firma Digital (ONTI)' },
   ]
 
   const loaded: LoadedAnchor[] = []

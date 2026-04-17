@@ -57,6 +57,11 @@ vi.mock('@attestto/trust/br', () => ({
   AC_RAIZ_ICP_BRASIL_V12: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
 }))
 
+vi.mock('@attestto/trust/ar', () => ({
+  AC_RAIZ_REPUBLICA_ARGENTINA: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+  AUTORIDAD_CERTIFICANTE_FIRMA_DIGITAL: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
+}))
+
 // Silence the verify logger noise during tests.
 vi.mock('../logger.js', () => ({
   logger: {
@@ -265,14 +270,14 @@ describe('validateChain', () => {
   })
 
   it('returns trusted=false when signer cert ASN.1 parse fails', async () => {
-    // First 11 calls: anchor loading succeeds (7 CR + 4 BR)
-    for (let i = 0; i < 11; i++) {
+    // First 13 calls: anchor loading succeeds (7 CR + 4 BR + 2 AR)
+    for (let i = 0; i < 13; i++) {
       vi.mocked(asn1js.fromBER).mockReturnValueOnce({
         offset: 0,
         result: { mock: `anchor-${i}` },
       } as unknown as ReturnType<typeof asn1js.fromBER>)
     }
-    // 12th call: signer cert parse fails
+    // 14th call: signer cert parse fails
     vi.mocked(asn1js.fromBER).mockReturnValueOnce({
       offset: -1,
       result: null,
@@ -385,8 +390,8 @@ describe('validateChain', () => {
     let callCount = 0
     vi.mocked(asn1js.fromBER).mockImplementation(() => {
       callCount++
-      // 13th call is intermediate — make it fail with offset:-1
-      if (callCount === 13) {
+      // 15th call is intermediate — make it fail with offset:-1
+      if (callCount === 15) {
         return { offset: -1, result: null } as unknown as ReturnType<typeof asn1js.fromBER>
       }
       return { offset: 0, result: { mock: `cert-${callCount}` } } as unknown as ReturnType<typeof asn1js.fromBER>
