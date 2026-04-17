@@ -122,16 +122,30 @@ export type Plugin = ParserPlugin | CryptoPlugin | TrustPlugin | VerifierPlugin
 
 class PluginRegistry {
   private plugins = new Map<string, Plugin>()
+  private frozen = new Set<string>()
 
   /**
-   * Register a plugin. Overwrites if same name exists.
+   * Register a plugin. Once registered, a plugin name is frozen by default —
+   * subsequent register() calls with the same name are rejected (security:
+   * prevents a malicious script from replacing a legitimate plugin).
+   *
+   * Use `{ allowOverwrite: true }` only in test environments.
+   *
    * Dispatches 'attestto-plugin-registered' event for components to react.
    */
-  register(plugin: Plugin): void {
+  register(plugin: Plugin, options?: { allowOverwrite?: boolean }): void {
     if (this.plugins.has(plugin.name)) {
+      if (this.frozen.has(plugin.name) && !options?.allowOverwrite) {
+        console.warn(
+          `[attestto] Plugin "${plugin.name}" is frozen — register() rejected. ` +
+          `Call unregister("${plugin.name}") first, or pass { allowOverwrite: true }.`,
+        )
+        return
+      }
       console.warn(`[attestto] Plugin "${plugin.name}" already registered, overwriting.`)
     }
     this.plugins.set(plugin.name, plugin)
+    this.frozen.add(plugin.name)
 
     // Notify components via composed event (crosses shadow DOM)
     if (typeof window !== 'undefined') {
@@ -147,6 +161,7 @@ class PluginRegistry {
 
   unregister(name: string): void {
     this.plugins.delete(name)
+    this.frozen.delete(name)
   }
 
   get(name: string): Plugin | undefined {
@@ -204,8 +219,16 @@ class PluginRegistry {
   /**
    * Run all trust plugins against a certificate chain.
    * Returns the highest trust level found.
+   *
+   * Security (ATT-312): When `cryptographicallyVerified` is false, trust
+   * plugins that claim 'qualified' or 'recognized' are capped at 'unknown'.
+   * A plugin can only elevate trust when the underlying chain has been
+   * cryptographically verified against a bundled trust anchor.
    */
-  async checkTrust(certChain: Uint8Array[]): Promise<TrustResult> {
+  async checkTrust(
+    certChain: Uint8Array[],
+    cryptographicallyVerified = false,
+  ): Promise<TrustResult> {
     const trustPlugins = this.getByType<TrustPlugin>('trust')
 
     if (trustPlugins.length === 0) {
@@ -226,10 +249,19 @@ class PluginRegistry {
 
     for (const outcome of results) {
       if (outcome.status === 'fulfilled' && outcome.value.trusted) {
-        const current = trustOrder.indexOf(outcome.value.trustLevel ?? 'unknown')
+        // ATT-312: cap trust level when chain is not cryptographically verified
+        let pluginLevel = outcome.value.trustLevel ?? 'unknown'
+        if (!cryptographicallyVerified && (pluginLevel === 'qualified' || pluginLevel === 'recognized')) {
+          console.warn(
+            `[attestto] Trust plugin claimed "${pluginLevel}" but chain is not cryptographically verified — capped to "unknown"`,
+          )
+          pluginLevel = 'unknown'
+        }
+
+        const current = trustOrder.indexOf(pluginLevel)
         const bestIdx = trustOrder.indexOf(best.trustLevel ?? 'unknown')
         if (current < bestIdx || !best.trusted) {
-          best = outcome.value
+          best = { ...outcome.value, trustLevel: pluginLevel }
         }
       }
     }
@@ -240,6 +272,13 @@ class PluginRegistry {
 
 /** Global plugin registry — shared across all Attestto component instances */
 export const attesttoPlugins = new PluginRegistry()
+
+/** Test-only: reset frozen set so tests can re-register plugins */
+export function _resetPluginRegistry(): void {
+  for (const name of attesttoPlugins.getAll().map((p) => p.name)) {
+    attesttoPlugins.unregister(name)
+  }
+}
 
 // ── Global API (for CDN/script-tag users) ────────────────────────────
 

@@ -392,7 +392,7 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
     //   - 'tampered'  → integrity check ran AND said the bytes were modified
     //                   (strict === false). Real cryptographic mismatch.
     //   - 'verified'  → chain cryptographically verified AND document integrity intact
-    // Plugins may further escalate (e.g. did-verifier → 'trusted', vLEI → 'qualified').
+    // Plugins may attempt to escalate — gatePluginLevel() enforces the crypto floor (ATT-312).
     let level: 'detected' | 'parsed' | 'verified' | 'tampered' | 'unknown' = 'detected'
     if (certChain && certChain.certificates.length > 0) {
       if (documentIntegrityVerified === false) {
@@ -427,6 +427,28 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
   }
 
   return sigs
+}
+
+// ── Plugin Escalation Gate (ATT-312) ──────────────────────────────
+
+/**
+ * Enforce the crypto floor on plugin-elevated trust levels.
+ *
+ * A plugin must NEVER be able to claim 'trusted' or 'qualified' if the
+ * underlying certificate chain has not been cryptographically verified
+ * against a bundled trust anchor. This function runs AFTER all plugins
+ * and downgrades any illegitimate escalation back to 'parsed'.
+ */
+export function gatePluginLevel(sig: PdfSignatureInfo): PdfSignatureInfo {
+  const verified = sig.certChain?.cryptographicallyVerified === true
+  if (!verified && (sig.level === 'trusted' || sig.level === 'qualified')) {
+    log.warn(
+      `[security] Plugin escalation blocked: level "${sig.level}" downgraded to "parsed" ` +
+      `because certChain.cryptographicallyVerified is ${sig.certChain?.cryptographicallyVerified ?? 'null'}`,
+    )
+    return { ...sig, level: 'parsed' }
+  }
+  return sig
 }
 
 /**
