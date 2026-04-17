@@ -547,6 +547,86 @@ export class AttesttoVerify extends LitElement {
         margin: 0 0 0.35rem;
       }
 
+      /* ── Tooltips ────────────────────────────────────────────── */
+      .has-tooltip {
+        position: relative;
+        cursor: help;
+      }
+
+      .has-tooltip .tooltip-text {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--attestto-bg-elevated, #1e293b);
+        color: var(--attestto-text, #e2e8f0);
+        padding: 0.45rem 0.65rem;
+        border-radius: 6px;
+        font-size: 0.72rem;
+        font-weight: 400;
+        line-height: 1.4;
+        text-transform: none;
+        letter-spacing: normal;
+        white-space: normal;
+        width: max-content;
+        max-width: 280px;
+        z-index: 10;
+        pointer-events: none;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--attestto-border, #334155);
+      }
+
+      .has-tooltip .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: var(--attestto-bg-elevated, #1e293b);
+      }
+
+      .has-tooltip:hover .tooltip-text,
+      .has-tooltip:focus .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* Tooltip anchored to the left for badges near the right edge */
+      .has-tooltip.tooltip-left .tooltip-text {
+        left: 0;
+        transform: none;
+      }
+      .has-tooltip.tooltip-left .tooltip-text::after {
+        left: 12px;
+        transform: none;
+      }
+
+      /* Section title with info icon */
+      .section-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .info-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: var(--attestto-border, #334155);
+        color: var(--attestto-text-muted, #94a3b8);
+        font-size: 0.6rem;
+        font-weight: 700;
+        cursor: help;
+        flex-shrink: 0;
+      }
+
       /* ── Trust Permissions ───────────────────────────────────── */
       .trust-permissions {
         margin-top: 0.75rem;
@@ -1098,7 +1178,7 @@ export class AttesttoVerify extends LitElement {
                         </span>
                         <span part="signer-name">${sig.name}</span>
                         ${sig.subFilter
-                          ? html`<span class="sub-filter-tag">${sig.subFilter}</span>`
+                          ? html`<span class="sub-filter-tag has-tooltip tooltip-left">${sig.subFilter}${this.sigFormatTooltip(sig.subFilter) ? html`<span class="tooltip-text">${this.sigFormatTooltip(sig.subFilter)}</span>` : ''}</span>`
                           : ''}
                       </div>
                       ${sig.level === 'tampered'
@@ -1281,13 +1361,17 @@ export class AttesttoVerify extends LitElement {
                       ${(sig.certChain?.keyUsage?.length || sig.certChain?.extKeyUsage?.length)
                         ? html`
                             <div class="trust-permissions">
-                              <div class="cert-chain-title">${t('comp.verify.trustPermissions')}</div>
+                              <div class="section-title-row has-tooltip">
+                                <div class="cert-chain-title">${t('comp.verify.trustPermissions')}</div>
+                                <span class="info-icon">?</span>
+                                <span class="tooltip-text">${t('comp.verify.trustPermissions.tooltip')}</span>
+                              </div>
                               <div class="permission-grid">
                                 ${(sig.certChain.keyUsage ?? []).map(
-                                  (ku) => html`<span class="permission-badge permission-key">${ku}</span>`,
+                                  (ku) => html`<span class="permission-badge permission-key has-tooltip">${ku}${this.kuTooltip(ku) ? html`<span class="tooltip-text">${this.kuTooltip(ku)}</span>` : ''}</span>`,
                                 )}
                                 ${(sig.certChain.extKeyUsage ?? []).map(
-                                  (eku) => html`<span class="permission-badge permission-ext">${eku}</span>`,
+                                  (eku) => html`<span class="permission-badge permission-ext has-tooltip">${eku}${this.ekuTooltip(eku) ? html`<span class="tooltip-text">${this.ekuTooltip(eku)}</span>` : ''}</span>`,
                                 )}
                               </div>
                             </div>
@@ -1296,7 +1380,11 @@ export class AttesttoVerify extends LitElement {
                       ${sig.certChain && sig.certChain.chain.length > 0
                         ? html`
                             <div class="cert-chain" part="cert-chain">
-                              <div class="cert-chain-title">${t('comp.verify.certChain')}</div>
+                              <div class="section-title-row has-tooltip">
+                                <div class="cert-chain-title">${t('comp.verify.certChain')}</div>
+                                <span class="info-icon">?</span>
+                                <span class="tooltip-text">${t('comp.verify.certChain.tooltip')}</span>
+                              </div>
                               ${sig.certChain.chain.slice().reverse().map(
                                 (cert, i) => html`
                                   <div class="cert-node" style="--depth: ${i}">
@@ -1766,6 +1854,44 @@ export class AttesttoVerify extends LitElement {
   }
 
   /** Convert ISO 3166-1 alpha-2 country code to flag emoji */
+  /** Map Key Usage label → i18n tooltip key */
+  private kuTooltip(label: string): string {
+    const map: Record<string, string> = {
+      'Digital Signature': 'comp.verify.ku.digitalSignature',
+      'Non-Repudiation': 'comp.verify.ku.nonRepudiation',
+      'Key Encipherment': 'comp.verify.ku.keyEncipherment',
+      'Data Encipherment': 'comp.verify.ku.dataEncipherment',
+      'Key Agreement': 'comp.verify.ku.keyAgreement',
+      'Certificate Signing': 'comp.verify.ku.certificateSigning',
+      'CRL Signing': 'comp.verify.ku.crlSigning',
+      'Encipher Only': 'comp.verify.ku.encipherOnly',
+      'Decipher Only': 'comp.verify.ku.decipherOnly',
+    }
+    return map[label] ? t(map[label]) : ''
+  }
+
+  /** Map Extended Key Usage label → i18n tooltip key */
+  private ekuTooltip(label: string): string {
+    const map: Record<string, string> = {
+      'Server Authentication': 'comp.verify.eku.serverAuth',
+      'Client Authentication': 'comp.verify.eku.clientAuth',
+      'Code Signing': 'comp.verify.eku.codeSigning',
+      'Email Protection': 'comp.verify.eku.emailProtection',
+      'Time Stamping': 'comp.verify.eku.timeStamping',
+      'OCSP Signing': 'comp.verify.eku.ocspSigning',
+      'Document Signing': 'comp.verify.eku.documentSigning',
+      'Smart Card Login': 'comp.verify.eku.smartCardLogin',
+    }
+    return map[label] ? t(map[label]) : ''
+  }
+
+  /** Tooltip for signature format (subFilter) */
+  private sigFormatTooltip(subFilter: string): string {
+    const key = `comp.verify.sigFormat.tooltip.${subFilter}`
+    const val = t(key)
+    return val !== key ? val : ''
+  }
+
   private countryFlag(code: string): string {
     if (!code || code.length !== 2) return '\u{1F310}' // globe
     const upper = code.toUpperCase()
