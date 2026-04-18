@@ -451,6 +451,7 @@ describe('validateChainWithResolver', () => {
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing', parentDid: 'did:pki:cr:politica:persona-fisica' },
         cached: false,
         endEntityHints: null,
+        ocspEndpoints: [],
       },
     })
 
@@ -488,6 +489,7 @@ describe('validateChainWithResolver', () => {
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
         endEntityHints: null,
+        ocspEndpoints: [],
       },
     })
 
@@ -556,6 +558,7 @@ describe('validateChainWithResolver', () => {
           },
           cached: false,
           endEntityHints: null,
+        ocspEndpoints: [],
         },
       })
       // Second call (parent DID): fingerprint match!
@@ -607,6 +610,7 @@ describe('validateChainWithResolver', () => {
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
         endEntityHints: null,
+        ocspEndpoints: [],
       },
     })
 
@@ -639,6 +643,7 @@ describe('validateChainWithResolver', () => {
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
         endEntityHints: null,
+        ocspEndpoints: [],
       },
     })
 

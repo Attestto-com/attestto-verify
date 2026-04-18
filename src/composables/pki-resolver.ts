@@ -55,6 +55,13 @@ export interface EndEntityHint {
   documentationUrl?: string
 }
 
+export interface OcspEndpoint {
+  /** Service ID (e.g. "did:pki:cr:sinpe:persona-fisica#ocsp") */
+  id: string
+  /** OCSP responder URL */
+  url: string
+}
+
 export interface PkiResolutionResult {
   /** The resolved DID */
   did: string
@@ -72,6 +79,8 @@ export interface PkiResolutionResult {
   } | null
   /** End-entity hints for extracting signer identity per cert type */
   endEntityHints: Record<string, EndEntityHint> | null
+  /** OCSP responder endpoints from DID Document service entries */
+  ocspEndpoints: OcspEndpoint[]
   /** Whether the resolution came from cache */
   cached: boolean
 }
@@ -200,11 +209,26 @@ export async function resolvePkiDid(
         ? rawHints
         : null
 
+    // Extract OCSP endpoints from DID Document service entries
+    const services = didDocument.service || []
+    const ocspEndpoints: OcspEndpoint[] = services
+      .filter((s: { type?: string }) => s.type === 'OCSPResponder')
+      .map((s: { id?: string; serviceEndpoint?: string }) => ({
+        id: s.id || '',
+        url: s.serviceEndpoint || '',
+      }))
+      .filter((e: OcspEndpoint) => e.url)
+
+    if (ocspEndpoints.length > 0) {
+      log.info(`[pki-resolver] Found ${ocspEndpoints.length} OCSP endpoint(s) for ${did}`)
+    }
+
     const result: PkiResolutionResult = {
       did,
       keys,
       metadata,
       endEntityHints,
+      ocspEndpoints,
       cached: false,
     }
 

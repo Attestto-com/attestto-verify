@@ -239,6 +239,7 @@ describe('matchKeyByFingerprint', () => {
     ],
     metadata: null,
     endEntityHints: null,
+    ocspEndpoints: [],
     cached: false,
   }
 
