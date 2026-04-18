@@ -127,6 +127,8 @@ export interface CertificateChainResult {
    * (dynamic resolution via resolver.attestto.com). ATT-438.
    */
   trustSource: 'bundled' | 'resolver' | null
+  /** National ID format hint from did:pki resolution (e.g. "CR-cedula", "BR-cpf") */
+  nationalIdFormat: string | null
 }
 
 export interface PkiIdentity {
@@ -845,6 +847,7 @@ export async function parseCertificateChain(
       'Certificate parser v1.5: ASN.1 structure parsed only — chain signatures NOT cryptographically verified against bundled trust anchors. Treat results as informational, not as proof of trust. v2 (pkijs) wiring tracked in ATT-209.',
     pkiDid: null,
     trustSource: null,
+    nationalIdFormat: null,
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -875,14 +878,14 @@ export async function parseCertificateChain(
       log.event(`[cert] PKI identified: ${pki.name} — ${pki.certificateType || 'Unknown type'}`)
     }
 
-    // Extract national ID from signer cert
-    const nationalId = signer?.subjectSerialNumber || null
+    // Extract national ID from signer cert (default: serialNumber)
+    let nationalId = signer?.subjectSerialNumber || null
     if (nationalId) {
       log.info(`[cert] National ID (cédula): ${nationalId}`)
     }
 
     // Clean display name
-    const signerDisplayName = signer ? cleanSignerName(signer.commonName) : null
+    let signerDisplayName = signer ? cleanSignerName(signer.commonName) : null
 
     // Extract signer email — from Subject RDN email field or SAN
     const signerEmail = extractSignerEmail(signer)
@@ -901,6 +904,7 @@ export async function parseCertificateChain(
     let cryptoVerificationWarning: string | null =
       'Chain validation has not been attempted (no signer cert).'
     let trustSource: 'bundled' | 'resolver' | null = null
+    let endEntityHints: Record<string, import('./pki-resolver.js').EndEntityHint> | null = null
 
     if (signer && signer.rawDerHex) {
       try {
@@ -914,6 +918,8 @@ export async function parseCertificateChain(
           intermediates,
           pkiDid,
         )
+
+        endEntityHints = result.endEntityHints ?? null
 
         if (result.trusted) {
           cryptographicallyVerified = true
@@ -944,6 +950,45 @@ export async function parseCertificateChain(
         'Signer certificate raw DER not captured — chain validation skipped.'
     }
 
+    // ── Apply endEntityHints to refine identity extraction (ATT-427) ──
+    // Hints from the did:pki DID Document tell us which X.509 fields contain
+    // the national ID, name, etc. for this specific cert type and country.
+    let nationalIdFormat: string | null = null
+    if (endEntityHints && pki?.certificateType && signer) {
+      const hint = endEntityHints[pki.certificateType]
+      if (hint) {
+        log.info(`[cert] Applying endEntityHints for "${pki.certificateType}"`)
+        nationalIdFormat = hint.nationalIdFormat || null
+
+        // Map hint field names to CertificateInfo properties
+        const fieldMap: Record<string, string | null> = {
+          serialNumber: signer.subjectSerialNumber,
+          CN: signer.commonName,
+          O: signer.organization,
+          OU: signer.organizationalUnit,
+          emailAddress: signer.email,
+        }
+
+        // Override national ID if hint points to a different field
+        if (hint.nationalIdField && hint.nationalIdField !== 'serialNumber') {
+          const hintedId = fieldMap[hint.nationalIdField] ?? null
+          if (hintedId) {
+            nationalId = hintedId
+            log.info(`[cert] Hint: nationalId from ${hint.nationalIdField}: ${hintedId}`)
+          }
+        }
+
+        // Override display name if hint specifies a different field
+        if (hint.nameField && hint.nameField !== 'CN') {
+          const hintedName = fieldMap[hint.nameField] ?? null
+          if (hintedName) {
+            signerDisplayName = cleanSignerName(hintedName)
+            log.info(`[cert] Hint: signerDisplayName from ${hint.nameField}`)
+          }
+        }
+      }
+    }
+
     return {
       certificates,
       signer,
@@ -958,6 +1003,7 @@ export async function parseCertificateChain(
       cryptoVerificationWarning,
       pkiDid,
       trustSource,
+      nationalIdFormat,
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)

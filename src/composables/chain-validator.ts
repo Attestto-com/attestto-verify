@@ -59,6 +59,8 @@ export interface ChainValidationResult {
   trustSource?: 'bundled' | 'resolver'
   /** The did:pki that was resolved, if trust came from resolver */
   pkiDid?: string
+  /** End-entity hints from the DID Document — how to extract signer identity per cert type */
+  endEntityHints?: Record<string, import('./pki-resolver.js').EndEntityHint> | null
 }
 
 // ── PEM ↔ DER Helpers ─────────────────────────────────────────────
@@ -468,6 +470,7 @@ export async function validateChainWithResolver(
             ...result,
             trustSource: 'resolver',
             pkiDid,
+            endEntityHints: resolution?.endEntityHints ?? null,
           }
         }
 
@@ -511,6 +514,7 @@ export async function validateChainWithResolver(
               ...result,
               trustSource: 'resolver',
               pkiDid: resolution.metadata.parentDid,
+              endEntityHints: resolution?.endEntityHints ?? null,
             }
           }
         }
