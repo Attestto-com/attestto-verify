@@ -202,9 +202,9 @@ describe('derivePkiDids — edge cases', () => {
     })
 
     const result = derivePkiDids(chain, pki)
-    // Should attempt heuristic derivation
-    expect(result.derivedVia).toBe('heuristic')
-    expect(result.issuingCaDid).toMatch(/^did:pki:br:/)
+    // BR now has structured CA mappings (SERPRO)
+    expect(result.derivedVia).toBe('ca-name-mapping')
+    expect(result.issuingCaDid).toBe('did:pki:br:serpro:pessoa-fisica')
   })
 
   it('handles accented characters in cert type', () => {

@@ -36,6 +36,25 @@ export interface ResolvedPkiKey {
   notAfter?: string
 }
 
+export interface EndEntityHint {
+  /** X.509 field containing the national ID (e.g. "serialNumber") */
+  nationalIdField: string
+  /** Format identifier (e.g. "CR-cedula", "BR-cpf") */
+  nationalIdFormat: string
+  /** Regex pattern for validating the national ID */
+  nationalIdPattern?: string
+  /** X.509 field containing the signer name */
+  nameField?: string
+  /** X.509 field containing the organization */
+  organizationField?: string
+  /** X.509 field containing the email (e.g. "SAN:rfc822Name") */
+  emailField?: string
+  /** X.509 field for professional ID (e.g. colegiado number) */
+  professionalIdField?: string
+  /** URL to official documentation about this cert type */
+  documentationUrl?: string
+}
+
 export interface PkiResolutionResult {
   /** The resolved DID */
   did: string
@@ -51,6 +70,8 @@ export interface PkiResolutionResult {
     parentDid?: string
     rootDid?: string
   } | null
+  /** End-entity hints for extracting signer identity per cert type */
+  endEntityHints: Record<string, EndEntityHint> | null
   /** Whether the resolution came from cache */
   cached: boolean
 }
@@ -172,10 +193,18 @@ export async function resolvePkiDid(
         }
       : null
 
+    // Extract endEntityHints (how to parse signer identity per cert type)
+    const rawHints = pkiMeta?.endEntityHints
+    const endEntityHints: Record<string, EndEntityHint> | null =
+      rawHints && typeof rawHints === 'object' && Object.keys(rawHints).length > 0
+        ? rawHints
+        : null
+
     const result: PkiResolutionResult = {
       did,
       keys,
       metadata,
+      endEntityHints,
       cached: false,
     }
 

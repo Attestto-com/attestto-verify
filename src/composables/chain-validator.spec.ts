@@ -450,6 +450,7 @@ describe('validateChainWithResolver', () => {
         keys: [],
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing', parentDid: 'did:pki:cr:politica:persona-fisica' },
         cached: false,
+        endEntityHints: null,
       },
     })
 
@@ -486,6 +487,7 @@ describe('validateChainWithResolver', () => {
         keys: [{ keyId: '#key-1', publicKeyJwk: { kty: 'RSA' }, fingerprint: 'xxx', status: 'active' }],
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
+        endEntityHints: null,
       },
     })
 
@@ -553,6 +555,7 @@ describe('validateChainWithResolver', () => {
             parentDid: 'did:pki:cr:politica:persona-fisica',
           },
           cached: false,
+          endEntityHints: null,
         },
       })
       // Second call (parent DID): fingerprint match!
@@ -603,6 +606,7 @@ describe('validateChainWithResolver', () => {
         keys: [],
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
+        endEntityHints: null,
       },
     })
 
@@ -634,6 +638,7 @@ describe('validateChainWithResolver', () => {
         keys: [],
         metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
         cached: false,
+        endEntityHints: null,
       },
     })
 

@@ -238,6 +238,7 @@ describe('matchKeyByFingerprint', () => {
       },
     ],
     metadata: null,
+    endEntityHints: null,
     cached: false,
   }
 

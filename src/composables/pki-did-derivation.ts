@@ -36,11 +36,48 @@ const CA_DID_MAPPINGS: Record<string, CaDidMapping[]> = {
     { pattern: 'POLITICA', path: 'politica' },
     { pattern: 'RAIZ NACIONAL', path: 'raiz-nacional' },
   ],
-  // Future countries follow the same pattern:
-  // BR: [
-  //   { pattern: 'SERPRO', path: 'serpro' },
-  //   { pattern: 'CERTISIGN', path: 'certisign' },
-  //   ...
+  BR: [
+    { pattern: 'SERPRO', path: 'serpro' },
+    { pattern: 'CERTISIGN', path: 'certisign' },
+    { pattern: 'SERASA', path: 'serasa' },
+    { pattern: 'VALID', path: 'valid' },
+    { pattern: 'SOLUTI', path: 'soluti' },
+    { pattern: 'RAIZ BRASILEIRA', path: 'raiz-brasileira' },
+    { pattern: 'ICP-BRASIL', path: 'icp-brasil' },
+  ],
+  AR: [
+    { pattern: 'FIRMA DIGITAL', path: 'acfd' },
+    { pattern: 'AC RAIZ', path: 'raiz' },
+    { pattern: 'ONTI', path: 'onti' },
+    { pattern: 'ENCODE', path: 'encode' },
+  ],
+  // Uncomment when certs are added to @attestto/trust and CN patterns verified against real PDFs:
+  // MX: [
+  //   { pattern: 'SAT', path: 'sat' },
+  //   { pattern: 'BANXICO', path: 'banxico' },
+  // ],
+  // CL: [
+  //   { pattern: 'E-SIGN', path: 'e-sign' },
+  //   { pattern: 'ACEPTA', path: 'acepta' },
+  //   { pattern: 'CERTINET', path: 'certinet' },
+  // ],
+  // CO: [
+  //   { pattern: 'CERTICAMARA', path: 'certicamara' },
+  //   { pattern: 'GSE', path: 'gse' },
+  //   { pattern: 'ANDES SCD', path: 'andes-scd' },
+  // ],
+  // PE: [
+  //   { pattern: 'RENIEC', path: 'reniec' },
+  //   { pattern: 'SUNAT', path: 'sunat' },
+  // ],
+  // EC: [
+  //   { pattern: 'BANCO CENTRAL', path: 'bce' },
+  //   { pattern: 'SECURITY DATA', path: 'security-data' },
+  //   { pattern: 'ANFAC', path: 'anfac' },
+  // ],
+  // UY: [
+  //   { pattern: 'AGESIC', path: 'agesic' },
+  //   { pattern: 'CORREO URUGUAYO', path: 'correo-uruguayo' },
   // ],
 }
 
@@ -50,6 +87,7 @@ const CA_DID_MAPPINGS: Record<string, CaDidMapping[]> = {
  * to the path segment used in did:pki identifiers.
  */
 const CERT_TYPE_SEGMENTS: Record<string, string> = {
+  // CR
   'Persona Física': 'persona-fisica',
   'Persona Jurídica': 'persona-juridica',
   'Persona Natural': 'persona-natural',
@@ -58,9 +96,15 @@ const CERT_TYPE_SEGMENTS: Record<string, string> = {
   // BR
   'e-CPF A1 (Pessoa Física)': 'pessoa-fisica',
   'e-CPF A3 (Pessoa Física)': 'pessoa-fisica',
-  // Generic fallback patterns
-  'e.firma': 'persona-fisica',
-  'CSD (Sello Digital)': 'sello-digital',
+  'e-CNPJ A1 (Pessoa Jurídica)': 'pessoa-juridica',
+  'e-CNPJ A3 (Pessoa Jurídica)': 'pessoa-juridica',
+  // Generic
+  'Timestamping': 'timestamping',
+  // Uncomment when certs verified against real PDFs:
+  // MX: 'e.firma': 'persona-fisica', 'CSD (Sello Digital)': 'sello-digital', 'FIEL (Firma Electrónica)': 'fiel'
+  // AR: 'Firma Digital (Persona Humana)': 'persona-humana'
+  // CL: 'Firma Electrónica Avanzada': 'firma-avanzada'
+  // CO/PE: 'Certificado Digital (Persona Natural)': 'persona-natural'
 }
 
 // ── Public API ────────────────────────────────────────────────────────
@@ -224,11 +268,11 @@ function deriveHeuristic(
   country: string,
   certificateType: string | null,
 ): string | null {
-  // Normalize: lowercase, strip "CA ", "- COSTA RICA", version suffixes, etc.
+  // Normalize: lowercase, strip "CA ", country suffixes, version suffixes, etc.
   let normalized = caName
     .toUpperCase()
-    .replace(/^CA\s+/i, '')
-    .replace(/\s*-\s*COSTA RICA.*$/i, '')
+    .replace(/^(CA|AC|AUTORIDADE CERTIFICADORA|AUTORIDAD CERTIFICANTE)\s+/i, '')
+    .replace(/\s*-\s*(COSTA RICA|BRASIL|BRAZIL|ARGENTINA|MEXICO|CHILE|COLOMBIA|PERU|ECUADOR|URUGUAY).*$/i, '')
     .replace(/\s*V\d+\s*$/i, '')
     .replace(/\s*\(\d{4}\)\s*$/i, '')
     .trim()
