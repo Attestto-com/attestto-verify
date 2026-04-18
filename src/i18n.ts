@@ -247,6 +247,19 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.structureParsed.body': 'The certificate chain has not been cryptographically verified.',
     'comp.verify.copyPkcs7': 'Copy PKCS#7',
 
+    // Summary banner (ATT-203)
+    'comp.verify.summary.verified': 'Document Verified',
+    'comp.verify.summary.tampered': 'Document Tampered',
+    'comp.verify.summary.partial': 'Partially Verified',
+    'comp.verify.summary.noSigs': 'No Digital Signatures',
+    'comp.verify.summary.sigCount': 'signature(s)',
+    'comp.verify.summary.intact': 'Document intact',
+    'comp.verify.summary.modified': 'Content modified after signing',
+    'comp.verify.summary.copySummary': 'Copy summary',
+    'comp.verify.summary.summaryCopied': 'Summary copied!',
+    'comp.verify.summary.verifiedAt': 'Verified at',
+    'comp.verify.summary.verifiedVia': 'via verify.attestto.com — no upload, 100% client-side',
+
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Discovering credential wallets...',
     'comp.sign.change': 'Change',
@@ -521,6 +534,19 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.structureParsed.title': 'Solo estructura analizada.',
     'comp.verify.structureParsed.body': 'La cadena de certificados no ha sido verificada criptográficamente.',
     'comp.verify.copyPkcs7': 'Copiar PKCS#7',
+
+    // Summary banner (ATT-203)
+    'comp.verify.summary.verified': 'Documento Verificado',
+    'comp.verify.summary.tampered': 'Documento Alterado',
+    'comp.verify.summary.partial': 'Verificado Parcialmente',
+    'comp.verify.summary.noSigs': 'Sin Firmas Digitales',
+    'comp.verify.summary.sigCount': 'firma(s)',
+    'comp.verify.summary.intact': 'Documento íntegro',
+    'comp.verify.summary.modified': 'Contenido modificado después de firmar',
+    'comp.verify.summary.copySummary': 'Copiar resumen',
+    'comp.verify.summary.summaryCopied': '¡Resumen copiado!',
+    'comp.verify.summary.verifiedAt': 'Verificado a las',
+    'comp.verify.summary.verifiedVia': 'vía verify.attestto.com — sin subida, 100% en el navegador',
 
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Descubriendo billeteras de credenciales...',

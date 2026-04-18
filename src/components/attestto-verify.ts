@@ -1060,6 +1060,90 @@ export class AttesttoVerify extends LitElement {
       .hash-match-cta:hover {
         text-decoration: underline;
       }
+
+      /* ── Summary banner (ATT-203) ───────────────────── */
+      .summary-banner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+      }
+
+      .summary-banner-verified {
+        background: var(--attestto-success-bg, #052e16);
+        border: 1px solid var(--attestto-success, #16a34a);
+      }
+
+      .summary-banner-tampered {
+        background: #450a0a;
+        border: 1px solid #dc2626;
+      }
+
+      .summary-banner-partial {
+        background: var(--attestto-warning-bg, #422006);
+        border: 1px solid var(--attestto-warning, #d97706);
+      }
+
+      .summary-banner-none {
+        background: var(--attestto-muted-bg, #1e293b);
+        border: 1px solid var(--attestto-border, #334155);
+      }
+
+      .summary-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+      }
+
+      .summary-content {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .summary-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+
+      .summary-banner-verified .summary-title { color: var(--attestto-success, #4ade80); }
+      .summary-banner-tampered .summary-title { color: #f87171; }
+      .summary-banner-partial .summary-title { color: var(--attestto-warning, #fbbf24); }
+      .summary-banner-none .summary-title { color: var(--attestto-text-muted, #94a3b8); }
+
+      .summary-detail {
+        font-size: 0.82rem;
+        color: var(--attestto-text-muted, #94a3b8);
+        margin-top: 0.2rem;
+      }
+
+      .summary-meta {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+        margin-top: 0.35rem;
+      }
+
+      .summary-actions {
+        display: flex;
+        flex-shrink: 0;
+      }
+
+      .copy-summary-btn {
+        background: none;
+        border: 1px solid var(--attestto-border, #334155);
+        color: var(--attestto-text-muted, #94a3b8);
+        padding: 0.35rem 0.7rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+
+      .copy-summary-btn:hover {
+        border-color: var(--attestto-primary, #594fd3);
+        color: var(--attestto-text, #e2e8f0);
+      }
     `,
   ]
 
@@ -1069,6 +1153,10 @@ export class AttesttoVerify extends LitElement {
   @property({ type: String, attribute: 'expected-hash' }) expectedHash = ''
   /** Whether the share link was just copied */
   @state() private showShareCopied = false
+  /** Whether the summary text was just copied */
+  @state() private showSummaryCopied = false
+  /** Timestamp of when verification completed */
+  @state() private verifiedAt: string | null = null
 
   @state() private dragging = false
   @state() private verifying = false
@@ -1156,10 +1244,77 @@ export class AttesttoVerify extends LitElement {
     `
   }
 
+  private renderSummaryBanner() {
+    const r = this.result!
+    const sigs = r.signatures
+    const sigCount = sigs.length
+    const hasTampered = sigs.some((s) => s.level === 'tampered')
+    const allVerified = sigCount > 0 && sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+    const someVerified = sigCount > 0 && sigs.some((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+
+    let bannerClass: string
+    let icon: string
+    let title: string
+    let detail: string
+
+    if (hasTampered) {
+      bannerClass = 'summary-banner-tampered'
+      icon = '⛔'
+      title = t('comp.verify.summary.tampered')
+      detail = t('comp.verify.summary.modified')
+    } else if (allVerified) {
+      bannerClass = 'summary-banner-verified'
+      icon = '✓'
+      title = t('comp.verify.summary.verified')
+      detail = `${sigCount} ${t('comp.verify.summary.sigCount')} · ${t('comp.verify.summary.intact')}`
+    } else if (someVerified) {
+      bannerClass = 'summary-banner-partial'
+      icon = '◐'
+      title = t('comp.verify.summary.partial')
+      detail = `${sigCount} ${t('comp.verify.summary.sigCount')}`
+    } else if (sigCount === 0) {
+      bannerClass = 'summary-banner-none'
+      icon = '○'
+      title = t('comp.verify.summary.noSigs')
+      detail = r.isPdf ? 'PDF' : r.fileName.split('.').pop()?.toUpperCase() || ''
+    } else {
+      bannerClass = 'summary-banner-partial'
+      icon = '◐'
+      title = t('comp.verify.summary.partial')
+      detail = `${sigCount} ${t('comp.verify.summary.sigCount')}`
+    }
+
+    // Collect PKI names for display
+    const pkiNames = [...new Set(sigs.map((s) => s.certChain?.pki?.name).filter(Boolean))]
+
+    return html`
+      <div class="summary-banner ${bannerClass}" part="summary-banner">
+        <span class="summary-icon">${icon}</span>
+        <div class="summary-content">
+          <div class="summary-title">${title}</div>
+          <div class="summary-detail">
+            ${detail}${pkiNames.length > 0 ? ` · ${pkiNames.join(', ')}` : ''}
+          </div>
+          ${this.verifiedAt ? html`
+            <div class="summary-meta">
+              ${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt} · ${t('comp.verify.summary.verifiedVia')}
+            </div>
+          ` : ''}
+        </div>
+        <div class="summary-actions">
+          <button class="copy-summary-btn" @click=${this.copySummary}>
+            ${this.showSummaryCopied ? t('comp.verify.summary.summaryCopied') : t('comp.verify.summary.copySummary')}
+          </button>
+        </div>
+      </div>
+    `
+  }
+
   private renderResult() {
     const r = this.result!
     return html`
       <div class="result">
+        ${r.isPdf ? this.renderSummaryBanner() : ''}
         <div class="result-card" part="result-card">
           <div>
           <div class="result-header">
@@ -1659,6 +1814,13 @@ export class AttesttoVerify extends LitElement {
         }
       })
 
+      // Record verification timestamp
+      this.verifiedAt = new Date().toLocaleTimeString(currentLang() === 'es' ? 'es-CR' : 'en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+
       // 2. Run registered verifier plugins (can only ADD trust, never bypass core)
       const verifiers = attesttoPlugins.getByType('verifier')
       if (verifiers.length > 0) {
@@ -1721,6 +1883,43 @@ export class AttesttoVerify extends LitElement {
     }
   }
 
+  private async copySummary() {
+    if (!this.result) return
+    const r = this.result
+    const sigs = r.signatures
+    const hasTampered = sigs.some((s) => s.level === 'tampered')
+    const allVerified = sigs.length > 0 && sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+
+    let verdict: string
+    if (hasTampered) verdict = t('comp.verify.summary.tampered').toUpperCase()
+    else if (allVerified) verdict = t('comp.verify.summary.verified').toUpperCase()
+    else if (sigs.length > 0) verdict = t('comp.verify.summary.partial').toUpperCase()
+    else verdict = t('comp.verify.summary.noSigs').toUpperCase()
+
+    const signerNames = sigs.map((s) => s.name).filter(Boolean)
+    const pkiNames = [...new Set(sigs.map((s) => s.certChain?.pki?.name).filter(Boolean))]
+    const url = `${window.location.origin}${window.location.pathname}#sha256=${r.hash}`
+
+    const lines = [
+      `${verdict} — ${r.fileName}`,
+      `SHA-256: ${r.hash}`,
+      sigs.length > 0 ? `${sigs.length} ${t('comp.verify.summary.sigCount')}` : '',
+      signerNames.length > 0 ? `Signers: ${signerNames.join(', ')}` : '',
+      pkiNames.length > 0 ? `PKI: ${pkiNames.join(', ')}` : '',
+      this.verifiedAt ? `${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt}` : '',
+      `${t('comp.verify.summary.verifiedVia')}`,
+      url,
+    ].filter(Boolean)
+
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      this.showSummaryCopied = true
+      setTimeout(() => { this.showSummaryCopied = false }, 2000)
+    } catch {
+      // Clipboard not available
+    }
+  }
+
   private async shareVerification() {
     if (!this.result?.hash) return
     const url = `${window.location.origin}${window.location.pathname}#sha256=${this.result.hash}`
@@ -1757,6 +1956,7 @@ export class AttesttoVerify extends LitElement {
     this.challengeInput = ''
     this.challengeError = ''
     this.challengeMethod = null
+    this.verifiedAt = null
     // Clear expected hash and URL fragment on reset
     this.expectedHash = ''
     if (window.location.hash) history.replaceState(null, '', window.location.pathname)
