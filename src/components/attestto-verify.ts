@@ -311,6 +311,69 @@ export class AttesttoVerify extends LitElement {
       }
 
       /* ── Certificate Chain ──────────────────────────────────── */
+      .cert-expired {
+        color: var(--attestto-error, #dc2626);
+        font-weight: 600;
+      }
+
+      .expiry-warning {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+        margin-top: 0.5rem;
+        background: var(--attestto-warning-bg, #fef3c7);
+        color: var(--attestto-warning-text, #92400e);
+        border-radius: 6px;
+        font-size: 0.78rem;
+        line-height: 1.4;
+      }
+
+      .revocation-status {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.75rem;
+        margin-top: 0.5rem;
+        border-radius: 6px;
+        font-size: 0.78rem;
+      }
+      .revocation-good {
+        background: var(--attestto-success-bg, #dcfce7);
+        color: var(--attestto-success-text, #166534);
+      }
+      .revocation-revoked {
+        background: var(--attestto-error-bg, #fee2e2);
+        color: var(--attestto-error-text, #991b1b);
+      }
+      .revocation-unknown, .revocation-parse-error {
+        background: var(--attestto-warning-bg, #fef3c7);
+        color: var(--attestto-warning-text, #92400e);
+      }
+
+      .pkcs7-surface {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+      .pkcs7-copy-btn {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 4px;
+        background: var(--attestto-bg-code, #f1f5f9);
+        color: var(--attestto-text-muted, #64748b);
+        cursor: pointer;
+      }
+      .pkcs7-copy-btn:hover {
+        background: var(--attestto-bg-hover, #e2e8f0);
+      }
+      .pkcs7-size {
+        font-size: 0.7rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+
       .cert-chain {
         margin-top: 0.75rem;
         padding: 0.75rem;
@@ -1400,7 +1463,7 @@ export class AttesttoVerify extends LitElement {
                                         : ''}
                                       <div class="cert-meta">
                                         ${cert.validFrom && cert.validTo
-                                          ? html`<span>${cert.validFrom.split('T')[0]} — ${cert.validTo.split('T')[0]}</span>`
+                                          ? html`<span class="${cert.validTo && new Date(cert.validTo) < new Date() ? 'cert-expired' : ''}">${cert.validFrom.split('T')[0]} — ${cert.validTo.split('T')[0]}${cert.validTo && new Date(cert.validTo) < new Date() ? ' (EXPIRADO)' : ''}</span>`
                                           : ''}
                                         ${cert.country
                                           ? html`<span>${cert.country}</span>`
@@ -1410,6 +1473,35 @@ export class AttesttoVerify extends LitElement {
                                   </div>
                                 `,
                               )}
+                            </div>
+                          `
+                        : ''}
+
+                      ${sig.revocationStatus && sig.revocationStatus !== 'no-data'
+                        ? html`
+                            <div class="revocation-status revocation-${sig.revocationStatus}" part="revocation-status">
+                              <span class="revocation-icon">${sig.revocationStatus === 'good' ? '\u2705' : sig.revocationStatus === 'revoked' ? '\u274C' : '\u26A0'}</span>
+                              <span>${sig.revocationMessage ?? sig.revocationStatus}</span>
+                            </div>
+                          `
+                        : ''}
+
+                      ${sig.certChain?.signer?.validTo && new Date(sig.certChain.signer.validTo) < new Date()
+                        ? html`
+                            <div class="expiry-warning" part="expiry-warning">
+                              <span class="expiry-icon">\u23F0</span>
+                              <span>Certificado del firmante expirado el ${sig.certChain.signer.validTo.split('T')[0]}. La firma fue valida al momento de firmar.</span>
+                            </div>
+                          `
+                        : ''}
+
+                      ${sig.pkcs7Hex
+                        ? html`
+                            <div class="pkcs7-surface" part="pkcs7-hex">
+                              <button class="pkcs7-copy-btn" @click=${() => this.copyPkcs7(sig.pkcs7Hex!)}>
+                                ${t('comp.verify.copyPkcs7') ?? 'Copiar PKCS#7'}
+                              </button>
+                              <span class="pkcs7-size">${Math.round(sig.pkcs7Hex.length / 2).toLocaleString()} bytes</span>
                             </div>
                           `
                         : ''}
@@ -1899,6 +1991,22 @@ export class AttesttoVerify extends LitElement {
       0x1f1e6 + upper.charCodeAt(0) - 65,
       0x1f1e6 + upper.charCodeAt(1) - 65,
     )
+  }
+
+  private async copyPkcs7(hex: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(hex)
+    } catch {
+      // Fallback for non-secure contexts
+      const ta = document.createElement('textarea')
+      ta.value = hex
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
   }
 
   private formatSize(bytes: number): string {
