@@ -467,6 +467,205 @@ export function checkRevocation(
   }
 }
 
+// ── Live OCSP Check (ATT-339) ─────────────────────────────────────
+
+/**
+ * Build a minimal OCSP request DER for a certificate serial number.
+ *
+ * OCSPRequest ::= SEQUENCE {
+ *   tbsRequest SEQUENCE {
+ *     requestList SEQUENCE OF SEQUENCE {
+ *       reqCert SEQUENCE {
+ *         hashAlgorithm  AlgorithmIdentifier (SHA-1 = 1.3.14.3.2.26),
+ *         issuerNameHash OCTET STRING (SHA-1 of issuer DN),
+ *         issuerKeyHash  OCTET STRING (SHA-1 of issuer public key),
+ *         serialNumber   INTEGER
+ *       }
+ *     }
+ *   }
+ * }
+ *
+ * NOTE: This builds a simplified request using SHA-1 hashes of the
+ * issuer DN and public key. For a minimal implementation we pass
+ * pre-computed hashes.
+ */
+function buildOcspRequestDer(
+  issuerNameHash: Uint8Array,
+  issuerKeyHash: Uint8Array,
+  serialNumberHex: string,
+): Uint8Array {
+  // SHA-1 OID: 1.3.14.3.2.26
+  const sha1Oid = new Uint8Array([0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a])
+  const nullParam = new Uint8Array([0x05, 0x00])
+
+  // AlgorithmIdentifier SEQUENCE
+  const algoId = wrapSequence(concatBytes(sha1Oid, nullParam))
+
+  // issuerNameHash OCTET STRING
+  const nameHash = wrapOctetString(issuerNameHash)
+
+  // issuerKeyHash OCTET STRING
+  const keyHash = wrapOctetString(issuerKeyHash)
+
+  // serialNumber INTEGER
+  const serialBytes = hexToBytes(serialNumberHex)
+  const serialInt = wrapTag(0x02, serialBytes)
+
+  // CertID SEQUENCE
+  const certId = wrapSequence(concatBytes(algoId, nameHash, keyHash, serialInt))
+
+  // Request SEQUENCE (just certId, no extensions)
+  const request = wrapSequence(certId)
+
+  // RequestList SEQUENCE OF
+  const requestList = wrapSequence(request)
+
+  // TBSRequest SEQUENCE
+  const tbsRequest = wrapSequence(requestList)
+
+  // OCSPRequest SEQUENCE
+  return wrapSequence(tbsRequest)
+}
+
+// ── DER encoding helpers ──────────────────────────────────────────
+
+function wrapTag(tag: number, content: Uint8Array): Uint8Array {
+  const len = encodeLength(content.length)
+  const result = new Uint8Array(1 + len.length + content.length)
+  result[0] = tag
+  result.set(len, 1)
+  result.set(content, 1 + len.length)
+  return result
+}
+
+function wrapSequence(content: Uint8Array): Uint8Array {
+  return wrapTag(0x30, content)
+}
+
+function wrapOctetString(content: Uint8Array): Uint8Array {
+  return wrapTag(0x04, content)
+}
+
+function encodeLength(len: number): Uint8Array {
+  if (len < 128) return new Uint8Array([len])
+  if (len < 256) return new Uint8Array([0x81, len])
+  return new Uint8Array([0x82, (len >> 8) & 0xff, len & 0xff])
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0)
+  const result = new Uint8Array(total)
+  let offset = 0
+  for (const a of arrays) {
+    result.set(a, offset)
+    offset += a.length
+  }
+  return result
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.length % 2 === 1 ? '0' + hex : hex
+  const bytes = new Uint8Array(clean.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
+}
+
+/**
+ * Perform a live OCSP check against a remote responder.
+ *
+ * @param ocspUrl     OCSP responder URL (from did:pki DID Document service endpoint)
+ * @param issuerNameHash  SHA-1 hash of the issuer's distinguished name (20 bytes)
+ * @param issuerKeyHash   SHA-1 hash of the issuer's public key (20 bytes)
+ * @param certSerialHex   Certificate serial number in hex
+ * @param timeout     Request timeout in ms (default: 5000)
+ * @returns           RevocationResult, or null if the check could not be performed
+ */
+export async function liveOcspCheck(
+  ocspUrl: string,
+  issuerNameHash: Uint8Array,
+  issuerKeyHash: Uint8Array,
+  certSerialHex: string,
+  timeout = 5000,
+): Promise<RevocationResult | null> {
+  try {
+    const requestDer = buildOcspRequestDer(issuerNameHash, issuerKeyHash, certSerialHex)
+
+    log.info(`[ocsp] Live OCSP check: ${ocspUrl} for serial ${certSerialHex}`)
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
+
+    const response = await fetch(ocspUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/ocsp-request',
+        Accept: 'application/ocsp-response',
+      },
+      body: new Uint8Array(requestDer) as unknown as BodyInit,
+      signal: controller.signal,
+    })
+
+    clearTimeout(timer)
+
+    if (!response.ok) {
+      log.warn(`[ocsp] OCSP responder returned ${response.status}`)
+      return null
+    }
+
+    const responseBytes = new Uint8Array(await response.arrayBuffer())
+    const parsed = parseOcspResponse(responseBytes)
+
+    if (!parsed || parsed.responseStatus !== 0) {
+      log.warn(`[ocsp] OCSP response status: ${parsed?.responseStatus ?? 'unparseable'}`)
+      return null
+    }
+
+    const normalSerial = normalizeSerial(certSerialHex)
+    for (const resp of parsed.responses) {
+      if (normalizeSerial(resp.certSerial) === normalSerial) {
+        if (resp.status === 'revoked') {
+          return {
+            status: 'revoked',
+            message: `Certificate revoked${resp.revokedAt ? ` on ${resp.revokedAt}` : ''} (live OCSP)`,
+            source: 'ocsp',
+            producedAt: parsed.producedAt,
+            revokedAt: resp.revokedAt,
+          }
+        }
+        if (resp.status === 'good') {
+          return {
+            status: 'good',
+            message: 'Certificate valid (live OCSP)',
+            source: 'ocsp',
+            producedAt: parsed.producedAt,
+            revokedAt: null,
+          }
+        }
+        return {
+          status: 'unknown',
+          message: 'OCSP responder returned unknown status',
+          source: 'ocsp',
+          producedAt: parsed.producedAt,
+          revokedAt: null,
+        }
+      }
+    }
+
+    log.warn(`[ocsp] OCSP response did not cover serial ${certSerialHex}`)
+    return null
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('abort')) {
+      log.warn(`[ocsp] Live OCSP check timed out (${timeout}ms)`)
+    } else {
+      log.warn(`[ocsp] Live OCSP check failed: ${msg}`)
+    }
+    return null
+  }
+}
+
 /**
  * Normalize a hex serial number for comparison.
  * Strips leading zeros and lowercases.

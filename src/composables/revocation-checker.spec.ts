@@ -10,6 +10,7 @@ import {
   parseOcspResponse,
   parseCrl,
   checkRevocation,
+  liveOcspCheck,
   type OcspSingleResponse,
 } from './revocation-checker.js'
 import { extractDss } from './dss-parser.js'
@@ -397,5 +398,62 @@ describe('DSS parser (ATT-313)', () => {
     expect(result.found).toBe(true)
     expect(result.ocspResponses).toHaveLength(1)
     expect(result.ocspResponses[0].length).toBe(streamContent.length)
+  })
+})
+
+// ── Live OCSP check (ATT-339) ──────────────────────────────────────
+
+describe('liveOcspCheck', () => {
+  const fakeNameHash = new Uint8Array(20).fill(0xaa)
+  const fakeKeyHash = new Uint8Array(20).fill(0xbb)
+  const fakeSerial = 'abcdef01'
+
+  it('returns null on network error', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = () => Promise.reject(new Error('network down'))
+    try {
+      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      expect(result).toBeNull()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('returns null on non-200 response', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = () => Promise.resolve(new Response(null, { status: 503 }))
+    try {
+      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      expect(result).toBeNull()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('returns null on timeout', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = () => new Promise((_, reject) => {
+      setTimeout(() => reject(new DOMException('aborted', 'AbortError')), 10)
+    })
+    try {
+      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial, 5)
+      expect(result).toBeNull()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('returns null on unparseable OCSP response', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = () => Promise.resolve(new Response(new Uint8Array([0x00, 0x01, 0x02]).buffer, {
+      status: 200,
+      headers: { 'Content-Type': 'application/ocsp-response' },
+    }))
+    try {
+      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      expect(result).toBeNull()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
   })
 })
