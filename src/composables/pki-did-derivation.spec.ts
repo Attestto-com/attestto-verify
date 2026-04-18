@@ -227,3 +227,80 @@ describe('derivePkiDids — edge cases', () => {
     expect(result.issuingCaDid).toBe('did:pki:cr:sinpe:persona-fisica')
   })
 })
+
+// ── BR mappings ─────────────────────────────────────────────────────
+
+describe('derivePkiDids — Brazil', () => {
+  it('derives did:pki:br:serpro:pessoa-fisica from SERPRO chain', () => {
+    const chain = [
+      makeCert({ commonName: 'JOSE DA SILVA', role: 'end-entity', issuerCommonName: 'AC SERPRO SSLv1' }),
+      makeCert({ commonName: 'AC SERPRO SSLv1', role: 'intermediate', isCa: true }),
+    ]
+    const pki = makePki({ country: 'BR', certificateType: 'e-CPF A1 (Pessoa Física)' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:br:serpro:pessoa-fisica')
+    expect(result.derivedVia).toBe('ca-name-mapping')
+  })
+
+  it('derives did:pki:br:certisign from CERTISIGN chain', () => {
+    const chain = [
+      makeCert({ commonName: 'MARIA OLIVEIRA', role: 'end-entity', issuerCommonName: 'AC CERTISIGN G7' }),
+      makeCert({ commonName: 'AC CERTISIGN G7', role: 'intermediate', isCa: true }),
+    ]
+    const pki = makePki({ country: 'BR' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:br:certisign')
+    expect(result.derivedVia).toBe('ca-name-mapping')
+  })
+
+  it('derives did:pki:br:raiz-brasileira from ICP-Brasil root', () => {
+    const chain = [
+      makeCert({ commonName: 'Signer', role: 'end-entity', issuerCommonName: 'RAIZ BRASILEIRA v10' }),
+      makeCert({ commonName: 'RAIZ BRASILEIRA v10', role: 'root', isCa: true }),
+    ]
+    const pki = makePki({ country: 'BR' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:br:raiz-brasileira')
+  })
+})
+
+// ── AR mappings ─────────────────────────────────────────────────────
+
+describe('derivePkiDids — Argentina', () => {
+  it('derives did:pki:ar:acfd from FIRMA DIGITAL chain', () => {
+    const chain = [
+      makeCert({ commonName: 'JUAN PEREZ', role: 'end-entity', issuerCommonName: 'AC FIRMA DIGITAL' }),
+      makeCert({ commonName: 'AC FIRMA DIGITAL', role: 'intermediate', isCa: true }),
+    ]
+    const pki = makePki({ country: 'AR' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:ar:acfd')
+    expect(result.derivedVia).toBe('ca-name-mapping')
+  })
+
+  it('derives did:pki:ar:raiz from AC RAIZ', () => {
+    const chain = [
+      makeCert({ commonName: 'Signer', role: 'end-entity', issuerCommonName: 'AC RAIZ DE LA REPUBLICA' }),
+      makeCert({ commonName: 'AC RAIZ DE LA REPUBLICA', role: 'root', isCa: true }),
+    ]
+    const pki = makePki({ country: 'AR' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:ar:raiz')
+  })
+
+  it('derives did:pki:ar:encode from ENCODE chain', () => {
+    const chain = [
+      makeCert({ commonName: 'Signer', role: 'end-entity', issuerCommonName: 'AC ENCODE S.A.' }),
+      makeCert({ commonName: 'AC ENCODE S.A.', role: 'intermediate', isCa: true }),
+    ]
+    const pki = makePki({ country: 'AR' })
+
+    const result = derivePkiDids(chain, pki)
+    expect(result.issuingCaDid).toBe('did:pki:ar:encode')
+  })
+})

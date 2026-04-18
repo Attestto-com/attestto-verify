@@ -297,6 +297,122 @@ describe('computeCertFingerprint', () => {
   })
 })
 
+// ── OCSP endpoint extraction ────────────────────────────────────────
+
+describe('OCSP endpoint extraction', () => {
+  it('extracts OCSPResponder service endpoints', async () => {
+    const response = {
+      didDocument: {
+        ...MOCK_SINPE_PF_RESPONSE.didDocument,
+        service: [
+          {
+            id: 'did:pki:cr:sinpe:persona-fisica#ocsp',
+            type: 'OCSPResponder',
+            serviceEndpoint: 'http://ocsp.sinpe.fi.cr',
+          },
+        ],
+      },
+    }
+    const fetchFn = mockFetch(response)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.ocspEndpoints).toHaveLength(1)
+    expect(result!.ocspEndpoints[0].url).toBe('http://ocsp.sinpe.fi.cr')
+    expect(result!.ocspEndpoints[0].id).toBe('did:pki:cr:sinpe:persona-fisica#ocsp')
+  })
+
+  it('returns empty array when no service entries', async () => {
+    const fetchFn = mockFetch(MOCK_SINPE_PF_RESPONSE)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.ocspEndpoints).toEqual([])
+  })
+
+  it('filters out non-OCSP service entries', async () => {
+    const response = {
+      didDocument: {
+        ...MOCK_SINPE_PF_RESPONSE.didDocument,
+        service: [
+          { id: '#crl', type: 'CRLDistribution', serviceEndpoint: 'http://crl.example.com' },
+          { id: '#ocsp', type: 'OCSPResponder', serviceEndpoint: 'http://ocsp.example.com' },
+        ],
+      },
+    }
+    const fetchFn = mockFetch(response)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.ocspEndpoints).toHaveLength(1)
+    expect(result!.ocspEndpoints[0].url).toBe('http://ocsp.example.com')
+  })
+
+  it('skips service entries with empty URL', async () => {
+    const response = {
+      didDocument: {
+        ...MOCK_SINPE_PF_RESPONSE.didDocument,
+        service: [
+          { id: '#ocsp', type: 'OCSPResponder', serviceEndpoint: '' },
+        ],
+      },
+    }
+    const fetchFn = mockFetch(response)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.ocspEndpoints).toEqual([])
+  })
+})
+
+// ── endEntityHints extraction ──────────────────────────────────────
+
+describe('endEntityHints extraction', () => {
+  it('extracts hints when present in pkiMetadata', async () => {
+    const response = {
+      didDocument: {
+        ...MOCK_SINPE_PF_RESPONSE.didDocument,
+        pkiMetadata: {
+          ...MOCK_SINPE_PF_RESPONSE.didDocument.pkiMetadata,
+          endEntityHints: {
+            'Persona Física': {
+              nationalIdField: 'serialNumber',
+              nationalIdFormat: 'CR-cedula',
+              nationalIdPattern: '^CPF-\\d{10}$',
+              nameField: 'CN',
+            },
+          },
+        },
+      },
+    }
+    const fetchFn = mockFetch(response)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.endEntityHints).not.toBeNull()
+    expect(result!.endEntityHints!['Persona Física'].nationalIdFormat).toBe('CR-cedula')
+    expect(result!.endEntityHints!['Persona Física'].nationalIdField).toBe('serialNumber')
+  })
+
+  it('returns null when no hints in metadata', async () => {
+    const fetchFn = mockFetch(MOCK_SINPE_PF_RESPONSE)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.endEntityHints).toBeNull()
+  })
+
+  it('returns null when hints object is empty', async () => {
+    const response = {
+      didDocument: {
+        ...MOCK_SINPE_PF_RESPONSE.didDocument,
+        pkiMetadata: {
+          ...MOCK_SINPE_PF_RESPONSE.didDocument.pkiMetadata,
+          endEntityHints: {},
+        },
+      },
+    }
+    const fetchFn = mockFetch(response)
+    const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', { fetchFn })
+
+    expect(result!.endEntityHints).toBeNull()
+  })
+})
+
 // ── resolveAndMatchChain ────────────────────────────────────────────
 
 describe('resolveAndMatchChain', () => {
