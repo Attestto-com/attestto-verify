@@ -765,6 +765,7 @@
         <div class="sidebar-label">Components</div>
         <a href="#verify-component">&lt;attestto-verify&gt;</a>
         <a href="#sign-component">&lt;attestto-sign&gt;</a>
+        <a href="#consent-component">&lt;attestto-consent&gt;</a>
 
         <div class="sidebar-label">Customization</div>
         <a href="#theming">Theming</a>
@@ -801,7 +802,7 @@
           <span class="callout-icon">&#x1f512;</span>
           <div>
             <strong>Privacy guarantee:</strong> Your documents never leave your device.
-            All verification is 100% client-side. No analytics, no tracking, no phone home.
+            All verification is 100% client-side. Anonymous usage analytics only with your consent.
           </div>
         </div>
 
@@ -1096,6 +1097,42 @@ yarn add <span class="c-str">@attestto/verify</span></pre>
             An "Export JSON" fallback is available.
           </div>
         </div>
+
+        <!-- Consent Component -->
+        <h2 id="consent-component">&lt;attestto-consent&gt;</h2>
+        <p>Cookie consent banner with GA4 integration. Loads Google Analytics only after the user explicitly accepts. Consent is stored in <code>localStorage</code> so the banner only appears once.</p>
+
+        <div class="code-block">
+          <div class="code-label">Basic Usage</div>
+          <pre><code><span class="tag">&lt;attestto-consent</span> <span class="attr">ga</span>=<span class="str">"G-JCE4RZ8CCC"</span><span class="tag">&gt;&lt;/attestto-consent&gt;</span></code></pre>
+        </div>
+
+        <h3>Attributes</h3>
+        <table>
+          <thead><tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>ga</code></td><td>string</td><td>—</td><td>GA4 measurement ID (e.g. <code>G-JCE4RZ8CCC</code>)</td></tr>
+            <tr><td><code>position</code></td><td>string</td><td><code>bottom</code></td><td><code>bottom</code> or <code>top</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Events</h3>
+        <table>
+          <thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>consent-accepted</code></td><td>—</td><td>User accepted analytics</td></tr>
+            <tr><td><code>consent-rejected</code></td><td>—</td><td>User declined analytics</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Behavior</h3>
+        <ul>
+          <li>First visit: banner appears, GA is <strong>not</strong> loaded</li>
+          <li>User clicks Accept: GA4 script injected, consent stored, banner hidden</li>
+          <li>User clicks Decline: no GA loaded, consent stored, banner hidden</li>
+          <li>Subsequent visits: consent remembered, no banner shown</li>
+          <li>IP anonymization enabled by default (<code>anonymize_ip: true</code>)</li>
+        </ul>
 
         <!-- Theming -->
         <h2 id="theming">Theming</h2>
@@ -1408,8 +1445,8 @@ attesttoPlugins.<span class="c-fn">register</span>(<span class="c-br">{</span>
           </thead>
           <tbody>
             <tr><td>No data transmission</td><td>All crypto runs in WebCrypto API, no server calls</td></tr>
-            <tr><td>No tracking</td><td>No cookies, localStorage, or fingerprinting</td></tr>
-            <tr><td>No phone home</td><td>No OCSP, no analytics, no CDN callbacks</td></tr>
+            <tr><td>Consent-gated analytics</td><td>GA4 loads only after explicit user consent via &lt;attestto-consent&gt;</td></tr>
+            <tr><td>No document transmission</td><td>Your files are never uploaded — verification is 100% local</td></tr>
             <tr><td>Selective disclosure</td><td>Share the hash, not the document</td></tr>
             <tr><td>No single point of failure</td><td>Works offline after initial load</td></tr>
           </tbody>

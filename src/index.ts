@@ -27,6 +27,7 @@ initGlobal()
 
 export { AttesttoVerify } from './components/attestto-verify.js'
 export { AttesttoSign } from './components/attestto-sign.js'
+export { AttesttoConsent } from './components/attestto-consent.js'
 
 // Plugin system
 export { attesttoPlugins } from './plugins/registry.js'
