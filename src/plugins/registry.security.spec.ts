@@ -39,6 +39,8 @@ describe('gatePluginLevel (ATT-312 Flaw 1)', () => {
     subFilter: null,
     certChain: null,
     pkcs7Hex: null,
+    revocationStatus: 'no-data',
+    revocationMessage: null,
   }
 
   it('downgrades "trusted" to "parsed" when chain is not cryptographically verified', () => {

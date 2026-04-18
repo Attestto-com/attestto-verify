@@ -302,6 +302,8 @@ function shapeAsSignatureInfo(
     },
     certChain: null,
     pkcs7Hex: null,
+    revocationStatus: 'no-data',
+    revocationMessage: null,
   }
 }
 
@@ -354,6 +356,8 @@ export async function extractAttesttoSelfAttestedSignatures(
         subFilter: 'attestto.self-attested.v1',
         certChain: null,
         pkcs7Hex: null,
+        revocationStatus: 'no-data',
+        revocationMessage: null,
       })
       continue
     }

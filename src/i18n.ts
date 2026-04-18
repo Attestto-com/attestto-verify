@@ -238,6 +238,15 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.attestto.modeOpen': 'Open · counter-signatures allowed',
     'comp.verify.attestto.demoWarning': 'DEMO signature — not legally binding',
 
+    // Verification banners (ATT-286)
+    'comp.verify.cryptoVerified.title': 'Cryptographically verified.',
+    'comp.verify.cryptoVerified.body': 'The certificate chain has been validated end-to-end against a bundled trust anchor, AND the document content matches the signed hash exactly. The signer\'s identity is cryptographically proven and the document is intact.',
+    'comp.verify.integrityUnknown.title': 'Integrity check could not be completed.',
+    'comp.verify.integrityUnknown.body': 'The verifier was unable to run the cryptographic integrity check on this signature (loader, parser or runtime error). This is not a tamper signal — the document state is unknown. Please retry, hard-reload, or report the issue with the reason below.',
+    'comp.verify.structureParsed.title': 'Structure parsed only.',
+    'comp.verify.structureParsed.body': 'The certificate chain has not been cryptographically verified.',
+    'comp.verify.copyPkcs7': 'Copy PKCS#7',
+
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Discovering credential wallets...',
     'comp.sign.change': 'Change',
@@ -503,6 +512,15 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.attestto.modeFinal': 'Documento final · bloqueado',
     'comp.verify.attestto.modeOpen': 'Abierto · permite contrafirmas',
     'comp.verify.attestto.demoWarning': 'Firma DEMO — no vinculante legalmente',
+
+    // Verification banners (ATT-286)
+    'comp.verify.cryptoVerified.title': 'Verificado criptográficamente.',
+    'comp.verify.cryptoVerified.body': 'La cadena de certificados fue validada de extremo a extremo contra una raíz de confianza, Y el contenido del documento coincide exactamente con el hash firmado. La identidad del firmante está criptográficamente probada y el documento está íntegro.',
+    'comp.verify.integrityUnknown.title': 'No se pudo completar la verificación de integridad.',
+    'comp.verify.integrityUnknown.body': 'El verificador no pudo ejecutar la comprobación criptográfica de integridad en esta firma (error de carga, parser o ejecución). Esto no es una señal de alteración — el estado del documento es desconocido. Intente de nuevo, recargue la página o reporte el problema con la razón indicada.',
+    'comp.verify.structureParsed.title': 'Solo estructura analizada.',
+    'comp.verify.structureParsed.body': 'La cadena de certificados no ha sido verificada criptográficamente.',
+    'comp.verify.copyPkcs7': 'Copiar PKCS#7',
 
     // ── attestto-sign component ──────────────────────────
     'comp.sign.discovering': 'Descubriendo billeteras de credenciales...',

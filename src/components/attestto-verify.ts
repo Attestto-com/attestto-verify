@@ -285,27 +285,27 @@ export class AttesttoVerify extends LitElement {
       .pki-badge {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        margin-top: 0.75rem;
-        padding: 1rem 1.25rem;
-        border-radius: 10px;
-        font-size: 1rem;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
         background: var(--attestto-info-bg, #dbeafe);
         border: 1px solid var(--attestto-info, #2563eb);
       }
 
       .pki-badge .pki-flag {
-        font-size: 2rem;
+        font-size: 1.25rem;
       }
 
       .pki-badge .pki-name {
         font-weight: 700;
-        font-size: 1.15rem;
+        font-size: 0.95rem;
         color: var(--attestto-info, #2563eb);
       }
 
       .pki-badge .pki-type {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: var(--attestto-text-muted, #64748b);
         font-weight: 500;
       }
@@ -1275,13 +1275,8 @@ export class AttesttoVerify extends LitElement {
                                      padding:12px 14px;border-radius:6px;margin:8px 0;font-size:13px;
                                      line-height:1.5;font-weight:500;"
                             >
-                              ◌ <strong>Integrity check could not be completed.</strong>
-                              The verifier was unable to run the cryptographic
-                              integrity check on this signature (loader, parser
-                              or runtime error). This is <strong>not</strong> a
-                              tamper signal — the document state is unknown.
-                              Please retry, hard-reload, or report the issue
-                              with the reason below.
+                              ◌ <strong>${t('comp.verify.integrityUnknown.title')}</strong>
+                              ${t('comp.verify.integrityUnknown.body')}
                               ${sig.integrityError
                                 ? html`<div style="margin-top:6px;font-size:12px;opacity:0.85;font-family:monospace;word-break:break-all;">
                                     Reason: ${sig.integrityError}
@@ -1300,9 +1295,9 @@ export class AttesttoVerify extends LitElement {
                                      line-height:1.45;"
                             >
                               ⚠
-                              <strong>Structure parsed only.</strong>
+                              <strong>${t('comp.verify.structureParsed.title')}</strong>
                               ${sig.certChain.cryptoVerificationWarning ||
-                              'The certificate chain has not been cryptographically verified.'}
+                              t('comp.verify.structureParsed.body')}
                             </div>
                           `
                         : ''}
@@ -1330,11 +1325,8 @@ export class AttesttoVerify extends LitElement {
                                        line-height:1.45;"
                               >
                                 ✓
-                                <strong>Cryptographically verified.</strong>
-                                The certificate chain has been validated end-to-end against a
-                                bundled trust anchor, AND the document content matches the
-                                signed hash exactly. The signer's identity is cryptographically
-                                proven and the document is intact.
+                                <strong>${t('comp.verify.cryptoVerified.title')}</strong>
+                                ${t('comp.verify.cryptoVerified.body')}
                               </div>
                             `
                           : ''}
@@ -1499,7 +1491,7 @@ export class AttesttoVerify extends LitElement {
                         ? html`
                             <div class="pkcs7-surface" part="pkcs7-hex">
                               <button class="pkcs7-copy-btn" @click=${() => this.copyPkcs7(sig.pkcs7Hex!)}>
-                                ${t('comp.verify.copyPkcs7') ?? 'Copiar PKCS#7'}
+                                ${t('comp.verify.copyPkcs7')}
                               </button>
                               <span class="pkcs7-size">${Math.round(sig.pkcs7Hex.length / 2).toLocaleString()} bytes</span>
                             </div>
