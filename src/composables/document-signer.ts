@@ -222,10 +222,10 @@ export function buildCredential(
 // ── Export Utility ──────────────────────────────────────────────────
 
 /**
- * Trigger a JSON download of a signed credential.
+ * Trigger a JSON download of a signed credential or signature object.
  */
 export function exportCredentialAsJson(
-  credential: DocumentSignatureCredential,
+  credential: object,
   originalFileName?: string,
 ): void {
   const blob = new Blob([JSON.stringify(credential, null, 2)], { type: 'application/json' })

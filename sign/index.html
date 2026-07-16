@@ -4,19 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Keep <html lang> in sync with the app language (localStorage: attestto-lang) for SEO + a11y -->
+    <script>
+      (function () {
+        var lang = 'en'
+        try {
+          var stored = localStorage.getItem('attestto-lang')
+          if (stored === 'en' || stored === 'es') lang = stored
+        } catch (e) {}
+        document.documentElement.lang = lang
+        window.addEventListener('attestto-lang-change', function (e) {
+          if (e && e.detail && e.detail.lang) document.documentElement.lang = e.detail.lang
+        })
+      })()
+    </script>
+
     <!-- SEO -->
     <title>Attestto Sign — Sign Documents with Your Digital Identity</title>
     <meta name="description" content="Sign PDFs with your DID wallet or browser key. No login, no backend, no upload. Your document never leaves your device." />
-    <meta name="keywords" content="digital signature, DID, decentralized identity, PDF signing, verifiable credential, W3C, Web Components, browser key, self-sovereign" />
+    <meta name="keywords" content="digital signature, DID, decentralized identity, PDF signing, verifiable credential, W3C, Web Components, browser key, portable identity" />
     <meta name="author" content="Attestto" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://verify.attestto.com/sign" />
+    <link rel="canonical" href="https://verify.attestto.com/sign/" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="Attestto Sign — Digital Identity Signatures" />
     <meta property="og:description" content="Sign documents with your DID wallet or browser key. 100% client-side. No data transmitted." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://verify.attestto.com/sign" />
+    <meta property="og:url" content="https://verify.attestto.com/sign/" />
     <meta property="og:site_name" content="Attestto" />
     <meta property="og:image" content="https://verify.attestto.com/og-verify.png" />
     <meta property="og:image:width" content="1200" />
@@ -38,7 +53,7 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Attestto Sign",
-        "url": "https://verify.attestto.com/sign",
+        "url": "https://verify.attestto.com/sign/",
         "description": "Sign PDF documents with your DID wallet or browser-generated key. Client-side only — your document never leaves your device.",
         "applicationCategory": "SecurityApplication",
         "operatingSystem": "Any (browser-based)",
