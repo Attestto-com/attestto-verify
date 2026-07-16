@@ -3,16 +3,15 @@ import { customElement, state } from 'lit/decorators.js'
 import { sharedStyles } from '../styles/shared.js'
 import { discoverWallets, pickWallet, type WalletAnnouncement } from '@attestto/id-wallet-adapter'
 import {
-  hashFile,
-  signWithWallet,
-  signWithBrowserKey,
   getBrowserKeyPair,
   exportCredentialAsJson,
-  type DocumentSignatureCredential,
 } from '../composables/document-signer.js'
 import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
-import { injectAttestationPage } from '../composables/pdf-attestation.js'
-import { signPdfSelfAttested, buildExtensionSigner } from '../composables/attestto-self-sign.js'
+import {
+  signPdfSelfAttested,
+  buildExtensionSigner,
+  type AttesttoPdfSignature,
+} from '../composables/attestto-self-sign.js'
 import { t, currentLang, type Lang } from '../i18n.js'
 
 interface PdfMeta {
@@ -29,15 +28,18 @@ interface PdfMeta {
 /**
  * <attestto-sign> — Sign a PDF with any DID wallet or browser key
  *
- * UI-only component. All crypto and VC construction lives in
- * composables/document-signer.ts — v2 changes touch one file.
+ * UI-only component. All crypto lives in composables/attestto-self-sign.ts.
  *
  * Flow:
  *   1. discoverWallets() finds installed credential wallets
  *   2. User picks a wallet (or auto-selects, or falls back to browser key)
  *   3. User drops a PDF
- *   4. signWithWallet() or signWithBrowserKey() produces a W3C VC
- *   5. VC pushed to wallet (or exported as JSON)
+ *   4. signPdfSelfAttested() signs the PDF once and embeds the canonical
+ *      AttesttoPdfSignature. With a wallet, signing is delegated to the
+ *      extension's Ed25519 vault key (ATTESTTO_SIGN_PDF_REQUEST flow);
+ *      otherwise an ephemeral browser keypair is used.
+ *   5. Signed bytes cached; download reuses them (no second approval).
+ *      The embedded signature can be exported as JSON.
  */
 @customElement('attestto-sign')
 export class AttesttoSign extends LitElement {
@@ -369,7 +371,8 @@ export class AttesttoSign extends LitElement {
   @state() private signing = false
   @state() private signingStatus = ''
   @state() private signed = false
-  @state() private signedCredential: DocumentSignatureCredential | null = null
+  @state() private signedSignature: AttesttoPdfSignature | null = null
+  @state() private signedPdfBytes: Uint8Array | null = null
   @state() private error: string | null = null
   @state() private pdfMeta: PdfMeta | null = null
   @state() private downloaded = false
@@ -559,7 +562,7 @@ export class AttesttoSign extends LitElement {
                     <span class="signing-bean"></span>
                     <span class="signing-bean"></span>
                   </div>
-                  <div class="signing-step">${this.signingStatus || t('comp.sign.signing')}</div>
+                  <div class="signing-step">${this.signingStatus ? t(this.signingStatus) : t('comp.sign.signing')}</div>
                   <div class="signing-hint">${t('comp.sign.signingHint')}</div>
                 </div>
               `
@@ -721,29 +724,46 @@ export class AttesttoSign extends LitElement {
     if (!this.selectedWallet && !this.useBrowserKey) return
 
     this.signing = true
-    this.signingStatus = t('comp.sign.computingHash')
+    // Store the i18n KEY (not the resolved string) so the status stays
+    // correct if the user switches language mid-signing.
+    this.signingStatus = this.selectedWallet
+      ? 'comp.sign.waitingWallet'
+      : 'comp.sign.signingBrowserKey'
     this.error = null
 
     try {
-      const hash = await hashFile(this.file)
+      // Single signing path (ATT-364): signPdfSelfAttested embeds the
+      // canonical Ed25519 AttesttoPdfSignature that verify.attestto.com
+      // recognizes.
+      //   - selectedWallet → sign with the extension's vault key via the
+      //     ATTESTTO_SIGN_PDF_REQUEST postMessage flow (approval in-wallet).
+      //   - browser key    → ephemeral single-use keypair, no approval.
+      // Sign ONCE here and cache the bytes so download does not trigger a
+      // second wallet approval.
+      const externalSigner = this.selectedWallet
+        ? buildExtensionSigner({
+            fileName: this.file.name,
+            documentHash: '', // signer composable computes the hash
+            did: this.selectedWallet.did,
+          })
+        : undefined
 
-      if (this.selectedWallet) {
-        this.signingStatus = t('comp.sign.waitingWallet')
-        const result = await signWithWallet(this.selectedWallet, this.file, hash)
-        if (!result) {
-          this.error = t('comp.sign.walletTimeout')
-          return
-        }
-        this.signedCredential = result.credential
-      } else {
-        this.signingStatus = t('comp.sign.signingBrowserKey')
-        const result = await signWithBrowserKey(this.file, hash)
-        this.signedCredential = result.credential
-      }
+      const { pdfBytes, signature } = await signPdfSelfAttested(this.file, {
+        signerName: this.selectedWallet?.name || 'Browser-ephemeral key',
+        externalSigner,
+      })
 
+      this.signedPdfBytes = pdfBytes
+      this.signedSignature = signature
       this.signed = true
     } catch (err) {
-      this.error = err instanceof Error ? err.message : t('comp.sign.signingFailed')
+      const msg = err instanceof Error ? err.message : ''
+      // A wallet that never answered (extension missing, closed, or timed
+      // out) gets the actionable "try browser key" hint.
+      this.error =
+        this.selectedWallet && /timeout|did not respond|not available/i.test(msg)
+          ? t('comp.sign.walletTimeout')
+          : msg || t('comp.sign.signingFailed')
     } finally {
       this.signing = false
       this.signingStatus = ''
@@ -761,27 +781,11 @@ export class AttesttoSign extends LitElement {
     this.showDownloadModal = true
 
     try {
-      // Use the canonical Attestto self-attested signer so the resulting
-      // PDF is recognized by verify.attestto.com (post-ATT-361). The old
-      // injectAttestationPage path produced a pdf-lib full-rewrite with
-      // no embedded keyword payload — verifier reported UNSIGNED.
-      //
-      // Two paths:
-      //   - selectedWallet → route through the extension's Ed25519 vault
-      //     key via the new ATTESTTO_SIGN_PDF_REQUEST flow (ATT-364)
-      //   - no wallet → ephemeral browser keypair, single-use
-      const externalSigner = this.selectedWallet
-        ? buildExtensionSigner({
-            fileName: this.file.name,
-            documentHash: '', // signer composable computes the hash
-            did: this.selectedWallet.did,
-          })
-        : undefined
-
-      const { pdfBytes } = await signPdfSelfAttested(this.file, {
-        signerName: this.selectedWallet?.name || 'Browser-ephemeral key',
-        externalSigner,
-      })
+      // The PDF was already signed in sign() — reuse those exact bytes so
+      // we never trigger a second wallet approval. sign() always runs
+      // first (the download button only appears once signed === true).
+      const pdfBytes = this.signedPdfBytes
+      if (!pdfBytes) throw new Error('No signed document available')
 
       const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
@@ -825,15 +829,16 @@ export class AttesttoSign extends LitElement {
   }
 
   private handleExport() {
-    if (!this.signedCredential) return
-    exportCredentialAsJson(this.signedCredential, this.file?.name)
+    if (!this.signedSignature) return
+    exportCredentialAsJson(this.signedSignature, this.file?.name)
   }
 
   private reset() {
     this.file = null
     this.signed = false
     this.signing = false
-    this.signedCredential = null
+    this.signedSignature = null
+    this.signedPdfBytes = null
     this.error = null
     this.pdfMeta = null
     this.downloaded = false
