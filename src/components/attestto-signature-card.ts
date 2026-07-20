@@ -216,9 +216,21 @@ function certFace(
 @customElement('attestto-signature-card')
 export class AttesttoSignatureCard extends LitElement {
   @property({ attribute: false }) signature!: SignatureCardModel
+  /** When false, national IDs are masked-only — no reveal affordance at all. */
+  @property({ type: Boolean, attribute: 'allow-reveal' }) allowReveal = true
   @state() private _lang: Lang = currentLang()
   @state() private _revealed = false
+  @state() private _revealArmed = false
   @state() private _dataOpen = false
+
+  private doReveal(index: number) {
+    this._revealed = true
+    this._revealArmed = false
+    // Host can log consent / audit the PII disclosure.
+    this.dispatchEvent(
+      new CustomEvent('id-revealed', { detail: { index }, bubbles: true, composed: true }),
+    )
+  }
   @state() private _tab: 'chain' | 'sig' | 'trust' = 'chain'
   @state() private _copied: string | null = null
 
@@ -454,6 +466,47 @@ export class AttesttoSignatureCard extends LitElement {
       border-radius: 8px;
       padding: 3px 8px;
       cursor: pointer;
+    }
+    .id-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .reveal-consent {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #16121f;
+      border: 1px solid #3a2f4d;
+    }
+    .rc-note {
+      font-size: 0.7rem;
+      color: #c9b8e8;
+      line-height: 1.35;
+    }
+    .rc-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .rc-yes,
+    .rc-no {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      border: 1px solid;
+    }
+    .rc-yes {
+      color: #e5e7eb;
+      background: #3a2f4d;
+      border-color: #5a4a78;
+    }
+    .rc-no {
+      color: #9198a8;
+      background: transparent;
+      border-color: #333a49;
     }
     /* Long-term validity — the professional trust signal. */
     .ltv {
@@ -795,14 +848,32 @@ export class AttesttoSignatureCard extends LitElement {
   }
 
   private renderId(s: SignatureCardModel) {
+    const es = this._lang === 'es'
     if (!s.nationalId) {
       return html`<span class="meta-value">${s.handle || '—'}</span>`
     }
-    return html`<div class="id-row">
-      <span class="meta-value">${this._revealed ? s.nationalId.full : s.nationalId.masked}</span>
-      ${this._revealed
-        ? ''
-        : html`<button class="reveal" @click=${() => (this._revealed = true)}>${t('comp.verify.reveal')}</button>`}
+    // Default masked. Revealing full PII is a deliberate, consented two-step act.
+    if (this._revealed) {
+      return html`<span class="meta-value id-revealed" part="national-id">${s.nationalId.full}</span>`
+    }
+    return html`<div class="id-col">
+      <div class="id-row">
+        <span class="meta-value" part="national-id">${s.nationalId.masked}</span>
+        ${!this.allowReveal || this._revealArmed
+          ? ''
+          : html`<button class="reveal" @click=${() => (this._revealArmed = true)}>
+              ${t('comp.verify.reveal')}
+            </button>`}
+      </div>
+      ${this._revealArmed
+        ? html`<div class="reveal-consent" part="reveal-consent">
+            <span class="rc-note">🔒 ${es ? 'Se mostrará un dato personal en pantalla.' : 'This will display personal data on screen.'}</span>
+            <div class="rc-actions">
+              <button class="rc-yes" @click=${() => this.doReveal(s.index)}>${es ? 'Mostrar' : 'Show'}</button>
+              <button class="rc-no" @click=${() => (this._revealArmed = false)}>${es ? 'Cancelar' : 'Cancel'}</button>
+            </div>
+          </div>`
+        : ''}
     </div>`
   }
 
