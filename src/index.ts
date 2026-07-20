@@ -37,9 +37,11 @@ export type {
 } from './model/signature-card.js'
 export {
   capabilitiesFromCert,
+  capabilitiesFromDid,
   officialVerifierFor,
   initialsFor,
 } from './model/signature-card.js'
+export type { SignatureTrustMark, SignatureLtv } from './model/signature-card.js'
 
 // Plugin system
 export { attesttoPlugins } from './plugins/registry.js'

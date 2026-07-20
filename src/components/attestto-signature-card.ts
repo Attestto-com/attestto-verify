@@ -13,8 +13,22 @@
 import { LitElement, html, css } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { t, currentLang, type Lang } from '../i18n.js'
-import type { SignatureCardModel, SignatureStatus, SignatureLtv } from '../model/signature-card.js'
+import type {
+  SignatureCardModel,
+  SignatureStatus,
+  SignatureLtv,
+  SignatureTrustMark,
+} from '../model/signature-card.js'
 import { initialsFor } from '../model/signature-card.js'
+
+const MARK_COLOR: Record<SignatureTrustMark['scheme'], string> = {
+  qualified: '#3b82f6', // EU blue
+  'trusted-list': '#2563eb',
+  'cr-firma': '#16a34a',
+  attestto: '#a78bfa',
+  untrusted: '#9ca3af',
+  other: '#9ca3af',
+}
 
 const STATUS_COLOR: Record<SignatureStatus, string> = {
   verified: '#22c55e',
@@ -216,20 +230,26 @@ function certFace(
 @customElement('attestto-signature-card')
 export class AttesttoSignatureCard extends LitElement {
   @property({ attribute: false }) signature!: SignatureCardModel
-  /** When false, national IDs are masked-only — no reveal affordance at all. */
-  @property({ type: Boolean, attribute: 'allow-reveal' }) allowReveal = true
+  /** When false, the national-ID match check is not offered — masked, no interaction. */
+  @property({ type: Boolean, attribute: 'allow-id-check' }) allowIdCheck = true
   @state() private _lang: Lang = currentLang()
-  @state() private _revealed = false
-  @state() private _revealArmed = false
   @state() private _dataOpen = false
+  @state() private _idOpen = false
+  @state() private _idInput = ''
+  @state() private _idResult: 'idle' | 'match' | 'nomatch' = 'idle'
 
-  private doReveal(index: number) {
-    this._revealed = true
-    this._revealArmed = false
-    // Host can log consent / audit the PII disclosure.
-    this.dispatchEvent(
-      new CustomEvent('id-revealed', { detail: { index }, bubbles: true, composed: true }),
-    )
+  // Confirm-not-disclose: the verifier types the ID they already hold; we answer
+  // match / no-match and NEVER display the full value. Someone who doesn't
+  // already know the ID can't harvest it from a document they merely possess.
+  private checkId(index: number, full: string) {
+    const norm = (x: string) => x.replace(/[^0-9a-z]/gi, '').toLowerCase()
+    const match = norm(this._idInput).length > 0 && norm(this._idInput) === norm(full)
+    this._idResult = match ? 'match' : 'nomatch'
+    if (match) {
+      this.dispatchEvent(
+        new CustomEvent('id-confirmed', { detail: { index }, bubbles: true, composed: true }),
+      )
+    }
   }
   @state() private _tab: 'chain' | 'sig' | 'trust' = 'chain'
   @state() private _copied: string | null = null
@@ -407,6 +427,28 @@ export class AttesttoSignatureCard extends LitElement {
       color: #c3c9d4;
       margin: 12px 0 0;
     }
+    .signals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .tmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: var(--m);
+      background: color-mix(in srgb, var(--m) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--m) 34%, transparent);
+    }
+    .tmark-ico {
+      font-size: 0.82rem;
+      filter: grayscale(0.2);
+    }
     hr {
       border: none;
       border-top: 1px solid #232834;
@@ -472,66 +514,66 @@ export class AttesttoSignatureCard extends LitElement {
       flex-direction: column;
       gap: 6px;
     }
-    .reveal-consent {
+    .id-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .id-match {
+      color: #22c55e;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+    .id-nomatch {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+    .id-check {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
       padding: 8px 10px;
       border-radius: 8px;
-      background: #16121f;
-      border: 1px solid #3a2f4d;
+      background: #0e1420;
+      border: 1px solid #22314a;
     }
     .rc-note {
       font-size: 0.7rem;
-      color: #c9b8e8;
-      line-height: 1.35;
+      color: #9db4d8;
+      line-height: 1.4;
     }
-    .rc-actions {
+    .id-check-row {
       display: flex;
       gap: 6px;
     }
-    .rc-yes,
-    .rc-no {
-      font-size: 0.72rem;
-      padding: 3px 10px;
+    .id-input {
+      flex: 1;
+      min-width: 0;
+      background: #05070c;
+      border: 1px solid #2a3550;
       border-radius: 7px;
-      cursor: pointer;
-      border: 1px solid;
+      padding: 5px 8px;
+      color: #e5e7eb;
+      font-size: 0.78rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .id-input:focus {
+      outline: none;
+      border-color: #3b5aa8;
     }
     .rc-yes {
+      font-size: 0.72rem;
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: pointer;
       color: #e5e7eb;
-      background: #3a2f4d;
-      border-color: #5a4a78;
+      background: #1c2740;
+      border: 1px solid #2f4066;
     }
-    .rc-no {
-      color: #9198a8;
-      background: transparent;
-      border-color: #333a49;
-    }
-    /* Long-term validity — the professional trust signal. */
-    .ltv {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      margin-top: 16px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: color-mix(in srgb, var(--ltv-color) 10%, transparent);
-      border: 1px solid color-mix(in srgb, var(--ltv-color) 28%, transparent);
-    }
-    .ltv .ico {
-      color: var(--ltv-color);
-      font-weight: 700;
-    }
-    .ltv .l1 {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--ltv-color);
-    }
-    .ltv .l2 {
-      font-size: 0.76rem;
-      color: #aeb4c0;
-      margin-top: 1px;
+    .rc-yes:hover {
+      background: #24304d;
     }
     .caps {
       display: flex;
@@ -555,17 +597,18 @@ export class AttesttoSignatureCard extends LitElement {
       font-size: 0.82rem;
       line-height: 1;
     }
-    /* Reusable tooltip — any pill with [data-tip] gets the same styled hover. */
-    .cap[data-tip] {
+    /* Reusable tooltip — any pill with .has-tip[data-tip] gets the same hover.
+       Anchored to the pill's LEFT edge (grows right) so left-edge pills don't
+       clip; the last pill in a row anchors right (grows left). */
+    .has-tip[data-tip] {
       position: relative;
       cursor: help;
     }
-    .cap[data-tip]:hover::after {
+    .has-tip[data-tip]:hover::after {
       content: attr(data-tip);
       position: absolute;
       bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
+      left: 0;
       width: max-content;
       max-width: 240px;
       background: #05060a;
@@ -581,15 +624,25 @@ export class AttesttoSignatureCard extends LitElement {
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       pointer-events: none;
     }
-    .cap[data-tip]:hover::before {
+    .has-tip[data-tip]:hover::before {
       content: '';
       position: absolute;
       bottom: calc(100% + 3px);
-      left: 50%;
-      transform: translateX(-50%);
+      left: 14px;
       border: 5px solid transparent;
       border-top-color: #2a2f3c;
       z-index: 20;
+    }
+    /* Last pill in a row grows leftward so it can't clip off the right edge. */
+    .caps .has-tip:last-child[data-tip]:hover::after,
+    .signals .has-tip:last-child[data-tip]:hover::after {
+      left: auto;
+      right: 0;
+    }
+    .caps .has-tip:last-child[data-tip]:hover::before,
+    .signals .has-tip:last-child[data-tip]:hover::before {
+      left: auto;
+      right: 14px;
     }
     .seal {
       margin-top: 4px;
@@ -638,6 +691,14 @@ export class AttesttoSignatureCard extends LitElement {
       border: 1px solid #1c2029;
       border-radius: 12px;
       overflow: hidden;
+    }
+    .internals-desc {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: #aeb4c0;
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid #1c2029;
     }
     .tabs {
       display: flex;
@@ -781,7 +842,25 @@ export class AttesttoSignatureCard extends LitElement {
               : ''}
           </div>
 
-          <p class="desc">${st.desc}</p>
+          ${s.trustMarks?.length || ltv
+            ? html`<div class="signals" part="signals">
+                ${(s.trustMarks ?? []).map(
+                  (m) =>
+                    html`<span class="tmark" style="--m:${MARK_COLOR[m.scheme]}"
+                      ><span class="tmark-ico">🛡</span>${m.label}</span
+                    >`,
+                )}
+                ${ltv
+                  ? html`<span
+                      class="tmark has-tip"
+                      part="ltv"
+                      data-tip=${ltv.detail}
+                      style="--m:${LTV_TONE_COLOR[ltv.tone]}"
+                      ><span class="tmark-ico">◷</span>${ltv.label}</span
+                    >`
+                  : ''}
+              </div>`
+            : ''}
           <hr />
 
           <div class="grid">
@@ -807,22 +886,13 @@ export class AttesttoSignatureCard extends LitElement {
             </div>
           </div>
 
-          ${ltv
-            ? html`<div class="ltv" part="ltv" style="--ltv-color:${LTV_TONE_COLOR[ltv.tone]}">
-                <span class="ico">◷</span>
-                <div>
-                  <div class="l1">${ltv.label}</div>
-                  <div class="l2">${ltv.detail}</div>
-                </div>
-              </div>`
-            : ''}
           ${s.capabilities.length
             ? html`<div style="margin-top:16px">
                 <span class="meta-label">${t('comp.verify.capabilities')}</span>
                 <div class="caps" part="capabilities">
                   ${s.capabilities.map(
                     (c) =>
-                      html`<span class="cap" part="capability" data-tip=${capTooltip(c.label, c.kind, this._lang)}
+                      html`<span class="cap has-tip" part="capability" data-tip=${capTooltip(c.label, c.kind, this._lang)}
                         ><span class="cap-ico">${capIcon(c.label)}</span>${c.label}</span
                       >`,
                   )}
@@ -852,25 +922,43 @@ export class AttesttoSignatureCard extends LitElement {
     if (!s.nationalId) {
       return html`<span class="meta-value">${s.handle || '—'}</span>`
     }
-    // Default masked. Revealing full PII is a deliberate, consented two-step act.
-    if (this._revealed) {
-      return html`<span class="meta-value id-revealed" part="national-id">${s.nationalId.full}</span>`
-    }
+    // Masked always. The user CONFIRMS by typing what they already know; the
+    // full value is never displayed by the tool.
+    const badge =
+      this._idResult === 'match'
+        ? html`<span class="id-badge id-match">✓ ${es ? 'Coincide' : 'Matches'}</span>`
+        : this._idResult === 'nomatch'
+          ? html`<span class="id-badge id-nomatch">✗ ${es ? 'No coincide' : 'No match'}</span>`
+          : ''
+    const showCheckBtn = this.allowIdCheck && this._idResult !== 'match' && !this._idOpen
     return html`<div class="id-col">
       <div class="id-row">
         <span class="meta-value" part="national-id">${s.nationalId.masked}</span>
-        ${!this.allowReveal || this._revealArmed
-          ? ''
-          : html`<button class="reveal" @click=${() => (this._revealArmed = true)}>
-              ${t('comp.verify.reveal')}
-            </button>`}
+        ${badge}
+        ${showCheckBtn
+          ? html`<button class="reveal" @click=${() => (this._idOpen = true)}>${es ? 'Comprobar' : 'Check'}</button>`
+          : ''}
       </div>
-      ${this._revealArmed
-        ? html`<div class="reveal-consent" part="reveal-consent">
-            <span class="rc-note">🔒 ${es ? 'Se mostrará un dato personal en pantalla.' : 'This will display personal data on screen.'}</span>
-            <div class="rc-actions">
-              <button class="rc-yes" @click=${() => this.doReveal(s.index)}>${es ? 'Mostrar' : 'Show'}</button>
-              <button class="rc-no" @click=${() => (this._revealArmed = false)}>${es ? 'Cancelar' : 'Cancel'}</button>
+      ${this.allowIdCheck && this._idOpen && this._idResult !== 'match'
+        ? html`<div class="id-check" part="id-check">
+            <span class="rc-note"
+              >🔒 ${es
+                ? 'Escribe la identificación que ya conoces para confirmar. Nunca mostramos el dato completo.'
+                : 'Type the ID you already know to confirm. We never display the full value.'}</span
+            >
+            <div class="id-check-row">
+              <input
+                class="id-input"
+                .value=${this._idInput}
+                @input=${(e: Event) => (this._idInput = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => {
+                  if (e.key === 'Enter') this.checkId(s.index, s.nationalId!.full)
+                }}
+                placeholder=${s.nationalId.masked}
+              />
+              <button class="rc-yes" @click=${() => this.checkId(s.index, s.nationalId!.full)}>
+                ${es ? 'Comprobar' : 'Check'}
+              </button>
             </div>
           </div>`
         : ''}
@@ -880,8 +968,10 @@ export class AttesttoSignatureCard extends LitElement {
   private renderInternals(s: SignatureCardModel) {
     const chain = s.tech.chain ?? []
     const es = this._lang === 'es'
+    const desc = STATUS_TEXT[this._lang][s.status].desc
     return html`
       <div class="internals" part="internals">
+        <p class="internals-desc">${desc}</p>
         <div class="tabs">
           <button class="tab ${this._tab === 'chain' ? 'active' : ''}" @click=${() => (this._tab = 'chain')}>
             ${t('comp.verify.certChain')}
@@ -918,8 +1008,12 @@ export class AttesttoSignatureCard extends LitElement {
 
   private renderSigTab(s: SignatureCardModel) {
     const kv: Array<[string, string]> = []
+    if (s.tech.signedAtISO) kv.push(['signed (UTC, ms)', s.tech.signedAtISO])
+    else if (s.signedAt) kv.push(['signed', s.signedAt])
+    if (s.tech.reason) kv.push(['commitment', s.tech.reason])
     if (s.method) kv.push(['method', s.method])
     if (s.tech.standard) kv.push(['standard', s.tech.standard])
+    if (s.tech.producer) kv.push(['producer', s.tech.producer])
     if (s.cert?.validFrom || s.cert?.validTo) kv.push(['cert valid', `${s.cert?.validFrom ?? '?'} – ${s.cert?.validTo ?? '?'}`])
     if (s.tech.digestAlgorithm) kv.push(['digest', s.tech.digestAlgorithm])
     if (s.tech.byteRange) kv.push(['byte range', `[${s.tech.byteRange.join(', ')}]`])

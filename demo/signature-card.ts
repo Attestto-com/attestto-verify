@@ -19,7 +19,7 @@ const samples: SignatureCardModel[] = [
     cert: { validFrom: '2024-03-11', validTo: '2028-03-11' },
     nationalId: { masked: 'IDCES-•••••72C', full: 'IDCES-99999972C' },
     capabilities: [
-      { label: 'Client authentication', kind: 'eku' },
+      { label: 'Authentication', kind: 'eku' },
       { label: 'Document signing', kind: 'eku' },
       { label: '1.2.840.113583.1.1.5', kind: 'eku' },
     ],
@@ -27,8 +27,10 @@ const samples: SignatureCardModel[] = [
     signatureImage: null,
     handle: null,
     ltv: { tier: 'none', hasTimestamp: false, revocationSource: 'none' },
+    trustMarks: [{ label: 'eIDAS (test certificate)', scheme: 'untrusted' }],
     tech: {
       standard: 'adbe.pkcs7.detached',
+      producer: 'Attestto Desktop Station',
       byteRange: [0, 1420, 22380, 4120],
       pkcs7Size: 8859,
       // Structure-only ≠ no chain: the certs parse, they just don't chain to a trusted root.
@@ -53,7 +55,7 @@ const samples: SignatureCardModel[] = [
     nationalId: { masked: 'CPF-•••••••748', full: 'CPF-01130748' },
     capabilities: [
       { label: 'Non-repudiation', kind: 'keyusage' },
-      { label: 'Digital signature', kind: 'keyusage' },
+      { label: 'Document signing', kind: 'keyusage' },
       { label: 'Email protection', kind: 'eku' },
     ],
     officialVerifier: { name: 'Firma Digital CR', url: 'https://firmadigital.go.cr' },
@@ -69,8 +71,15 @@ const samples: SignatureCardModel[] = [
       timestampAuthority: 'TSA BCCR',
       revocationSource: 'embedded',
     },
+    trustMarks: [
+      { label: 'CR Firma Digital', scheme: 'cr-firma' },
+      { label: 'Qualified (CR)', scheme: 'qualified' },
+    ],
     tech: {
       standard: 'ETSI.CAdES.detached',
+      signedAtISO: '2026-07-19T15:55:20.000Z',
+      reason: 'Aprobación del documento',
+      producer: 'Attestto Desktop Station',
       digestAlgorithm: 'SHA-256',
       byteRange: [0, 27428, 71352, 151319],
       pkcs7Size: 21961,
@@ -105,7 +114,12 @@ const samples: SignatureCardModel[] = [
     officialVerifier: { name: 'Attestto resolver', url: 'https://resolver.attestto.com' },
     signatureImage: null,
     handle: 'cr-111290877.attestto.id',
-    tech: { standard: 'attestto.self-attested.v1' },
+    trustMarks: [{ label: 'Attestto · Nivel B', scheme: 'attestto' }],
+    tech: {
+      standard: 'attestto.self-attested.v1',
+      signedAtISO: '2026-07-16T20:12:49.000Z',
+      digestAlgorithm: 'SHA-256',
+    },
   },
 ]
 

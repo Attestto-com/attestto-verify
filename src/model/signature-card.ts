@@ -47,8 +47,24 @@ export interface SignatureLtv {
   revocationSource: 'embedded' | 'live' | 'none'
 }
 
+/**
+ * A recognized trust-scheme mark (eIDAS qualified, EU Trusted List, CR Firma
+ * Digital, Attestto Nivel B…). Rendered as a styled badge — NOT third-party
+ * logos. `scheme` drives colour/icon and must reflect reality, never marketing.
+ */
+export interface SignatureTrustMark {
+  label: string
+  scheme: 'qualified' | 'trusted-list' | 'cr-firma' | 'attestto' | 'untrusted' | 'other'
+}
+
 export interface SignatureCardTech {
   standard?: string | null
+  /** Full signing time to the millisecond (ISO 8601 UTC), for the advanced tab. */
+  signedAtISO?: string | null
+  /** Signer's stated commitment / reason for signing (PAdES /Reason). */
+  reason?: string | null
+  /** PDF producer / creating application. */
+  producer?: string | null
   byteRange?: number[] | null
   pkcs7Size?: number | null
   location?: string | null
@@ -94,29 +110,53 @@ export interface SignatureCardModel {
   handle: string | null
   /** Long-term validation status. Null when not applicable (e.g. self-attested). */
   ltv?: SignatureLtv | null
+  /** Recognized trust-scheme marks (eIDAS qualified, CR Firma Digital, …). */
+  trustMarks?: SignatureTrustMark[] | null
   tech: SignatureCardTech
 }
 
 // ── Capability label maps ──────────────────────────────────────────────
 
+// ── Canonical capability vocabulary ────────────────────────────────────
+// One user-facing term set that BOTH X.509 (KeyUsage/EKU) and Attestto (DID
+// verification relationships) map onto, so "Digital signature" and "Document
+// signing" never appear side-by-side meaning the same thing.
+//   Document signing · Non-repudiation · Authentication · Identity assertion
+//   · Email protection · Encryption · Certificate signing · Timestamping
 const KEY_USAGE_LABELS: Record<string, string> = {
-  digitalSignature: 'Digital signature',
+  digitalSignature: 'Document signing',
   nonRepudiation: 'Non-repudiation',
   contentCommitment: 'Non-repudiation',
-  keyEncipherment: 'Key encipherment',
-  dataEncipherment: 'Data encipherment',
-  keyAgreement: 'Key agreement',
+  keyEncipherment: 'Encryption',
+  dataEncipherment: 'Encryption',
+  keyAgreement: 'Encryption',
   keyCertSign: 'Certificate signing',
-  cRLSign: 'CRL signing',
+  cRLSign: 'Certificate signing',
 }
 
 const EKU_LABELS: Record<string, string> = {
   emailProtection: 'Email protection',
-  clientAuth: 'Client authentication',
+  clientAuth: 'Authentication',
   serverAuth: 'Server authentication',
   codeSigning: 'Code signing',
-  timeStamping: 'Time stamping',
+  timeStamping: 'Timestamping',
   documentSigning: 'Document signing',
+}
+
+/** Map Attestto DID verification relationships onto the same canonical terms. */
+export function capabilitiesFromDid(relationships: string[] = []): SignatureCapability[] {
+  const out: SignatureCapability[] = []
+  const add = (label: string) => {
+    if (!out.some((c) => c.label === label)) out.push({ label, kind: 'attestto' })
+  }
+  for (const r of relationships) {
+    if (r === 'assertionMethod') {
+      add('Document signing')
+      add('Identity assertion')
+    } else if (r === 'authentication') add('Authentication')
+    else if (r === 'keyAgreement') add('Encryption')
+  }
+  return out
 }
 
 /** Map raw X.509 KeyUsage/EKU tokens to friendly capability chips. */
