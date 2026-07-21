@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>attestto-signature-card · demo</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0f1117;
+        color: #e5e7eb;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        padding: 40px 24px;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0;
+      }
+      p.sub {
+        color: #9ca3af;
+        margin: 4px 0 0;
+        font-size: 0.85rem;
+      }
+      #lang {
+        background: #1f2430;
+        color: #e5e7eb;
+        border: 1px solid #333a49;
+        border-radius: 8px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      #cards {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      /* Example host theming via ::part — the card body stays white regardless. */
+      attestto-signature-card::part(status) {
+        letter-spacing: 0.01em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>&lt;attestto-signature-card&gt; — shared card</h1>
+          <p class="sub">One reusable component · website + desktop feed it the same model · toggle language →</p>
+        </div>
+        <button id="lang">EN / ES</button>
+      </header>
+      <div id="cards"></div>
+    </div>
+    <script type="module" src="./signature-card.ts"></script>
+  </body>
+</html>

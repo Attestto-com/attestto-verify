@@ -28,6 +28,20 @@ initGlobal()
 export { AttesttoVerify } from './components/attestto-verify.js'
 export { AttesttoSign } from './components/attestto-sign.js'
 export { AttesttoConsent } from './components/attestto-consent.js'
+export { AttesttoSignatureCard } from './components/attestto-signature-card.js'
+export type {
+  SignatureCardModel,
+  SignatureStatus,
+  SignatureCapability,
+  OfficialVerifier,
+} from './model/signature-card.js'
+export {
+  capabilitiesFromCert,
+  capabilitiesFromDid,
+  officialVerifierFor,
+  initialsFor,
+} from './model/signature-card.js'
+export type { SignatureTrustMark, SignatureLtv } from './model/signature-card.js'
 
 // Plugin system
 export { attesttoPlugins } from './plugins/registry.js'
