@@ -30,6 +30,8 @@ import {
   CA_SINPE_PERSONA_JURIDICA_V2 as SINPE_PJ_PEM,
   CA_SINPE_PERSONA_FISICA_V2 as SINPE_PF_PEM,
   CA_SINPE_PERSONA_FISICA_V2_2023 as SINPE_PF_2023_PEM,
+  CA_SINPE_PERSONA_FISICA_V2_2026 as SINPE_PF_2026_PEM,
+  CA_SINPE_PERSONA_JURIDICA_V2_2026 as SINPE_PJ_2026_PEM,
 } from '@attestto/trust/cr'
 import {
   AC_RAIZ_ICP_BRASIL_V5 as BR_RAIZ_V5_PEM,
@@ -316,8 +318,10 @@ async function loadTrustAnchors(): Promise<LoadedAnchor[]> {
     { pem: POLITICA_PJ_PEM, label: 'CA POLITICA PERSONA JURIDICA - COSTA RICA v2' },
     { pem: POLITICA_PF_PEM, label: 'CA POLITICA PERSONA FISICA - COSTA RICA v2' },
     { pem: SINPE_PJ_PEM, label: 'CA SINPE - PERSONA JURIDICA v2' },
+    { pem: SINPE_PJ_2026_PEM, label: 'CA SINPE - PERSONA JURIDICA v2 (2026)' },
     { pem: SINPE_PF_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2019)' },
     { pem: SINPE_PF_2023_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2023)' },
+    { pem: SINPE_PF_2026_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2026)' },
     { pem: POLITICA_TSA_PEM, label: 'CA POLITICA SELLADO DE TIEMPO - COSTA RICA v2' },
     // Brazil — ICP-Brasil root CAs (ATT-314)
     { pem: BR_RAIZ_V5_PEM, label: 'AC Raiz ICP-Brasil v5' },
