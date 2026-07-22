@@ -69,12 +69,30 @@ export interface CertificateInfo {
   /** CR-specific: número de colegiado from BCCR extension */
   numeroColegiado: string | null
   /**
+   * OCSP responder URL from the Authority Information Access extension
+   * (1.3.6.1.5.5.7.1.1, accessMethod id-ad-ocsp = 1.3.6.1.5.5.7.48.1).
+   * Used ONLY by the strictly opt-in online revocation check. Null when the
+   * cert declares no OCSP AIA entry.
+   */
+  ocspUrl: string | null
+  /**
    * Raw DER bytes of this certificate as a hex string. Captured at parse time
    * so the chain validator (`chain-validator.ts`) can re-decode the cert with
    * pkijs and run real cryptographic chain validation against bundled BCCR
    * trust anchors. Without this, only structure parsing is possible.
    */
   rawDerHex: string
+  /**
+   * Provenance of this certificate for honest display (ATT chain-display fix):
+   *   - 'embedded'    → the cert was embedded in the signed PDF/PKCS#7 blob.
+   *   - 'trust-store' → the cert was NOT in the PDF; it was supplied by the
+   *                     bundled trust store to complete the validated chain
+   *                     (e.g. missing intermediates/root when the PDF embedded
+   *                     only the signer leaf).
+   * Undefined for certs built before provenance tracking existed; treated as
+   * 'embedded' by consumers.
+   */
+  source?: 'embedded' | 'trust-store'
 }
 
 export interface CertificateChainResult {
@@ -129,6 +147,20 @@ export interface CertificateChainResult {
   trustSource: 'bundled' | 'resolver' | null
   /** National ID format hint from did:pki resolution (e.g. "CR-cedula", "BR-cpf") */
   nationalIdFormat: string | null
+  /**
+   * OCSP responder URL for the signer certificate, sourced from the signer
+   * cert's AIA extension. Consumed ONLY by the opt-in online revocation check.
+   * Null when the signer cert declares no OCSP AIA entry (the online check can
+   * still fall back to a resolver-provided endpoint).
+   */
+  signerOcspUrl: string | null
+  /**
+   * Raw DER (hex) of the issuing CA certificate, i.e. the cert directly above
+   * the signer in `chain`. Needed to build a valid OCSP CertID (issuerNameHash
+   * / issuerKeyHash) for the opt-in online revocation check. Null when the
+   * chain does not include the issuer.
+   */
+  issuerDerHex: string | null
 }
 
 export interface PkiIdentity {
@@ -434,6 +466,7 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
   const extKeyUsage: string[] = []
   let profesion: string | null = null
   let numeroColegiado: string | null = null
+  let ocspUrl: string | null = null
 
   const extensionsWrapper = findContext(tbs, 3)
   if (extensionsWrapper && extensionsWrapper.children.length > 0) {
@@ -449,6 +482,9 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
           onCrAttribute: (key, value) => {
             if (key === 'profesion') profesion = value
             if (key === 'numeroColegiado') numeroColegiado = value
+          },
+          onOcspUrl: (url) => {
+            if (!ocspUrl) ocspUrl = url
           },
         })
       }
@@ -475,6 +511,7 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
     role: 'end-entity', // Will be assigned by chain builder
     profesion,
     numeroColegiado,
+    ocspUrl,
     rawDerHex: '', // Filled in by parsePkcs7Certificates after parseCertificate returns
   }
 }
@@ -518,6 +555,7 @@ function parseExtension(
     keyUsage: string[]
     extKeyUsage: string[]
     onCrAttribute: (key: string, value: string) => void
+    onOcspUrl: (url: string) => void
   },
 ): void {
   if (ext.tag !== ASN1_TAG.SEQUENCE || ext.children.length < 2) return
@@ -611,6 +649,26 @@ function parseExtension(
         }
       }
     }
+
+    // 1.3.6.1.5.5.7.1.1 = AuthorityInfoAccess
+    //   AIA ::= SEQUENCE OF AccessDescription
+    //   AccessDescription ::= SEQUENCE { accessMethod OID, accessLocation GeneralName }
+    //   OCSP accessMethod = 1.3.6.1.5.5.7.48.1 (id-ad-ocsp)
+    //   accessLocation for OCSP is a [6] IA5String URI (uniformResourceIdentifier)
+    if (oid === '1.3.6.1.5.5.7.1.1') {
+      if (inner.tag === ASN1_TAG.SEQUENCE) {
+        for (const accessDesc of inner.children) {
+          if (accessDesc.tag !== ASN1_TAG.SEQUENCE || accessDesc.children.length < 2) continue
+          const methodNode = accessDesc.children[0]
+          if (methodNode.tag !== ASN1_TAG.OID) continue
+          if (decodeOid(methodNode.content) !== '1.3.6.1.5.5.7.48.1') continue
+          // accessLocation: GeneralName [6] uniformResourceIdentifier (IA5String)
+          const locNode = accessDesc.children[1]
+          const url = new TextDecoder('utf-8').decode(locNode.content).trim()
+          if (/^https?:\/\//i.test(url)) out.onOcspUrl(url)
+        }
+      }
+    }
   } catch {
     // Extension parsing is best-effort
   }
@@ -690,6 +748,78 @@ function buildChain(
   }
 
   return chain
+}
+
+// ── Resolved-Chain Merge (display only) ───────────────────────────
+
+/**
+ * Build a `CertificateInfo` from a validated-path cert supplied by the trust
+ * store. Only the fields the chain display needs are populated; the rest carry
+ * safe defaults. `source` is always 'trust-store'.
+ */
+function trustStoreCertToInfo(
+  rc: import('./chain-validator.js').ResolvedChainCert,
+): CertificateInfo {
+  return {
+    commonName: rc.commonName,
+    organization: null,
+    organizationalUnit: null,
+    country: rc.country,
+    serialNumber: rc.serialNumber,
+    subjectSerialNumber: null,
+    issuerCommonName: rc.issuerCommonName,
+    issuerOrganization: null,
+    validFrom: rc.validFrom,
+    validTo: rc.validTo,
+    isCa: rc.role !== 'end-entity',
+    policyOids: [],
+    email: null,
+    subjectAltNames: [],
+    keyUsage: [],
+    extKeyUsage: [],
+    role: rc.role,
+    profesion: null,
+    numeroColegiado: null,
+    ocspUrl: null,
+    rawDerHex: rc.rawDerHex,
+    source: 'trust-store',
+  }
+}
+
+/**
+ * Merge the embedded chain (signer → …) with the validated path resolved from
+ * the trust store. Returns signer → intermediate(s) → root with each entry
+ * tagged by provenance. Certs already present in the embedded chain keep their
+ * 'embedded' tag and are NOT duplicated; only certs the trust store added are
+ * appended, tagged 'trust-store'.
+ *
+ * Dedupe key: raw DER hex (case-insensitive) when both sides have it,
+ * otherwise serialNumber + commonName (case-insensitive).
+ */
+function mergeResolvedChain(
+  embedded: CertificateInfo[],
+  resolved: import('./chain-validator.js').ResolvedChainCert[],
+): CertificateInfo[] {
+  if (resolved.length === 0) return embedded
+
+  const keyOf = (der: string, serial: string, cn: string): string =>
+    der ? `der:${der.toLowerCase()}` : `sn:${serial.toUpperCase()}|cn:${cn.toUpperCase()}`
+
+  const seen = new Set(
+    embedded.map((c) => keyOf(c.rawDerHex, c.serialNumber, c.commonName)),
+  )
+
+  // The resolved path is signer → … → root. The embedded chain already covers
+  // the signer (and any embedded intermediates), so we append only the
+  // resolved certs that are not already displayed, preserving their order.
+  const merged = [...embedded]
+  for (const rc of resolved) {
+    const key = keyOf(rc.rawDerHex, rc.serialNumber, rc.commonName)
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(trustStoreCertToInfo(rc))
+  }
+  return merged
 }
 
 // ── PKI Recognition ───────────────────────────────────────────────
@@ -848,6 +978,8 @@ export async function parseCertificateChain(
     pkiDid: null,
     trustSource: null,
     nationalIdFormat: null,
+    signerOcspUrl: null,
+    issuerDerHex: null,
   }
 
   if (!pkcs7Hex || pkcs7Hex.length < 10) return empty
@@ -905,6 +1037,7 @@ export async function parseCertificateChain(
       'Chain validation has not been attempted (no signer cert).'
     let trustSource: 'bundled' | 'resolver' | null = null
     let endEntityHints: Record<string, import('./pki-resolver.js').EndEntityHint> | null = null
+    let resolvedChain: import('./chain-validator.js').ResolvedChainCert[] = []
 
     if (signer && signer.rawDerHex) {
       try {
@@ -920,6 +1053,7 @@ export async function parseCertificateChain(
         )
 
         endEntityHints = result.endEntityHints ?? null
+        resolvedChain = result.resolvedChain ?? []
 
         if (result.trusted) {
           cryptographicallyVerified = true
@@ -989,10 +1123,30 @@ export async function parseCertificateChain(
       }
     }
 
+    // ── Merge the validated path into the DISPLAYED chain (display only) ──
+    // The embedded chain may be short (some CR Firma Digital PDFs embed only
+    // the signer leaf). When validation walked to a bundled trust anchor,
+    // append any resolved intermediates/root that were NOT embedded, so the
+    // list reads signer → intermediate(s) → root just like a full embedded
+    // chain. Every embedded cert is tagged 'embedded'; certs supplied by the
+    // trust store are tagged 'trust-store' so the UI can label them honestly.
+    // Dedupe is by raw DER (canonical) with a serial+CN fallback.
+    for (const c of chain) {
+      if (!c.source) c.source = 'embedded'
+    }
+    const displayChain = mergeResolvedChain(chain, resolvedChain)
+
+    // The issuing CA is the cert directly above the signer in the chain.
+    const issuerCert = signer
+      ? displayChain.find((c) => c !== signer && c.commonName === signer.issuerCommonName) ??
+        displayChain[1] ??
+        null
+      : null
+
     return {
       certificates,
       signer,
-      chain,
+      chain: displayChain,
       pki,
       nationalId,
       signerDisplayName,
@@ -1004,6 +1158,8 @@ export async function parseCertificateChain(
       pkiDid,
       trustSource,
       nationalIdFormat,
+      signerOcspUrl: signer?.ocspUrl ?? null,
+      issuerDerHex: issuerCert?.rawDerHex || null,
     }
   } catch (e) {
     log.warn(`Certificate chain parse error: ${e}`)

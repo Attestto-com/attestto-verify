@@ -1,9 +1,29 @@
 import { LitElement, html, css } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
-import { verifyPdf, type PdfVerificationResult } from '../composables/pdf-verifier.js'
+import {
+  verifyPdf,
+  type PdfVerificationResult,
+  type PdfSignatureInfo,
+} from '../composables/pdf-verifier.js'
 import { attesttoPlugins, type VerificationResult } from '../plugins/registry.js'
 import { sharedStyles } from '../styles/shared.js'
 import { t, currentLang, type Lang } from '../i18n.js'
+import './attestto-signature-card.js'
+import {
+  capabilitiesFromCert,
+  countryName,
+  officialVerifierFor,
+  type SignatureCardModel,
+  type SignatureStatus,
+  type SignatureTrustMark,
+} from '../model/signature-card.js'
+import { checkOcspOnline, type OnlineOcspResult } from '../composables/online-ocsp.js'
+
+/** Per-signature state for the opt-in online revocation check (keyed by index). */
+interface OnlineRevState {
+  checking: boolean
+  result: OnlineOcspResult | null
+}
 
 /**
  * <attestto-verify> — Drop a PDF to verify its integrity and signatures
@@ -146,6 +166,12 @@ export class AttesttoVerify extends LitElement {
         background: var(--attestto-bg-card, #ffffff);
       }
 
+      /* Wrapper for each <attestto-signature-card>. The card carries its own
+         dark gradient body, so the slot only provides vertical spacing. */
+      .sig-card-slot {
+        margin-top: 1rem;
+      }
+
       .sig-name {
         font-weight: 600;
         display: flex;
@@ -212,8 +238,13 @@ export class AttesttoVerify extends LitElement {
         animation: tampered-pulse 1.6s ease-in-out infinite;
       }
       @keyframes tampered-pulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
-        50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+        }
       }
       .badge-verified {
         background: #0a2818;
@@ -346,7 +377,8 @@ export class AttesttoVerify extends LitElement {
         background: var(--attestto-error-bg, #fee2e2);
         color: var(--attestto-error-text, #991b1b);
       }
-      .revocation-unknown, .revocation-parse-error {
+      .revocation-unknown,
+      .revocation-parse-error {
         background: var(--attestto-warning-bg, #fef3c7);
         color: var(--attestto-warning-text, #92400e);
       }
@@ -500,7 +532,9 @@ export class AttesttoVerify extends LitElement {
         transition: opacity 0.15s;
       }
 
-      .id-challenge-confirm:hover { opacity: 0.85; }
+      .id-challenge-confirm:hover {
+        opacity: 0.85;
+      }
 
       .id-challenge-cancel {
         padding: 0.3rem 0.75rem;
@@ -535,7 +569,9 @@ export class AttesttoVerify extends LitElement {
         text-decoration: none;
       }
 
-      .id-cta a:hover { text-decoration: underline; }
+      .id-cta a:hover {
+        text-decoration: underline;
+      }
 
       .id-challenge-options {
         display: flex;
@@ -637,7 +673,9 @@ export class AttesttoVerify extends LitElement {
         max-width: 280px;
         z-index: 10;
         pointer-events: none;
-        transition: opacity 0.15s ease, visibility 0.15s ease;
+        transition:
+          opacity 0.15s ease,
+          visibility 0.15s ease;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         border: 1px solid var(--attestto-border, #334155);
       }
@@ -935,12 +973,20 @@ export class AttesttoVerify extends LitElement {
         animation: bean-bounce 1.4s ease-in-out infinite;
       }
 
-      .bean-1 { animation-delay: 0s; }
-      .bean-2 { animation-delay: 0.16s; }
-      .bean-3 { animation-delay: 0.32s; }
+      .bean-1 {
+        animation-delay: 0s;
+      }
+      .bean-2 {
+        animation-delay: 0.16s;
+      }
+      .bean-3 {
+        animation-delay: 0.32s;
+      }
 
       @keyframes bean-bounce {
-        0%, 80%, 100% {
+        0%,
+        80%,
+        100% {
           transform: scale(0.6);
           opacity: 0.4;
         }
@@ -983,7 +1029,7 @@ export class AttesttoVerify extends LitElement {
       }
 
       .share-btn:hover {
-        background: var(--attestto-primary-hover, #7B72ED);
+        background: var(--attestto-primary-hover, #7b72ed);
       }
 
       .reset-btn {
@@ -1106,10 +1152,18 @@ export class AttesttoVerify extends LitElement {
         font-weight: 700;
       }
 
-      .summary-banner-verified .summary-title { color: var(--attestto-success, #4ade80); }
-      .summary-banner-tampered .summary-title { color: #f87171; }
-      .summary-banner-partial .summary-title { color: var(--attestto-warning, #fbbf24); }
-      .summary-banner-none .summary-title { color: var(--attestto-text-muted, #94a3b8); }
+      .summary-banner-verified .summary-title {
+        color: var(--attestto-success, #4ade80);
+      }
+      .summary-banner-tampered .summary-title {
+        color: #f87171;
+      }
+      .summary-banner-partial .summary-title {
+        color: var(--attestto-warning, #fbbf24);
+      }
+      .summary-banner-none .summary-title {
+        color: var(--attestto-text-muted, #94a3b8);
+      }
 
       .summary-detail {
         font-size: 0.82rem;
@@ -1164,17 +1218,14 @@ export class AttesttoVerify extends LitElement {
   @state() private result: PdfVerificationResult | null = null
   @state() private pluginResults: Map<string, VerificationResult> | null = null
   @state() private showCopied = false
-  /** Tracks which signature indexes have had their national ID revealed */
-  @state() private revealedIds = new Set<number>()
-  /** Which signature index is showing the challenge panel */
-  @state() private challengeTarget: number | null = null
-  /** Challenge input value (email or national ID) */
-  @state() private challengeInput = ''
-  /** Challenge error message */
-  @state() private challengeError = ''
-  /** Which challenge method is active: 'email' | 'knowledge' | null */
-  @state() private challengeMethod: 'email' | 'knowledge' | null = null
   @state() private _lang: Lang = currentLang()
+  /**
+   * Opt-in online revocation results, keyed by signature index. Empty by default
+   * and only ever written when the user clicks "Check revocation online" on a
+   * card. Nothing here runs on load or on verify, so the no-network default is
+   * unchanged.
+   */
+  @state() private _onlineRev = new Map<number, OnlineRevState>()
 
   private _onLangChange = (e: Event) => {
     this._lang = (e as CustomEvent).detail.lang
@@ -1235,9 +1286,7 @@ export class AttesttoVerify extends LitElement {
               : t('comp.verify.dropVerify')}
         </div>
         <div class="drop-zone-hint">
-          ${hasExpected
-            ? t('comp.verify.dropHintShared')
-            : t('comp.verify.dropHint')}
+          ${hasExpected ? t('comp.verify.dropHintShared') : t('comp.verify.dropHint')}
         </div>
         <input type="file" @change=${this.onFileSelect} accept=".pdf,.doc,.docx,.txt,.json" />
       </div>
@@ -1249,8 +1298,12 @@ export class AttesttoVerify extends LitElement {
     const sigs = r.signatures
     const sigCount = sigs.length
     const hasTampered = sigs.some((s) => s.level === 'tampered')
-    const allVerified = sigCount > 0 && sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
-    const someVerified = sigCount > 0 && sigs.some((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+    const allVerified =
+      sigCount > 0 &&
+      sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+    const someVerified =
+      sigCount > 0 &&
+      sigs.some((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
 
     let bannerClass: string
     let icon: string
@@ -1295,15 +1348,20 @@ export class AttesttoVerify extends LitElement {
           <div class="summary-detail">
             ${detail}${pkiNames.length > 0 ? ` · ${pkiNames.join(', ')}` : ''}
           </div>
-          ${this.verifiedAt ? html`
-            <div class="summary-meta">
-              ${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt} · ${t('comp.verify.summary.verifiedVia')}
-            </div>
-          ` : ''}
+          ${this.verifiedAt
+            ? html`
+                <div class="summary-meta">
+                  ${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt} ·
+                  ${t('comp.verify.summary.verifiedVia')}
+                </div>
+              `
+            : ''}
         </div>
         <div class="summary-actions">
           <button class="copy-summary-btn" @click=${this.copySummary}>
-            ${this.showSummaryCopied ? t('comp.verify.summary.summaryCopied') : t('comp.verify.summary.copySummary')}
+            ${this.showSummaryCopied
+              ? t('comp.verify.summary.summaryCopied')
+              : t('comp.verify.summary.copySummary')}
           </button>
         </div>
       </div>
@@ -1317,373 +1375,84 @@ export class AttesttoVerify extends LitElement {
         ${r.isPdf ? this.renderSummaryBanner() : ''}
         <div class="result-card" part="result-card">
           <div>
-          <div class="result-header">
-            <span class="meta-label">${t('comp.verify.filename')}</span>
-            📄 ${r.fileName}
-            <span
-              style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)"
-            >
-              ${this.formatSize(r.fileSize)}
-            </span>
-          </div>
+            <div class="result-header">
+              <span class="meta-label">${t('comp.verify.filename')}</span>
+              📄 ${r.fileName}
+              <span
+                style="font-size: 0.8rem; font-weight: 400; color: var(--attestto-text-muted, #64748b)"
+              >
+                ${this.formatSize(r.fileSize)}
+              </span>
+            </div>
 
-          ${r.isPdf && r.metadata
-            ? html`
-                <div class="section-title">${t('comp.verify.metadata')}</div>
-                <div class="meta-grid">
-                  ${r.metadata.title
-                    ? html`<span class="meta-label">${t('comp.verify.title')}</span><span>${r.metadata.title}</span>`
-                    : ''}
-                  ${r.metadata.author
-                    ? html`<span class="meta-label">${t('comp.verify.author')}</span><span>${r.metadata.author}</span>`
-                    : ''}
-                  ${r.metadata.subject
-                    ? html`<span class="meta-label">${t('comp.verify.subject')}</span><span>${r.metadata.subject}</span>`
-                    : ''}
-                  ${r.metadata.creator
-                    ? html`<span class="meta-label">${t('comp.verify.creator')}</span><span>${r.metadata.creator}</span>`
-                    : ''}
-                  ${r.metadata.producer
-                    ? html`<span class="meta-label">${t('comp.verify.producer')}</span><span>${r.metadata.producer}</span>`
-                    : ''}
-                  ${r.metadata.creationDate
-                    ? html`<span class="meta-label">${t('comp.verify.created')}</span><span>${r.metadata.creationDate}</span>`
-                    : ''}
-                  ${r.metadata.modDate
-                    ? html`<span class="meta-label">${t('comp.verify.modified')}</span><span>${r.metadata.modDate}</span>`
-                    : ''}
-                </div>
-              `
-            : ''}
-
-          ${r.isPdf && r.signatures.length > 0
-            ? html`
-                <div class="section-title">${t('comp.verify.digitalSigs')}</div>
-                ${r.signatures.map(
-                  (sig) => html`
-                    <div class="sig-card" part="sig-card">
-                      <div class="sig-name">
-                        <span
-                          class="badge badge-${sig.level === 'tampered'
-                            ? 'tampered'
-                            : sig.level === 'verified'
-                              ? 'verified'
-                              : sig.level === 'unknown'
-                                ? 'unknown'
-                                : sig.certChain?.cryptographicallyVerified
-                                  ? 'parsed'
-                                  : 'detected'}"
-                          part="status-badge trust-level"
-                          title=${sig.level === 'tampered'
-                            ? 'DOCUMENT TAMPERED — content was modified after signing'
-                            : sig.level === 'verified'
-                              ? 'Chain cryptographically verified AND document content matches signature'
-                              : sig.level === 'unknown'
-                                ? 'Integrity check could not run — verification incomplete (NOT a tamper signal)'
-                                : sig.certChain?.cryptographicallyVerified
-                                  ? 'Chain cryptographically verified — integrity not yet confirmed'
-                                  : 'Structure parsed only — chain NOT cryptographically verified'}
-                        >
-                          ${sig.level === 'tampered'
-                            ? '⚠ TAMPERED'
-                            : sig.level === 'verified'
-                              ? 'CRYPTOGRAPHICALLY VERIFIED'
-                              : sig.level === 'unknown'
-                                ? '◌ INTEGRITY UNKNOWN'
-                                : sig.certChain?.cryptographicallyVerified
-                                  ? 'CHAIN VERIFIED'
-                                  : 'STRUCTURE PARSED'}
-                        </span>
-                        <span part="signer-name">${sig.name}</span>
-                        ${sig.subFilter
-                          ? html`<span class="sub-filter-tag has-tooltip tooltip-left">${sig.subFilter}${this.sigFormatTooltip(sig.subFilter) ? html`<span class="tooltip-text">${this.sigFormatTooltip(sig.subFilter)}</span>` : ''}</span>`
-                          : ''}
-                      </div>
-                      ${sig.level === 'tampered'
-                        ? html`
-                            <div
-                              class="integrity-tampered"
-                              part="integrity-tampered"
-                              style="background:#450a0a;border:2px solid #dc2626;color:#fecaca;
-                                     padding:12px 14px;border-radius:6px;margin:8px 0;font-size:13px;
-                                     line-height:1.5;font-weight:500;"
-                            >
-                              ⚠ <strong>DOCUMENT TAMPERED.</strong>
-                              The bytes covered by this signature do not match the value the
-                              signer signed. The PDF was modified after it was signed and
-                              <strong>must not be trusted</strong>, even if the certificate
-                              chain itself is valid.
-                              ${sig.integrityError
-                                ? html`<div style="margin-top:6px;font-size:12px;opacity:0.85;">
-                                    Reason: ${sig.integrityError}
-                                  </div>`
-                                : ''}
-                            </div>
-                          `
-                        : ''}
-                      ${sig.level === 'unknown'
-                        ? html`
-                            <div
-                              class="integrity-unknown"
-                              part="integrity-unknown"
-                              style="background:#3a2f00;border:1px solid #d4a017;color:#ffe48a;
-                                     padding:12px 14px;border-radius:6px;margin:8px 0;font-size:13px;
-                                     line-height:1.5;font-weight:500;"
-                            >
-                              ◌ <strong>${t('comp.verify.integrityUnknown.title')}</strong>
-                              ${t('comp.verify.integrityUnknown.body')}
-                              ${sig.integrityError
-                                ? html`<div style="margin-top:6px;font-size:12px;opacity:0.85;font-family:monospace;word-break:break-all;">
-                                    Reason: ${sig.integrityError}
-                                  </div>`
-                                : ''}
-                            </div>
-                          `
-                        : ''}
-                      ${sig.certChain && !sig.certChain.cryptographicallyVerified && sig.level !== 'tampered' && sig.level !== 'unknown'
-                        ? html`
-                            <div
-                              class="crypto-warning"
-                              part="crypto-warning"
-                              style="background:#3a1f00;border:1px solid #ff9500;color:#ffb84d;
-                                     padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
-                                     line-height:1.45;"
-                            >
-                              ⚠
-                              <strong>${t('comp.verify.structureParsed.title')}</strong>
-                              ${sig.certChain.cryptoVerificationWarning ||
-                              t('comp.verify.structureParsed.body')}
-                            </div>
-                          `
-                        : ''}
-                      ${sig.level === 'verified' && sig.subFilter === 'attestto.self-attested.v1'
-                        ? html`
-                            <div
-                              class="crypto-verified"
-                              part="crypto-verified"
-                              style="background:#0a2818;border:1px solid #00c853;color:#69f0ae;
-                                     padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
-                                     line-height:1.45;"
-                            >
-                              ✓
-                              <strong>${t('comp.verify.attestto.verified')}</strong>
-                              ${t('comp.verify.attestto.verifiedBody')}
-                            </div>
-                          `
-                        : sig.level === 'verified'
-                          ? html`
-                              <div
-                                class="crypto-verified"
-                                part="crypto-verified"
-                                style="background:#0a2818;border:1px solid #00c853;color:#69f0ae;
-                                       padding:10px 12px;border-radius:6px;margin:8px 0;font-size:13px;
-                                       line-height:1.45;"
-                              >
-                                ✓
-                                <strong>${t('comp.verify.cryptoVerified.title')}</strong>
-                                ${t('comp.verify.cryptoVerified.body')}
-                              </div>
-                            `
-                          : ''}
-
-                      ${sig.attesttoMeta && sig.subFilter === 'attestto.self-attested.v1'
-                        ? html`
-                            <div
-                              class="attestto-provenance"
-                              part="attestto-provenance"
-                              style="background:#0d1f24;border:1px solid #1f4855;border-radius:6px;
-                                     padding:10px 12px;margin:8px 0;font-size:12px;line-height:1.5;
-                                     color:#9fcfd9;"
-                            >
-                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:600;color:#cfe9ef;">
-                                ${sig.attesttoMeta.country
-                                  ? html`<span style="font-size:16px;">${this.countryFlag(sig.attesttoMeta.country)}</span>`
-                                  : ''}
-                                <span>${t('comp.verify.attestto.title')}</span>
-                              </div>
-                              ${sig.attesttoMeta.country === 'CR'
-                                ? html`<div style="margin:4px 0;">
-                                    <strong style="color:#cfe9ef;">${t('comp.verify.attestto.kycSource')}:</strong>
-                                    ${t('comp.verify.attestto.padronCR')}
-                                  </div>`
-                                : ''}
-                              <div style="margin:4px 0;">
-                                <strong style="color:#cfe9ef;">${t('comp.verify.attestto.proofType')}:</strong>
-                                VC · ${sig.attesttoMeta.proofType}
-                              </div>
-                              <div style="margin:4px 0;">
-                                ${sig.attesttoMeta.mode === 'final'
-                                  ? html`<span style="color:#69f0ae;">🔒 ${t('comp.verify.attestto.modeFinal')}</span>`
-                                  : html`<span style="color:#ffb84d;">${t('comp.verify.attestto.modeOpen')}</span>`}
-                              </div>
-                              ${sig.attesttoMeta.mock
-                                ? html`<div style="margin-top:6px;padding:6px 8px;background:#3a1f00;border:1px solid #ff9500;border-radius:4px;color:#ffb84d;">
-                                    ⚠ ${t('comp.verify.attestto.demoWarning')}
-                                  </div>`
-                                : ''}
-                            </div>
-                          `
-                        : ''}
-
-                      ${sig.did
-                        ? html`<div
-                            class="signer-did"
-                            part="did-link"
-                            title="${t('comp.verify.decentralizedId')}"
-                          >
-                            ${sig.did}
-                          </div>`
-                        : ''}
-                      ${sig.lei
-                        ? html`
-                            <div class="corporate-row" part="vlei-badge">
-                              <span class="gleif-icon">GLEIF</span>
-                              <span
-                                >${sig.organization ?? t('comp.verify.organization')} &middot; LEI:
-                                ${sig.lei}</span
-                              >
-                            </div>
-                          `
-                        : sig.organization
-                          ? html`
-                              <div class="corporate-row" part="corporate-info">
-                                <span>${sig.organization}</span>
-                              </div>
-                            `
-                          : ''}
-
-                      <div class="level-hint" part="trust-level">${this.levelHint(sig.level)}</div>
-
-                      ${sig.certChain?.pki
-                        ? html`
-                            <div class="pki-badge" part="pki-badge">
-                              <span class="pki-flag">${this.countryFlag(sig.certChain.pki.country)}</span>
-                              <span class="pki-name">${sig.certChain.pki.name}</span>
-                              ${sig.certChain.pki.certificateType
-                                ? html`<span class="pki-type">${sig.certChain.pki.certificateType}</span>`
-                                : ''}
-                            </div>
-                          `
-                        : ''}
-                      ${sig.certChain?.nationalId
-                        ? this.renderIdentityChallenge(sig.certChain, r.signatures.indexOf(sig))
-                        : ''}
-                      ${(sig.certChain?.keyUsage?.length || sig.certChain?.extKeyUsage?.length)
-                        ? html`
-                            <div class="trust-permissions">
-                              <div class="section-title-row has-tooltip">
-                                <div class="cert-chain-title">${t('comp.verify.trustPermissions')}</div>
-                                <span class="info-icon">?</span>
-                                <span class="tooltip-text">${t('comp.verify.trustPermissions.tooltip')}</span>
-                              </div>
-                              <div class="permission-grid">
-                                ${(sig.certChain.keyUsage ?? []).map(
-                                  (ku) => html`<span class="permission-badge permission-key has-tooltip">${ku}${this.kuTooltip(ku) ? html`<span class="tooltip-text">${this.kuTooltip(ku)}</span>` : ''}</span>`,
-                                )}
-                                ${(sig.certChain.extKeyUsage ?? []).map(
-                                  (eku) => html`<span class="permission-badge permission-ext has-tooltip">${eku}${this.ekuTooltip(eku) ? html`<span class="tooltip-text">${this.ekuTooltip(eku)}</span>` : ''}</span>`,
-                                )}
-                              </div>
-                            </div>
-                          `
-                        : ''}
-                      ${sig.certChain && sig.certChain.chain.length > 0
-                        ? html`
-                            <div class="cert-chain" part="cert-chain">
-                              <div class="section-title-row has-tooltip">
-                                <div class="cert-chain-title">${t('comp.verify.certChain')}</div>
-                                <span class="info-icon">?</span>
-                                <span class="tooltip-text">${t('comp.verify.certChain.tooltip')}</span>
-                              </div>
-                              ${sig.certChain.chain.slice().reverse().map(
-                                (cert, i) => html`
-                                  <div class="cert-node" style="--depth: ${i}">
-                                    <span class="cert-icon">${cert.role === 'root'
-                                      ? '\u{1F3DB}'
-                                      : cert.role === 'intermediate'
-                                        ? '\u{1F517}'
-                                        : '\u{270D}'}</span>
-                                    <div class="cert-details">
-                                      <div class="cert-cn">${cert.commonName}</div>
-                                      ${cert.organization
-                                        ? html`<div class="cert-org">${cert.organization}</div>`
-                                        : ''}
-                                      <div class="cert-meta">
-                                        ${cert.validFrom && cert.validTo
-                                          ? html`<span class="${cert.validTo && new Date(cert.validTo) < new Date() ? 'cert-expired' : ''}">${cert.validFrom.split('T')[0]} — ${cert.validTo.split('T')[0]}${cert.validTo && new Date(cert.validTo) < new Date() ? ' (EXPIRADO)' : ''}</span>`
-                                          : ''}
-                                        ${cert.country
-                                          ? html`<span>${cert.country}</span>`
-                                          : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                `,
-                              )}
-                            </div>
-                          `
-                        : ''}
-
-                      ${sig.revocationStatus && sig.revocationStatus !== 'no-data'
-                        ? html`
-                            <div class="revocation-status revocation-${sig.revocationStatus}" part="revocation-status">
-                              <span class="revocation-icon">${sig.revocationStatus === 'good' ? '\u2705' : sig.revocationStatus === 'revoked' ? '\u274C' : '\u26A0'}</span>
-                              <span>${sig.revocationMessage ?? sig.revocationStatus}</span>
-                            </div>
-                          `
-                        : ''}
-
-                      ${sig.certChain?.signer?.validTo && new Date(sig.certChain.signer.validTo) < new Date()
-                        ? html`
-                            <div class="expiry-warning" part="expiry-warning">
-                              <span class="expiry-icon">\u23F0</span>
-                              <span>Certificado del firmante expirado el ${sig.certChain.signer.validTo.split('T')[0]}. La firma fue valida al momento de firmar.</span>
-                            </div>
-                          `
-                        : ''}
-
-                      ${sig.pkcs7Hex
-                        ? html`
-                            <div class="pkcs7-surface" part="pkcs7-hex">
-                              <button class="pkcs7-copy-btn" @click=${() => this.copyPkcs7(sig.pkcs7Hex!)}>
-                                ${t('comp.verify.copyPkcs7')}
-                              </button>
-                              <span class="pkcs7-size">${Math.round(sig.pkcs7Hex.length / 2).toLocaleString()} bytes</span>
-                            </div>
-                          `
-                        : ''}
-
-                      <div class="meta-grid">
-                        ${sig.reason
-                          ? html`<span class="meta-label">${t('comp.verify.reason')}</span><span>${sig.reason}</span>`
-                          : ''}
-                        ${sig.location
-                          ? html`<span class="meta-label">${t('comp.verify.location')}</span
-                              ><span>${sig.location}</span>`
-                          : ''}
-                        ${sig.contactInfo
-                          ? html`<span class="meta-label">${t('comp.verify.contact')}</span
-                              ><span>${sig.contactInfo}</span>`
-                          : ''}
-                        ${sig.signDate
-                          ? html`<span class="meta-label">${t('comp.verify.signed')}</span><span>${sig.signDate}</span>`
-                          : ''}
-                      </div>
-                    </div>
-                  `,
-                )}
-              `
-            : r.isPdf
+            ${r.isPdf && r.metadata
               ? html`
-                  <div class="section-title">${t('comp.verify.digitalSigs')}</div>
-                  <div class="sig-card" part="sig-card">
-                    <div class="sig-name">
-                      <span class="badge badge-none">${t('comp.verify.badge.none')}</span>
-                      ${t('comp.verify.noSigs')}
-                    </div>
+                  <div class="section-title">${t('comp.verify.metadata')}</div>
+                  <div class="meta-grid">
+                    ${r.metadata.title
+                      ? html`<span class="meta-label">${t('comp.verify.title')}</span
+                          ><span>${r.metadata.title}</span>`
+                      : ''}
+                    ${r.metadata.author
+                      ? html`<span class="meta-label">${t('comp.verify.author')}</span
+                          ><span>${r.metadata.author}</span>`
+                      : ''}
+                    ${r.metadata.subject
+                      ? html`<span class="meta-label">${t('comp.verify.subject')}</span
+                          ><span>${r.metadata.subject}</span>`
+                      : ''}
+                    ${r.metadata.creator
+                      ? html`<span class="meta-label">${t('comp.verify.creator')}</span
+                          ><span>${r.metadata.creator}</span>`
+                      : ''}
+                    ${r.metadata.producer
+                      ? html`<span class="meta-label">${t('comp.verify.producer')}</span
+                          ><span>${r.metadata.producer}</span>`
+                      : ''}
+                    ${r.metadata.creationDate
+                      ? html`<span class="meta-label">${t('comp.verify.created')}</span
+                          ><span>${r.metadata.creationDate}</span>`
+                      : ''}
+                    ${r.metadata.modDate
+                      ? html`<span class="meta-label">${t('comp.verify.modified')}</span
+                          ><span>${r.metadata.modDate}</span>`
+                      : ''}
                   </div>
                 `
               : ''}
+            ${r.isPdf && r.signatures.length > 0
+              ? html`
+                  <div class="section-title">${t('comp.verify.digitalSigs')}</div>
+                  ${r.signatures.map(
+                    (sig, i) => html`
+                      <div class="sig-card-slot" part="sig-card">
+                        <attestto-signature-card
+                          exportparts="card,avatar,status,name,official-link,signals,ltv,flag,national-id,id-check,capabilities,capability,internals,online-revocation"
+                          .signature=${this.buildSignatureCardModel(sig, i)}
+                          @id-confirmed=${(e: Event) =>
+                            this.emitChallengeEvent(
+                              (e as CustomEvent).detail.index,
+                              'knowledge',
+                              'revealed',
+                            )}
+                          @request-online-revocation=${(e: Event) =>
+                            this.runOnlineRevocation((e as CustomEvent).detail.index)}
+                        ></attestto-signature-card>
+                      </div>
+                    `,
+                  )}
+                `
+              : r.isPdf
+                ? html`
+                    <div class="section-title">${t('comp.verify.digitalSigs')}</div>
+                    <div class="sig-card" part="sig-card">
+                      <div class="sig-name">
+                        <span class="badge badge-none">${t('comp.verify.badge.none')}</span>
+                        ${t('comp.verify.noSigs')}
+                      </div>
+                    </div>
+                  `
+                : ''}
           </div>
           ${this.pluginResults && this.pluginResults.size > 0
             ? html`
@@ -1716,21 +1485,195 @@ export class AttesttoVerify extends LitElement {
         ${this.expectedHash ? this.renderHashMatch() : ''}
 
         <div class="share-actions">
-          <button class="share-btn" @click=${this.shareVerification} title="${t('comp.verify.shareLink')}">
+          <button
+            class="share-btn"
+            @click=${this.shareVerification}
+            title="${t('comp.verify.shareLink')}"
+          >
             ${this.showShareCopied ? t('comp.verify.shareLinkCopied') : t('comp.verify.shareLink')}
           </button>
-          <button class="reset-btn" @click=${this.reset}>
-            ${t('comp.verify.verifyAnother')}
-          </button>
+          <button class="reset-btn" @click=${this.reset}>${t('comp.verify.verifyAnother')}</button>
         </div>
 
-        ${this.result && !this.expectedHash ? html`
-          <div class="share-hint">
-            ${t('comp.verify.shareHint')}
-          </div>
-        ` : ''}
+        ${this.result && !this.expectedHash
+          ? html` <div class="share-hint">${t('comp.verify.shareHint')}</div> `
+          : ''}
       </div>
     `
+  }
+
+  /**
+   * Map a parsed PDF signature (`PdfSignatureInfo`) onto the presentational
+   * `SignatureCardModel` consumed by <attestto-signature-card>. This is the
+   * website's tiny mapper — the card stays decoupled from verify's types.
+   */
+  private buildSignatureCardModel(sig: PdfSignatureInfo, index: number): SignatureCardModel {
+    const es = this._lang === 'es'
+    const cc = sig.certChain
+    const pki = cc?.pki ?? null
+    const attestto = sig.attesttoMeta
+    const isSelfAttested = sig.subFilter === 'attestto.self-attested.v1'
+
+    // Status: mirror the old badge logic exactly.
+    let status: SignatureStatus
+    if (sig.level === 'tampered') status = 'tampered'
+    else if (sig.level === 'unknown') status = 'unknown'
+    else if (sig.level === 'verified' && isSelfAttested) status = 'self-attested'
+    else if (sig.level === 'verified' || sig.level === 'trusted' || sig.level === 'qualified')
+      status = 'verified'
+    else status = 'structure-only'
+
+    const country = pki?.country ?? attestto?.country ?? cc?.signer?.country ?? null
+
+    // Subtitle: PKI type + name, else self-attested descriptor, else org.
+    let subtitle: string
+    if (pki) {
+      subtitle = [pki.certificateType, pki.name].filter(Boolean).join(' · ')
+    } else if (isSelfAttested) {
+      subtitle = es ? 'Attestto · auto-atestada' : 'Attestto · self-attested'
+    } else if (sig.organization) {
+      subtitle = sig.organization
+    } else {
+      subtitle = es ? 'Firma digital' : 'Digital signature'
+    }
+
+    // National ID: masked for display + full for the confirm-not-disclose check.
+    const nationalId = cc?.nationalId
+      ? { masked: this.maskNationalId(cc.nationalId), full: cc.nationalId }
+      : null
+
+    const capabilities = capabilitiesFromCert(cc?.keyUsage ?? [], cc?.extKeyUsage ?? [])
+
+    // Trust marks — styled badges only, never third-party logos.
+    const trustMarks: SignatureTrustMark[] = []
+    if (isSelfAttested) {
+      trustMarks.push({
+        label: es ? 'Attestto auto-atestada' : 'Attestto self-attested',
+        scheme: 'attestto',
+      })
+    } else if (pki?.country === 'CR') {
+      trustMarks.push({ label: 'CR Firma Digital', scheme: 'cr-firma' })
+    } else if (pki) {
+      trustMarks.push({ label: pki.name, scheme: 'other' })
+    } else if (status === 'structure-only') {
+      trustMarks.push({
+        label: es ? 'Sin raíz de confianza' : 'No trusted root',
+        scheme: 'untrusted',
+      })
+    }
+
+    // Cert chain, root-first (the card renders root → leaf top to bottom).
+    const chain = (cc?.chain ?? [])
+      .slice()
+      .reverse()
+      .map((c) => ({
+        name: c.commonName,
+        issuer: c.issuerCommonName || undefined,
+        from: c.validFrom ? c.validFrom.split('T')[0] : undefined,
+        to: c.validTo ? c.validTo.split('T')[0] : undefined,
+        country: c.country || undefined,
+        source: c.source ?? 'embedded',
+      }))
+
+    const officialVerifier = officialVerifierFor({
+      country,
+      status,
+      methodTech: sig.subFilter,
+    })
+
+    const handle = attestto?.issuerHandle ?? sig.did ?? null
+
+    return {
+      index: index + 1,
+      signerName: cc?.signerDisplayName || sig.name,
+      country,
+      status,
+      subtitle,
+      // Prefer the bundled PKI's human name; otherwise fall back to the
+      // country name so the JURISDICTION label matches its flag (bug: ES
+      // eIDAS certs resolve a flag but had no PKI → empty em-dash).
+      jurisdiction: pki?.fullName ?? pki?.name ?? countryName(country, es ? 'es' : 'en'),
+      method: sig.subFilter || (isSelfAttested ? 'Ed25519 · self-attested' : '—'),
+      methodTech: sig.subFilter,
+      signedAt: sig.signDate,
+      cert: cc?.signer ? { validFrom: cc.signer.validFrom, validTo: cc.signer.validTo } : null,
+      nationalId,
+      capabilities,
+      officialVerifier,
+      // GAP: verify does not surface per-signature trust-provenance URLs; the
+      // card falls back to its canonical Attestto trust-registry links.
+      trustLinks: null,
+      // GAP: verify does not extract a visible signature/seal appearance image.
+      signatureImage: null,
+      handle,
+      // GAP: verify does not currently parse full PAdES-LTV (timestamp tier /
+      // embedded revocation), so this is left null. The card then shows the
+      // honest "no long-term validation" face instead of inventing a tier.
+      ltv: null,
+      // OPT-IN online revocation. Offered only when an OCSP responder URL is
+      // known (from the signer cert AIA) AND the issuer cert is present so a
+      // valid CertID can be built. The check itself runs ONLY on user action.
+      onlineRevocation: this.onlineRevocationModel(cc, index + 1),
+      trustMarks: trustMarks.length ? trustMarks : null,
+      tech: {
+        standard: sig.subFilter,
+        reason: sig.reason,
+        producer: this.result?.metadata?.producer ?? null,
+        location: sig.location,
+        pkcs7Hex: sig.pkcs7Hex,
+        pkcs7Size: sig.pkcs7Hex ? Math.round(sig.pkcs7Hex.length / 2) : null,
+        keyId: sig.did,
+        chain,
+      },
+    }
+  }
+
+  /**
+   * Build the opt-in online-revocation slice of the card model for one
+   * signature. `available` is true only when we have both an OCSP responder URL
+   * (from the signer cert AIA) and the issuer cert DER (to build the CertID).
+   * `result`/`checking` reflect any check the user has already run for this
+   * card index. Returns null when no responder URL exists, so the card shows
+   * nothing (the default no-network behavior is untouched).
+   */
+  private onlineRevocationModel(
+    cc: PdfSignatureInfo['certChain'],
+    cardIndex: number,
+  ): SignatureCardModel['onlineRevocation'] {
+    const available = Boolean(cc?.signerOcspUrl && cc?.issuerDerHex && cc?.signer?.rawDerHex)
+    if (!available) return null
+    const st = this._onlineRev.get(cardIndex)
+    return {
+      available: true,
+      checking: st?.checking ?? false,
+      result: st?.result
+        ? { status: st.result.status, message: st.result.message, checkedAt: st.result.checkedAt }
+        : null,
+    }
+  }
+
+  /**
+   * Run a LIVE OCSP check for the signature at `cardIndex` (1-based, matches the
+   * card's own index). Fired ONLY from the card's `request-online-revocation`
+   * event, which itself only fires after the user confirms the "leaves your
+   * device" warning. Never runs automatically.
+   */
+  private async runOnlineRevocation(cardIndex: number) {
+    const sig = this.result?.signatures?.[cardIndex - 1]
+    const cc = sig?.certChain
+    if (!cc?.signerOcspUrl || !cc.issuerDerHex || !cc.signer?.rawDerHex) return
+    if (this._onlineRev.get(cardIndex)?.checking) return
+
+    this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: true, result: null })
+
+    const result = await checkOcspOnline(
+      cc.signer.rawDerHex,
+      cc.issuerDerHex,
+      cc.signerOcspUrl,
+      this._lang,
+    )
+
+    this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: false, result })
   }
 
   private renderHashMatch() {
@@ -1744,13 +1687,8 @@ export class AttesttoVerify extends LitElement {
             ${match ? t('comp.verify.docMatches') : t('comp.verify.docNoMatch')}
           </div>
           <div class="hash-match-detail">
-            ${match
-              ? t('comp.verify.matchDetail')
-              : t('comp.verify.noMatchDetail')}
+            ${match ? t('comp.verify.matchDetail') : t('comp.verify.noMatchDetail')}
           </div>
-          ${match ? html`
-            <a href="/sign/" class="hash-match-cta">${t('comp.verify.signYourOwn')} →</a>
-          ` : ''}
         </div>
       </div>
     `
@@ -1790,6 +1728,7 @@ export class AttesttoVerify extends LitElement {
     this.verifyStep = t('comp.verify.readingFile')
     this.result = null
     this.pluginResults = null
+    this._onlineRev = new Map()
 
     // Dispatch composed event (crosses shadow DOM for external listeners)
     this.dispatchEvent(
@@ -1888,7 +1827,9 @@ export class AttesttoVerify extends LitElement {
     const r = this.result
     const sigs = r.signatures
     const hasTampered = sigs.some((s) => s.level === 'tampered')
-    const allVerified = sigs.length > 0 && sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
+    const allVerified =
+      sigs.length > 0 &&
+      sigs.every((s) => s.level === 'verified' || s.level === 'trusted' || s.level === 'qualified')
 
     let verdict: string
     if (hasTampered) verdict = t('comp.verify.summary.tampered').toUpperCase()
@@ -1914,7 +1855,9 @@ export class AttesttoVerify extends LitElement {
     try {
       await navigator.clipboard.writeText(lines.join('\n'))
       this.showSummaryCopied = true
-      setTimeout(() => { this.showSummaryCopied = false }, 2000)
+      setTimeout(() => {
+        this.showSummaryCopied = false
+      }, 2000)
     } catch {
       // Clipboard not available
     }
@@ -1942,7 +1885,9 @@ export class AttesttoVerify extends LitElement {
     try {
       await navigator.clipboard.writeText(url)
       this.showShareCopied = true
-      setTimeout(() => { this.showShareCopied = false }, 2000)
+      setTimeout(() => {
+        this.showShareCopied = false
+      }, 2000)
     } catch {
       // Clipboard not available
     }
@@ -1951,160 +1896,11 @@ export class AttesttoVerify extends LitElement {
   private reset() {
     this.result = null
     this.pluginResults = null
-    this.revealedIds = new Set()
-    this.challengeTarget = null
-    this.challengeInput = ''
-    this.challengeError = ''
-    this.challengeMethod = null
     this.verifiedAt = null
+    this._onlineRev = new Map()
     // Clear expected hash and URL fragment on reset
     this.expectedHash = ''
     if (window.location.hash) history.replaceState(null, '', window.location.pathname)
-  }
-
-  // ── Identity Challenge (tiered reveal) ─────────────────────────────
-
-  private renderIdentityChallenge(certChain: { nationalId: string | null; signerEmail: string | null }, sigIndex: number) {
-    const nationalId = certChain.nationalId!
-    const hasEmail = !!certChain.signerEmail
-
-    // Already revealed
-    if (this.revealedIds.has(sigIndex)) {
-      return html`
-        <div class="meta-grid" style="margin-top: 0.5rem;">
-          <span class="meta-label">${t('comp.verify.nationalId')}</span>
-          <span class="id-revealed">${nationalId}</span>
-        </div>
-        <div class="id-cta">
-          ${t('comp.verify.protectIdentity')} — <a href="https://attestto.com/id" target="_blank">${t('comp.verify.getAttesttoId')}</a>
-        </div>
-      `
-    }
-
-    const masked = this.maskNationalId(nationalId)
-
-    // Challenge panel is open
-    if (this.challengeTarget === sigIndex) {
-      // Method selection
-      if (!this.challengeMethod) {
-        return html`
-          <div class="id-challenge">
-            <p>${t('comp.verify.proveRelationship')}</p>
-            <div class="id-challenge-options">
-              ${hasEmail
-                ? html`<button class="id-option-btn" @click=${() => { this.challengeMethod = 'email' }}>
-                    <span class="id-option-icon">✉</span>
-                    <span>${t('comp.verify.iAmSigner')}</span>
-                    <span class="id-option-hint">${t('comp.verify.verifyEmail')}</span>
-                  </button>`
-                : ''}
-              <button class="id-option-btn" @click=${() => { this.challengeMethod = 'knowledge' }}>
-                <span class="id-option-icon">🔑</span>
-                <span>${t('comp.verify.iKnowSigner')}</span>
-                <span class="id-option-hint">${t('comp.verify.enterNationalId')}</span>
-              </button>
-            </div>
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.cancel')}</button>
-          </div>
-        `
-      }
-
-      // Tier 1: Email challenge
-      if (this.challengeMethod === 'email') {
-        return html`
-          <div class="id-challenge">
-            <p>${t('comp.verify.enterEmailPrompt')}</p>
-            <div class="id-challenge-input-row">
-              <input
-                type="email"
-                class="id-challenge-input"
-                placeholder="your@email.com"
-                .value=${this.challengeInput}
-                @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
-                @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyEmail(sigIndex, certChain.signerEmail!) }}
-              />
-              <button class="id-challenge-confirm" @click=${() => this.verifyEmail(sigIndex, certChain.signerEmail!)}>${t('comp.verify.verify')}</button>
-            </div>
-            ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.back')}</button>
-          </div>
-        `
-      }
-
-      // Tier 2: Knowledge challenge
-      if (this.challengeMethod === 'knowledge') {
-        const prefix = nationalId.includes('-') ? nationalId.split('-')[0] : ''
-        return html`
-          <div class="id-challenge">
-            <p>${t('comp.verify.enterIdPrompt')}</p>
-            <div class="id-challenge-input-row">
-              <input
-                type="text"
-                class="id-challenge-input"
-                placeholder="${prefix ? `${prefix}-...` : t('comp.verify.fullNationalId')}"
-                .value=${this.challengeInput}
-                @input=${(e: Event) => { this.challengeInput = (e.target as HTMLInputElement).value; this.challengeError = '' }}
-                @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.verifyKnowledge(sigIndex, nationalId) }}
-              />
-              <button class="id-challenge-confirm" @click=${() => this.verifyKnowledge(sigIndex, nationalId)}>${t('comp.verify.confirm')}</button>
-            </div>
-            ${this.challengeError ? html`<p class="id-challenge-error">${this.challengeError}</p>` : ''}
-            <button class="id-challenge-cancel" @click=${() => this.dismissChallenge()}>${t('comp.verify.back')}</button>
-          </div>
-        `
-      }
-    }
-
-    // Default: masked with reveal button
-    return html`
-      <div class="id-masked">
-        <span class="meta-label">${t('comp.verify.nationalId')}</span>
-        <span class="id-masked-value">${masked}</span>
-        <button class="id-reveal-btn" @click=${() => { this.challengeTarget = sigIndex; this.challengeMethod = null; this.challengeInput = ''; this.challengeError = '' }}>
-          ${t('comp.verify.reveal')}
-        </button>
-      </div>
-    `
-  }
-
-  private dismissChallenge() {
-    this.challengeTarget = null
-    this.challengeMethod = null
-    this.challengeInput = ''
-    this.challengeError = ''
-  }
-
-  /** Tier 1: Verify email matches signer cert */
-  private verifyEmail(sigIndex: number, certEmail: string) {
-    const input = this.challengeInput.trim().toLowerCase()
-    if (!input) { this.challengeError = t('comp.verify.enterEmail'); return }
-    if (input !== certEmail.toLowerCase()) {
-      this.challengeError = t('comp.verify.emailNoMatch')
-      this.emitChallengeEvent(sigIndex, 'email', 'failed')
-      return
-    }
-    this.revealIdentity(sigIndex, 'email')
-  }
-
-  /** Tier 2: Verify national ID matches cert */
-  private verifyKnowledge(sigIndex: number, nationalId: string) {
-    const input = this.challengeInput.trim()
-    if (!input) { this.challengeError = t('comp.verify.enterId'); return }
-    if (input !== nationalId) {
-      this.challengeError = t('comp.verify.idNoMatch')
-      this.emitChallengeEvent(sigIndex, 'knowledge', 'failed')
-      return
-    }
-    this.revealIdentity(sigIndex, 'knowledge')
-  }
-
-  /** Common reveal logic for all tiers */
-  private revealIdentity(sigIndex: number, method: 'email' | 'knowledge') {
-    const updated = new Set(this.revealedIds)
-    updated.add(sigIndex)
-    this.revealedIds = updated
-    this.dismissChallenge()
-    this.emitChallengeEvent(sigIndex, method, 'revealed')
   }
 
   private emitChallengeEvent(sigIndex: number, method: string, action: string) {
@@ -2127,78 +1923,6 @@ export class AttesttoVerify extends LitElement {
     const visible = digits.slice(-3)
     const hidden = '•'.repeat(digits.length - 3)
     return `${prefix}${hidden}${visible}`
-  }
-
-  private badgeLabel(level: string): string {
-    return t(`comp.verify.badge.${level}`) || t('comp.verify.badge.unknown')
-  }
-
-  private levelHint(level: string): string {
-    return t(`comp.verify.hint.${level}`) || ''
-  }
-
-  /** Convert ISO 3166-1 alpha-2 country code to flag emoji */
-  /** Map Key Usage label → i18n tooltip key */
-  private kuTooltip(label: string): string {
-    const map: Record<string, string> = {
-      'Digital Signature': 'comp.verify.ku.digitalSignature',
-      'Non-Repudiation': 'comp.verify.ku.nonRepudiation',
-      'Key Encipherment': 'comp.verify.ku.keyEncipherment',
-      'Data Encipherment': 'comp.verify.ku.dataEncipherment',
-      'Key Agreement': 'comp.verify.ku.keyAgreement',
-      'Certificate Signing': 'comp.verify.ku.certificateSigning',
-      'CRL Signing': 'comp.verify.ku.crlSigning',
-      'Encipher Only': 'comp.verify.ku.encipherOnly',
-      'Decipher Only': 'comp.verify.ku.decipherOnly',
-    }
-    return map[label] ? t(map[label]) : ''
-  }
-
-  /** Map Extended Key Usage label → i18n tooltip key */
-  private ekuTooltip(label: string): string {
-    const map: Record<string, string> = {
-      'Server Authentication': 'comp.verify.eku.serverAuth',
-      'Client Authentication': 'comp.verify.eku.clientAuth',
-      'Code Signing': 'comp.verify.eku.codeSigning',
-      'Email Protection': 'comp.verify.eku.emailProtection',
-      'Time Stamping': 'comp.verify.eku.timeStamping',
-      'OCSP Signing': 'comp.verify.eku.ocspSigning',
-      'Document Signing': 'comp.verify.eku.documentSigning',
-      'Smart Card Login': 'comp.verify.eku.smartCardLogin',
-    }
-    return map[label] ? t(map[label]) : ''
-  }
-
-  /** Tooltip for signature format (subFilter) */
-  private sigFormatTooltip(subFilter: string): string {
-    const key = `comp.verify.sigFormat.tooltip.${subFilter}`
-    const val = t(key)
-    return val !== key ? val : ''
-  }
-
-  private countryFlag(code: string): string {
-    if (!code || code.length !== 2) return '\u{1F310}' // globe
-    const upper = code.toUpperCase()
-    return String.fromCodePoint(
-      0x1f1e6 + upper.charCodeAt(0) - 65,
-      0x1f1e6 + upper.charCodeAt(1) - 65,
-    )
-  }
-
-  private async copyPkcs7(hex: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(hex)
-    } catch {
-      // Fallback for non-secure contexts
-      const ta = document.createElement('textarea')
-      ta.value = hex
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
   }
 
   private formatSize(bytes: number): string {
