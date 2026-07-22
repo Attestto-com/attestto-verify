@@ -68,7 +68,7 @@ const STATUS_TEXT: Record<Lang, Record<SignatureStatus, { label: string; desc: s
     },
     'structure-only': {
       label: 'Solo estructura',
-      desc: 'Se analizó la estructura de la firma, pero su cadena no enlaza con ninguna raíz de confianza — podría ser falsificada, autofirmada o de una CA no confiable.',
+      desc: 'Se analizó la estructura de la firma, pero su cadena no enlaza con ninguna raíz de confianza (podría ser falsificada, autofirmada o de una CA no confiable).',
     },
     'self-attested': {
       label: 'Auto-atestada',
@@ -108,8 +108,8 @@ function ltvFace(
       tone: 'warn',
       label: es ? 'Sin validez a largo plazo' : 'No long-term validation',
       detail: es
-        ? 'La validez depende de que el Banco Central (BCCR) siga disponible en línea.'
-        : 'Validity depends on Banco Central (BCCR) staying reachable online.',
+        ? 'La firma no incluye su propia prueba de revocación, así que volver a verificarla más adelante depende de que el servicio de revocación del emisor siga en línea.'
+        : 'The signature does not embed its own revocation proof, so re-verifying it later depends on the issuer’s revocation service staying online.',
     }
   }
   const ts = ltv.timestampAt ? (es ? ` · sellada ${ltv.timestampAt}` : ` · timestamped ${ltv.timestampAt}`) : ''
@@ -212,6 +212,23 @@ function capTooltip(label: string, kind: string, lang: Lang): string {
   return D('Declared in the certificate by the issuer.', 'Declarado en el certificado por el emisor.')
 }
 
+/**
+ * Format any user-facing date as a clean, locale-short, date-only string
+ * (no time, no trailing Z), e.g. "11 mar 2028" (es) / "Mar 11, 2028" (en).
+ * Returns null when the value is not a parseable date (e.g. a raw serial/DN
+ * reference), so callers can decide to hide it rather than print garbage.
+ */
+function fmtDate(value: string | null | undefined, lang: Lang): string | null {
+  if (!value) return null
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 /** Professional cert-validity summary (vigente / vence / vencido). */
 function certFace(
   cert: SignatureCardModel['cert'],
@@ -221,9 +238,16 @@ function certFace(
   if (!cert || !cert.validTo) return null
   const es = lang === 'es'
   const expired = new Date(cert.validTo).getTime() < now.getTime()
+  const when = fmtDate(cert.validTo, lang) ?? cert.validTo
   return {
     color: expired ? '#f59e0b' : '#22c55e',
-    text: expired ? (es ? `Vencido ${cert.validTo}` : `Expired ${cert.validTo}`) : (es ? `Vigente · vence ${cert.validTo}` : `Valid · exp. ${cert.validTo}`),
+    text: expired
+      ? es
+        ? `Vencido ${when}`
+        : `Expired ${when}`
+      : es
+        ? `Vigente, vence ${when}`
+        : `Valid, exp. ${when}`,
   }
 }
 
@@ -253,6 +277,25 @@ export class AttesttoSignatureCard extends LitElement {
   }
   @state() private _tab: 'chain' | 'sig' | 'trust' = 'chain'
   @state() private _copied: string | null = null
+  /** Opt-in online revocation: whether the pre-check warning is expanded. */
+  @state() private _onlineRevOpen = false
+
+  /**
+   * Ask the host to run a LIVE OCSP check for this signature. Strictly opt-in:
+   * this only fires from the user's explicit "Confirm and check" click. The
+   * host (attestto-verify.ts) owns the raw certs and performs the fetch, then
+   * feeds the result back through the model so this card re-renders.
+   */
+  private requestOnlineRevocation(index: number) {
+    this._onlineRevOpen = false
+    this.dispatchEvent(
+      new CustomEvent('request-online-revocation', {
+        detail: { index },
+        bubbles: true,
+        composed: true,
+      }),
+    )
+  }
 
   private _onLang = () => {
     this._lang = currentLang()
@@ -745,6 +788,19 @@ export class AttesttoSignatureCard extends LitElement {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.7rem;
     }
+    .chain-node .src {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 5px;
+      border-radius: 3px;
+      font-size: 0.62rem;
+      font-weight: 500;
+      line-height: 1.5;
+      color: #9aa3b2;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      vertical-align: middle;
+    }
     .kv {
       display: grid;
       grid-template-columns: max-content 1fr;
@@ -798,6 +854,87 @@ export class AttesttoSignatureCard extends LitElement {
     .trust-link:hover {
       text-decoration: underline;
     }
+    /* ── Opt-in online revocation ── */
+    .online-rev {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .online-rev-btn {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.74rem;
+      color: #9db4d8;
+      background: #0e1420;
+      border: 1px solid #22314a;
+      border-radius: 8px;
+      padding: 5px 11px;
+      cursor: pointer;
+    }
+    .online-rev-btn:hover {
+      background: #141c2c;
+      color: #cdd9ea;
+    }
+    .online-rev-warn {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #0e1420;
+      border: 1px solid #22314a;
+    }
+    .online-rev-warn .rc-note {
+      color: #d9b48a;
+    }
+    .online-rev-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .online-rev-go {
+      font-size: 0.72rem;
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: #e5e7eb;
+      background: #1c2740;
+      border: 1px solid #2f4066;
+    }
+    .online-rev-go:hover {
+      background: #24304d;
+    }
+    .online-rev-cancel {
+      font-size: 0.72rem;
+      padding: 5px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: #9198a8;
+      background: transparent;
+      border: 1px solid #313745;
+    }
+    .online-rev-result {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      padding: 7px 11px;
+      border-radius: 8px;
+      color: var(--rev, #93c5fd);
+      background: color-mix(in srgb, var(--rev, #93c5fd) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--rev, #93c5fd) 34%, transparent);
+    }
+    .online-rev-checking {
+      font-size: 0.74rem;
+      color: #9198a8;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
   `
 
   render() {
@@ -809,6 +946,9 @@ export class AttesttoSignatureCard extends LitElement {
     const ltv = ltvFace(s.ltv, s.status, this._lang)
     const cf = certFace(s.cert, this._lang, new Date())
     const unknownDate = this._lang === 'es' ? 'Desconocido' : 'Unknown'
+    // Only show a clean human date on the main face. A raw serial/DN/reference
+    // (unparseable) is relocated to the advanced "Firma" tab, never shown here.
+    const signedDisplay = fmtDate(s.signedAt, this._lang)
 
     return html`
       <div class="card" part="card" style="--status-color:${color}">
@@ -861,6 +1001,7 @@ export class AttesttoSignatureCard extends LitElement {
                   : ''}
               </div>`
             : ''}
+          ${this.renderOnlineRevocation(s)}
           <hr />
 
           <div class="grid">
@@ -872,7 +1013,7 @@ export class AttesttoSignatureCard extends LitElement {
             </div>
             <div>
               <span class="meta-label">${t('comp.verify.signed')}</span>
-              <span class="meta-value">${s.signedAt || unknownDate}</span>
+              <span class="meta-value">${signedDisplay || unknownDate}</span>
             </div>
             <div>
               <span class="meta-label">${t('comp.verify.certificate')}</span>
@@ -915,6 +1056,80 @@ export class AttesttoSignatureCard extends LitElement {
         </div>
       </div>
     `
+  }
+
+  /**
+   * OPT-IN online revocation. OFF by default: shows a small button only when an
+   * OCSP responder URL is available. Clicking reveals a plain-language warning
+   * that a network request will leave the device; the check runs only after the
+   * user confirms. Nothing here fires automatically.
+   */
+  private renderOnlineRevocation(s: SignatureCardModel) {
+    const rev = s.onlineRevocation
+    if (!rev || !rev.available) return ''
+    const es = this._lang === 'es'
+    const D = (en: string, str: string) => (es ? str : en)
+
+    if (rev.checking) {
+      return html`<div class="online-rev" part="online-revocation">
+        <span class="online-rev-checking"
+          >◷ ${D('Checking revocation online…', 'Revisando revocación en línea…')}</span
+        >
+      </div>`
+    }
+
+    if (rev.result) {
+      const r = rev.result
+      const color =
+        r.status === 'good' ? '#22c55e' : r.status === 'revoked' ? '#ef4444' : '#93c5fd'
+      const icon =
+        r.status === 'good' ? '✓' : r.status === 'revoked' ? '✗' : r.status === 'unknown' ? '?' : '⚠'
+      const heading =
+        r.status === 'good'
+          ? D('Not revoked', 'No revocado')
+          : r.status === 'revoked'
+            ? D('Revoked', 'Revocado')
+            : r.status === 'unknown'
+              ? D('Unknown', 'Desconocido')
+              : D('Responder unreachable', 'Servicio no disponible')
+      const when = fmtDate(r.checkedAt, this._lang)
+      return html`<div class="online-rev" part="online-revocation">
+        <span class="online-rev-result" style="--rev:${color}"
+          >${icon} <strong>${heading}.</strong> ${r.message}${when
+            ? html` <span style="opacity:0.7"
+                >${D('Checked', 'Revisado')} ${when}</span
+              >`
+            : ''}</span
+        >
+      </div>`
+    }
+
+    if (!this._onlineRevOpen) {
+      return html`<div class="online-rev" part="online-revocation">
+        <button class="online-rev-btn" @click=${() => (this._onlineRevOpen = true)}>
+          🌐 ${D('Check revocation online', 'Revisar revocación en línea')}
+        </button>
+      </div>`
+    }
+
+    return html`<div class="online-rev" part="online-revocation">
+      <div class="online-rev-warn">
+        <span class="rc-note"
+          >⚠ ${D(
+            'This sends the certificate serial to the issuer’s revocation server. It leaves your device.',
+            'Esto envía el número de serie del certificado al servidor de revocación del emisor. Sale de tu dispositivo.',
+          )}</span
+        >
+        <div class="online-rev-actions">
+          <button class="online-rev-go" @click=${() => this.requestOnlineRevocation(s.index)}>
+            ${D('Confirm and check', 'Confirmar y revisar')}
+          </button>
+          <button class="online-rev-cancel" @click=${() => (this._onlineRevOpen = false)}>
+            ${D('Cancel', 'Cancelar')}
+          </button>
+        </div>
+      </div>
+    </div>`
   }
 
   private renderId(s: SignatureCardModel) {
@@ -997,19 +1212,36 @@ export class AttesttoSignatureCard extends LitElement {
   private renderChain(chain: NonNullable<SignatureCardModel['tech']['chain']>) {
     if (!chain.length) return html`<span class="kv"><span class="k">no chain</span></span>`
     const last = chain.length - 1
-    return html`${chain.map(
-      (c, i) => html`<div class="chain-node ${i === last ? 'leaf' : ''}" style="padding-left:${i * 14}px" title=${c.name}>
-        <span class="ico">${chainIcon(i, last)}</span>${c.name}<span class="sub">
-          ${c.issuer ? ` · ${c.issuer}` : ''}${c.from ? ` · ${c.from}–${c.to}` : ''}${c.country ? ` · ${c.country}` : ''}</span
+    const es = this._lang === 'es'
+    const trustStoreLabel = es ? 'del trust store' : 'from trust store'
+    return html`${chain.map((c, i) => {
+      const from = fmtDate(c.from, this._lang) ?? c.from
+      const to = fmtDate(c.to, this._lang) ?? c.to
+      const range = c.from ? ` · ${from}–${to}` : ''
+      // Provenance badge: only on certs the trust store supplied (not embedded
+      // in the PDF), so the display stays honest without cluttering every row.
+      const srcBadge =
+        c.source === 'trust-store'
+          ? html`<span class="src" title=${trustStoreLabel}>${trustStoreLabel}</span>`
+          : ''
+      return html`<div class="chain-node ${i === last ? 'leaf' : ''}" style="padding-left:${i * 14}px" title=${c.name}>
+        <span class="ico">${chainIcon(i, last)}</span>${c.name}${srcBadge}<span class="sub">
+          ${c.issuer ? ` · ${c.issuer}` : ''}${range}${c.country ? ` · ${c.country}` : ''}</span
         >
-      </div>`,
-    )}`
+      </div>`
+    })}`
   }
 
   private renderSigTab(s: SignatureCardModel) {
+    const es = this._lang === 'es'
     const kv: Array<[string, string]> = []
     if (s.tech.signedAtISO) kv.push(['signed (UTC, ms)', s.tech.signedAtISO])
-    else if (s.signedAt) kv.push(['signed', s.signedAt])
+    else if (s.signedAt) {
+      // If the value is a clean date it already shows on the main face; if it's
+      // a raw serial/DN/reference we relocate it HERE (raw, clearly labeled).
+      const clean = fmtDate(s.signedAt, this._lang)
+      kv.push([clean ? 'signed' : (es ? 'firma (ref. sin procesar)' : 'signed (raw reference)'), s.signedAt])
+    }
     if (s.tech.reason) kv.push(['commitment', s.tech.reason])
     if (s.method) kv.push(['method', s.method])
     if (s.tech.standard) kv.push(['standard', s.tech.standard])

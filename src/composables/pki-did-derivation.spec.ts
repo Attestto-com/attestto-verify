@@ -32,6 +32,7 @@ function makeCert(overrides: Partial<CertificateInfo> = {}): CertificateInfo {
     role: 'end-entity',
     profesion: null,
     numeroColegiado: null,
+    ocspUrl: null,
     rawDerHex: 'aabb',
     ...overrides,
   }

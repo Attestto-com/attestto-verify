@@ -75,7 +75,19 @@ export interface SignatureCardTech {
   /** DID or key id of the signer, when present. */
   keyId?: string | null
   /** Cert chain, root-first (leaf last), for the technical-details tree. */
-  chain?: Array<{ name: string; issuer?: string; from?: string; to?: string; country?: string }>
+  chain?: Array<{
+    name: string
+    issuer?: string
+    from?: string
+    to?: string
+    country?: string
+    /**
+     * Provenance: 'embedded' = cert was in the signed PDF; 'trust-store' =
+     * cert was supplied by the bundled trust store to complete the validated
+     * chain (the PDF did not embed it). Used to render an honest label.
+     */
+    source?: 'embedded' | 'trust-store'
+  }>
 }
 
 export interface SignatureCardModel {
@@ -110,6 +122,24 @@ export interface SignatureCardModel {
   handle: string | null
   /** Long-term validation status. Null when not applicable (e.g. self-attested). */
   ltv?: SignatureLtv | null
+  /**
+   * OPT-IN online revocation. The default no-network behavior is unchanged: this
+   * is populated ONLY after the user explicitly runs the online check.
+   *   - `available`: an OCSP responder URL exists, so the button may be offered.
+   *   - `result`: the outcome once the user has run the check (else null).
+   * The host (attestto-verify.ts) owns the raw certs and runs the actual fetch
+   * in response to the card's `request-online-revocation` event.
+   */
+  onlineRevocation?: {
+    available: boolean
+    result?: {
+      status: 'good' | 'revoked' | 'unknown' | 'unreachable'
+      message: string
+      checkedAt: string
+    } | null
+    /** True while the host is performing the network check. */
+    checking?: boolean
+  } | null
   /** Recognized trust-scheme marks (eIDAS qualified, CR Firma Digital, …). */
   trustMarks?: SignatureTrustMark[] | null
   tech: SignatureCardTech
@@ -143,6 +173,59 @@ const EKU_LABELS: Record<string, string> = {
   documentSigning: 'Document signing',
 }
 
+/**
+ * Friendly labels for known Extended-Key-Usage OIDs. Some certs (e.g. Adobe /
+ * eIDAS) declare EKUs by raw OID that the parser leaves un-mapped. A raw OID
+ * dotted-string is NOT a user-facing capability — map the known ones here and
+ * drop the rest from the main card (see `capabilitiesFromCert`).
+ */
+const EKU_OID_LABELS: Record<string, string> = {
+  '1.2.840.113583.1.1.5': 'Adobe PDF Signing', // Adobe Authentic Documents Trust
+  '1.3.6.1.5.5.7.3.1': 'Server authentication',
+  '1.3.6.1.5.5.7.3.2': 'Authentication',
+  '1.3.6.1.5.5.7.3.3': 'Code signing',
+  '1.3.6.1.5.5.7.3.4': 'Email protection',
+  '1.3.6.1.5.5.7.3.8': 'Timestamping',
+  '1.3.6.1.5.5.7.3.9': 'OCSP signing',
+}
+
+/** True when a token is a raw OID dotted-string (e.g. "1.2.840.113583.1.1.5"). */
+function isRawOid(token: string): boolean {
+  return /^\d+(\.\d+)+$/.test(token)
+}
+
+/**
+ * Human names for ISO 3166-1 alpha-2 jurisdiction codes. The card shows a flag
+ * from the country code even when no PKI trust root is bundled; without this
+ * map the JURISDICTION label falls back to an empty em-dash. Bilingual so the
+ * name matches the active locale.
+ */
+const COUNTRY_NAMES: Record<string, { en: string; es: string }> = {
+  CR: { en: 'Costa Rica', es: 'Costa Rica' },
+  ES: { en: 'Spain', es: 'España' },
+  US: { en: 'United States', es: 'Estados Unidos' },
+  MX: { en: 'Mexico', es: 'México' },
+  DE: { en: 'Germany', es: 'Alemania' },
+  FR: { en: 'France', es: 'Francia' },
+  IT: { en: 'Italy', es: 'Italia' },
+  PT: { en: 'Portugal', es: 'Portugal' },
+  GB: { en: 'United Kingdom', es: 'Reino Unido' },
+  NL: { en: 'Netherlands', es: 'Países Bajos' },
+  BE: { en: 'Belgium', es: 'Bélgica' },
+  BR: { en: 'Brazil', es: 'Brasil' },
+  AR: { en: 'Argentina', es: 'Argentina' },
+  CO: { en: 'Colombia', es: 'Colombia' },
+  CL: { en: 'Chile', es: 'Chile' },
+  PA: { en: 'Panama', es: 'Panamá' },
+}
+
+/** Map an ISO 3166-1 alpha-2 code to a localized country name, or null. */
+export function countryName(code: string | null, lang: 'en' | 'es'): string | null {
+  if (!code) return null
+  const entry = COUNTRY_NAMES[code.toUpperCase()]
+  return entry ? entry[lang] : null
+}
+
 /** Map Attestto DID verification relationships onto the same canonical terms. */
 export function capabilitiesFromDid(relationships: string[] = []): SignatureCapability[] {
   const out: SignatureCapability[] = []
@@ -174,7 +257,14 @@ export function capabilitiesFromCert(
     }
   }
   for (const eku of extendedKeyUsage) {
-    const label = EKU_LABELS[eku] ?? eku
+    // Resolve friendly EKU name → known-OID name; a raw un-mapped OID is not a
+    // human capability, so drop it from the main card entirely.
+    let label = EKU_LABELS[eku]
+    if (!label && isRawOid(eku)) label = EKU_OID_LABELS[eku]
+    if (!label) {
+      if (isRawOid(eku)) continue // unknown raw OID — omit, not a real capability
+      label = eku
+    }
     if (!seen.has(label)) {
       seen.add(label)
       out.push({ label, kind: 'eku' })

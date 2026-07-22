@@ -143,179 +143,211 @@
     ]
     </script>
     <style>
+      :root {
+        --v-bg: #0a0a14;
+        --v-bg-2: #10101f;
+        --v-surface: #14142440;
+        --v-border: #26263f;
+        --v-text: #e8e8f2;
+        --v-muted: #9494ad;
+        --v-muted-2: #6b6b85;
+        --violet: #7B72ED;
+        --violet-2: #594FD3;
+        --violet-deep: #453cae;
+        --max: 1040px;
+      }
+
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
+      html { scroll-behavior: smooth; }
+
       body {
-        font-family: system-ui, -apple-system, sans-serif;
-        background: #0f0f1a;
-        color: #e2e8f0;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: var(--v-bg);
+        color: var(--v-text);
         min-height: 100vh;
-      }
-
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 2rem;
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      .header-bar {
-        border-bottom: 1px solid #1e293b;
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        text-decoration: none;
-      }
-
-      .logo img {
-        height: 28px;
-        width: auto;
-      }
-
-      nav { display: flex; gap: 1.5rem; }
-
-      nav a {
-        color: #94a3b8;
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        transition: color 0.15s;
-      }
-
-      nav a:hover, nav a.active { color: #e2e8f0; }
-
-      main {
-        max-width: 1200px;
-        margin: 3rem auto;
-        padding: 0 2rem;
-      }
-
-      .two-col {
-        display: flex;
-        gap: 2rem;
-        align-items: flex-start;
-      }
-
-      .col-main { flex: 1; min-width: 0; }
-      .col-side {
-        flex: 0 0 340px;
-        position: sticky;
-        top: 2rem;
-      }
-
-      .dev-panel {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 12px;
-        padding: 1.5rem;
-      }
-
-      .dev-panel h3 {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94a3b8;
-        margin-bottom: 1rem;
-      }
-
-      .dev-panel p {
-        font-size: 0.85rem;
-        color: #94a3b8;
-        margin-bottom: 1rem;
-        line-height: 1.5;
-      }
-
-      .dev-panel pre {
-        background: #0f172a;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 1rem;
-        overflow-x: auto;
-        font-size: 0.8rem;
         line-height: 1.6;
-        color: #e2e8f0;
-        margin-bottom: 1rem;
+        -webkit-font-smoothing: antialiased;
       }
 
-      .dev-panel code { font-family: 'SF Mono', 'Fira Code', monospace; }
+      .wrap { max-width: var(--max); margin: 0 auto; padding: 0 clamp(1.5rem, 4vw, 2.5rem); }
 
-      .dev-panel .tag { color: #7B72ED; }
-      .dev-panel .attr { color: #4ade80; }
-      .dev-panel .str { color: #fbbf24; }
-      .dev-panel .comment { color: #475569; }
-
-      .check-list { display: flex; flex-direction: column; gap: 0.75rem; }
-
-      .check-item {
-        display: flex;
-        gap: 0.6rem;
-        align-items: flex-start;
+      /* ── Header ─────────────────────────────────── */
+      .site-header {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(10,10,20,0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--v-border);
       }
-
-      .check-item p {
-        font-size: 0.8rem;
-        color: #64748b;
-        margin: 0.15rem 0 0;
+      .site-header .wrap {
+        display: flex; align-items: center; justify-content: space-between;
+        height: 68px;
       }
-
-      .check-item strong {
-        font-size: 0.85rem;
-        color: #e2e8f0;
+      .brand { display: flex; align-items: center; text-decoration: none; }
+      .brand img { height: 24px; width: auto; }
+      .nav { display: flex; align-items: center; gap: 1.75rem; }
+      .nav a {
+        color: var(--v-muted); text-decoration: none;
+        font-size: 0.9rem; font-weight: 500; transition: color 0.15s;
       }
-
-      .check-icon {
-        font-size: 0.9rem;
-        flex-shrink: 0;
-        margin-top: 0.1rem;
+      .nav a:hover { color: var(--v-text); }
+      .lang-pill {
+        background: none; border: 1px solid var(--v-border);
+        color: var(--v-muted); padding: 0.3rem 0.7rem;
+        border-radius: 999px; cursor: pointer; font-size: 0.8rem;
+        font-weight: 600; transition: all 0.15s;
       }
-
-      .level-list { display: flex; flex-direction: column; gap: 0.5rem; }
-
-      .level-item {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        font-size: 0.85rem;
-        color: #94a3b8;
-      }
-
-      .level-badge {
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-        color: #e2e8f0;
-        letter-spacing: 0.03em;
+      .lang-pill:hover { border-color: var(--violet); color: var(--v-text); }
+      .btn-violet-outline {
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid var(--violet); color: var(--violet);
+        background: transparent; padding: 0.55rem 1.1rem;
+        border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+        text-decoration: none; cursor: pointer; transition: all 0.15s;
         white-space: nowrap;
       }
+      .btn-violet-outline:hover { background: rgba(123,114,237,0.12); color: var(--v-text); }
+      .btn-violet-text {
+        color: var(--violet); background: none; border: none;
+        font-size: 0.95rem; font-weight: 600; text-decoration: none;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;
+      }
+      .btn-violet-text:hover { color: #9d95f5; }
 
-      @media (max-width: 768px) {
-        .two-col {
-          flex-direction: column;
-        }
-        .col-side {
-          flex: none;
-          position: static;
-        }
+      @media (max-width: 720px) {
+        .nav a:not(.header-cta) { display: none; }
+        .nav { gap: 0.9rem; }
       }
 
-      h1 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.02em;
+      /* ── Hero ───────────────────────────────────── */
+      .hero { padding: clamp(3.5rem, 8vw, 7rem) 0 clamp(2.5rem, 5vw, 4rem); text-align: center; }
+      .hero h1 {
+        font-size: clamp(2.4rem, 7vw, 4.5rem);
+        line-height: 1.05; font-weight: 700; letter-spacing: -0.03em;
+        margin: 0 auto 1.5rem; max-width: 900px;
+      }
+      .hero h1 .line2 { color: var(--v-muted); }
+      .hero .sub {
+        color: var(--v-muted); font-size: clamp(1rem, 2.2vw, 1.2rem);
+        max-width: 640px; margin: 0 auto 2.25rem;
+      }
+      .hero-ctas { display: flex; gap: 1.25rem; justify-content: center; align-items: center; flex-wrap: wrap; }
+
+      /* ── Live preview panel ─────────────────────── */
+      /* padding-block (not the shorthand) so it never wipes .wrap's horizontal gutter */
+      .section { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+      .label {
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.14em; color: var(--violet); margin-bottom: 1.1rem;
+      }
+      .preview-card {
+        border: 1px solid var(--v-border); border-radius: 20px;
+        background: linear-gradient(180deg, #131324 0%, #0d0d1a 100%);
+        overflow: hidden;
+      }
+      .preview-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 1.4rem; border-bottom: 1px solid var(--v-border);
+        gap: 1rem; flex-wrap: wrap;
+      }
+      .preview-head .label { margin: 0; }
+      .seg {
+        display: inline-flex; border: 1px solid var(--v-border);
+        border-radius: 999px; overflow: hidden; font-size: 0.72rem; font-weight: 600;
+      }
+      .seg span { padding: 0.35rem 0.75rem; color: var(--v-muted-2); }
+      .seg span.on { background: rgba(123,114,237,0.18); color: var(--violet); }
+      .preview-body { padding: 1.5rem; }
+
+      /* ── Stats band ─────────────────────────────── */
+      .stats-band {
+        background: linear-gradient(120deg, var(--violet-deep) 0%, var(--violet-2) 50%, #6a4fd8 100%);
+      }
+      .stats-inner {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem; padding: clamp(2rem, 5vw, 3.25rem) 1.5rem; text-align: center;
+      }
+      .stat-num { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1; color: #fff; }
+      .stat-lbl {
+        margin-top: 0.6rem; font-size: 0.7rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.82);
+      }
+      @media (max-width: 640px) { .stats-inner { grid-template-columns: repeat(2, 1fr); } }
+
+      /* ── Checked list ───────────────────────────── */
+      .check-row {
+        display: grid; grid-template-columns: auto 1fr; gap: 1.25rem 1.75rem;
+        align-items: start; padding: 1.75rem 0; border-top: 1px solid var(--v-border);
+      }
+      .check-row:first-of-type { border-top: none; }
+      .check-num { font-size: 1.5rem; font-weight: 700; color: var(--violet); font-variant-numeric: tabular-nums; }
+      .check-body h3 { font-size: clamp(1.25rem, 2.5vw, 1.6rem); font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.01em; }
+      .check-body p { color: var(--v-muted); max-width: 640px; }
+
+      /* ── Privacy split ──────────────────────────── */
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+      .split h2 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 1.1rem; }
+      .split p { color: var(--v-muted); margin-bottom: 1.4rem; }
+      .blueprint {
+        aspect-ratio: 4 / 3; border-radius: 16px; border: 1px solid var(--v-border);
+        background:
+          linear-gradient(135deg, #0e1830 0%, #0a1226 100%),
+          repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(123,114,237,0.12) 24px),
+          repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(123,114,237,0.12) 24px);
+        background-blend-mode: normal;
+        position: relative; overflow: hidden;
+      }
+      .blueprint::after {
+        content: ""; position: absolute; inset: 0;
+        background:
+          repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(123,114,237,0.10) 24px),
+          repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(123,114,237,0.10) 24px),
+          radial-gradient(circle at 50% 45%, rgba(123,114,237,0.35), transparent 60%);
+      }
+      .blueprint::before {
+        content: ""; position: absolute; left: 50%; top: 50%;
+        width: 46%; height: 54%; transform: translate(-50%, -50%);
+        border: 1.5px solid rgba(155,146,245,0.55); border-radius: 6px;
+        box-shadow: 0 0 0 6px rgba(123,114,237,0.08);
+        z-index: 1;
+      }
+      @media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+
+      /* ── Value statement ────────────────────────── */
+      .value-line {
+        text-align: center; font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+        font-weight: 700; letter-spacing: -0.02em; max-width: 760px;
+        margin: 0 auto; color: var(--v-text);
       }
 
-      .subtitle {
-        color: #94a3b8;
-        font-size: 1rem;
-        margin-bottom: 2rem;
+      /* ── Standards pills ────────────────────────── */
+      .std-group { margin-bottom: 1.6rem; }
+      .std-group h4 {
+        font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--v-muted-2); margin-bottom: 0.6rem;
       }
+      .pills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .pill {
+        display: inline-block; padding: 0.35rem 0.8rem; font-size: 0.8rem;
+        font-weight: 500; border-radius: 999px;
+        background: var(--v-surface); color: var(--v-text); border: 1px solid var(--v-border);
+      }
+      .pill-violet { background: var(--violet-2); border-color: var(--violet-2); color: #fff; }
+      .pill-violet-outline { background: transparent; border-color: var(--violet); color: var(--violet); }
+      .pill-grey { background: transparent; border-color: var(--v-border); color: var(--v-muted-2); }
+
+      /* ── Final CTA ──────────────────────────────── */
+      .final-cta { text-align: center; }
+      .final-cta h2 { font-size: clamp(1.8rem, 4vw, 2.75rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 1rem; }
+      .final-cta p { color: var(--v-muted); max-width: 560px; margin: 0 auto 2rem; }
+      .final-cta .hero-ctas { }
+
+      /* ── Footer ─────────────────────────────────── */
+      .site-footer { border-top: 1px solid var(--v-border); padding: 3rem 0 3.5rem; margin-top: 2rem; }
+      .site-footer .transp { color: var(--v-muted-2); font-size: 0.82rem; max-width: 620px; margin-bottom: 1.5rem; line-height: 1.6; }
+      .footer-meta { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; font-size: 0.85rem; color: var(--v-muted-2); }
+      .footer-meta a { color: var(--violet); text-decoration: none; }
+      .footer-meta a:hover { color: #9d95f5; }
 
       /* Dark theme overrides for web components */
       attestto-verify {
@@ -336,118 +368,18 @@
         --attestto-muted-bg: #1e293b;
       }
 
-      /* ── Badge Pills ──────────────────────────────── */
-      .badge-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
+      /* ── Audit panel styles (populated after verification) ─── */
+      #audit-panel { margin-top: 1.5rem; }
+      #audit-panel .dev-panel {
+        background: var(--v-surface);
+        border: 1px solid var(--v-border);
+        border-radius: 14px;
+        padding: 1.25rem 1.4rem;
       }
-
-      .pill {
-        display: inline-block;
-        padding: 0.3rem 0.65rem;
-        font-size: 0.72rem;
-        font-weight: 500;
-        border-radius: 20px;
-        background: #1e293b;
-        color: #e2e8f0;
-        border: 1px solid #334155;
+      #audit-panel .dev-panel h3 {
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.12em; color: var(--violet); margin-bottom: 1rem;
       }
-
-      .pill-flag {
-        background: #1e1b4b;
-        border-color: #594FD3;
-      }
-
-      .pill-green {
-        background: #052e16;
-        border-color: #16a34a;
-        color: #4ade80;
-      }
-
-      .pill-outline {
-        background: transparent;
-        border-color: #475569;
-        color: #64748b;
-        font-style: italic;
-      }
-
-      /* ── Footer ────────────────────────────────────── */
-      footer {
-        padding: 3rem 2rem 2rem;
-        color: #475569;
-        font-size: 0.8rem;
-        max-width: 1200px;
-        margin: 0 auto;
-        border-top: 1px solid #1e293b;
-        margin-top: 3rem;
-      }
-
-      footer a { color: #594FD3; text-decoration: none; }
-
-      .footer-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 2rem;
-        margin-bottom: 2rem;
-        text-align: left;
-      }
-
-      .footer-col h4 {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94a3b8;
-        margin-bottom: 0.75rem;
-      }
-
-      .footer-col ul {
-        list-style: none;
-        padding: 0;
-      }
-
-      .footer-col li {
-        padding: 0.2rem 0;
-        color: #64748b;
-        font-size: 0.78rem;
-      }
-
-      .footer-col li::before {
-        content: '\2713 ';
-        color: #4ade80;
-        margin-right: 0.3rem;
-      }
-
-      .footer-col p {
-        color: #64748b;
-        line-height: 1.5;
-      }
-
-      .footer-bottom {
-        text-align: center;
-        padding-top: 1.5rem;
-        border-top: 1px solid #1e293b;
-      }
-
-      .footer-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-        justify-content: center;
-        margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid #1e293b;
-      }
-
-      .footer-badge-group h4 {
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #64748b;
-        margin-bottom: 0.4rem;
-      }
-
-      /* ── Audit panel styles ─────────────────────── */
       .audit-row {
         display: flex;
         justify-content: space-between;
@@ -564,121 +496,168 @@
         line-height: 1.5;
       }
 
-      @media (max-width: 768px) {
-        .footer-grid {
-          grid-template-columns: 1fr;
-        }
-        .footer-badges {
-          flex-direction: column;
-          align-items: center;
-        }
-      }
-
     </style>
   </head>
   <body>
-    <div class="header-bar">
-      <header>
-        <a href="/" class="logo"><img src="/logo-full-white.svg" alt="Attestto" /></a>
-        <div style="display: flex; align-items: center; gap: 1.5rem;">
-          <nav>
-            <a href="/" class="active" data-i18n="nav.verify">Verify</a>
-            <a href="/sign/" data-i18n="nav.sign">Sign</a>
-          </nav>
-          <button id="lang-switch" style="background: none; border: 1px solid #334155; color: #94a3b8; padding: 0.25rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.15s;" onmouseover="this.style.borderColor='#594FD3';this.style.color='#e2e8f0'" onmouseout="this.style.borderColor='#334155';this.style.color='#94a3b8'">ES</button>
-        </div>
-      </header>
-    </div>
+    <header class="site-header">
+      <div class="wrap">
+        <a href="/" class="brand"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <nav class="nav">
+          <a href="#how-it-works" data-i18n="land.nav.howItWorks">How it works</a>
+          <a href="#privacy" data-i18n="land.nav.privacy">Privacy</a>
+          <a href="#standards" data-i18n="land.nav.signatures">Signatures</a>
+          <button id="lang-switch" class="lang-pill">ES</button>
+          <a href="#verifier" class="btn-violet-outline header-cta" data-i18n="land.nav.verifyDoc">Verify a document</a>
+        </nav>
+      </div>
+    </header>
 
     <main>
-      <h1 data-i18n="verify.title">Document Verification</h1>
-      <p class="subtitle" data-i18n="verify.subtitle">Verify integrity and signatures — your file never leaves your device.</p>
-
-      <div class="two-col">
-        <div class="col-main">
-          <attestto-verify id="verifier"></attestto-verify>
+      <!-- Hero -->
+      <section class="hero wrap">
+        <h1><span data-i18n="land.hero.title1">Verify any document.</span><br /><span class="line2" data-i18n="land.hero.title2">Nothing leaves your device.</span></h1>
+        <p class="sub" data-i18n="land.hero.sub">Attestto checks integrity, digital signatures and certificate chains for any file, PDF, Word, anything, entirely inside your browser. No upload, no server, no account.</p>
+        <div class="hero-ctas">
+          <a href="#verifier" class="btn-violet-outline" data-i18n="land.hero.cta">Verify a document</a>
+          <a href="#how-it-works" class="btn-violet-text" data-i18n="land.hero.seeHow">See how it works</a>
         </div>
-        <div class="col-side" id="audit-panel" style="display: none;">
-          <div class="dev-panel">
-            <h3 data-i18n="verify.audit.title">Technical Audit</h3>
-            <div id="audit-content"></div>
+      </section>
+
+      <!-- Live preview panel with the real verifier -->
+      <section class="section wrap">
+        <div class="preview-card" id="verifier-card">
+          <div class="preview-head">
+            <span class="label" data-i18n="land.preview.label">Live preview</span>
+            <div class="seg" aria-hidden="true">
+              <span class="on" data-i18n="land.preview.idle">Idle</span>
+              <span data-i18n="land.preview.scanning">Scanning</span>
+              <span data-i18n="land.preview.issue">Issue found</span>
+            </div>
+          </div>
+          <div class="preview-body">
+            <attestto-verify id="verifier"></attestto-verify>
+            <div id="audit-panel" style="display: none;">
+              <div class="dev-panel">
+                <h3 data-i18n="verify.audit.title">Technical Audit</h3>
+                <div id="audit-content"></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <!-- Stats band -->
+      <section class="stats-band">
+        <div class="wrap">
+          <div class="stats-inner">
+            <div><div class="stat-num">0</div><div class="stat-lbl" data-i18n="land.stats.uploaded">Bytes ever uploaded</div></div>
+            <div><div class="stat-num">3</div><div class="stat-lbl" data-i18n="land.stats.standards">Signature standards checked</div></div>
+            <div><div class="stat-num">100%</div><div class="stat-lbl" data-i18n="land.stats.browser">Runs in your browser</div></div>
+            <div><div class="stat-num">4</div><div class="stat-lbl" data-i18n="land.stats.browsers">Browsers supported</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- What gets checked -->
+      <section class="section wrap" id="how-it-works">
+        <div class="label" data-i18n="land.checked.label">What gets checked</div>
+        <div class="check-row">
+          <div class="check-num">01</div>
+          <div class="check-body">
+            <h3 data-i18n="land.checked.1.title">Integrity</h3>
+            <p data-i18n="land.checked.1.desc">Every byte is hashed with SHA-256 and compared against exactly what the signature covers, so any edit made after signing shows up immediately.</p>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-num">02</div>
+          <div class="check-body">
+            <h3 data-i18n="land.checked.2.title">Signature validity</h3>
+            <p data-i18n="land.checked.2.desc">PAdES, CAdES and raw PKCS#7 signatures are parsed and checked against the document's own byte ranges, not just detected, but proven valid.</p>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-num">03</div>
+          <div class="check-body">
+            <h3 data-i18n="land.checked.3.title">Certificate chain</h3>
+            <p data-i18n="land.checked.3.desc">Certificates are walked back to a trusted root, including Costa Rica's CR Firma Digital PKI, so you know exactly who signed and who vouches for them.</p>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-num">04</div>
+          <div class="check-body">
+            <h3 data-i18n="land.checked.4.title">Security scan</h3>
+            <p data-i18n="land.checked.4.desc">Embedded scripts, auto-actions and remote objects are flagged before the file is ever opened in a reader.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Privacy by construction -->
+      <section class="section wrap" id="privacy">
+        <div class="split">
+          <div>
+            <div class="label" data-i18n="land.privacy.label">Privacy by construction</div>
+            <h2 data-i18n="land.privacy.title">Your file never leaves your device</h2>
+            <p data-i18n="land.privacy.body">Verification runs in the tab that's already open, there's no upload, no server round-trip, and nothing to configure. Close the tab and the file is gone. The code is open source, so you don't have to take our word for it.</p>
+            <a href="https://github.com/Attestto-com/attestto-verify" class="btn-violet-text" data-i18n="land.privacy.viewSource">View source</a>
+          </div>
+          <div class="blueprint" role="img" aria-label="Technical blueprint illustration"></div>
+        </div>
+      </section>
+
+      <!-- Value statement (no fabricated testimonial) -->
+      <section class="section wrap">
+        <p class="value-line" data-i18n="land.value.statement">Check chain of custody in the browser, in seconds.</p>
+      </section>
+
+      <!-- Supported standards -->
+      <section class="section wrap" id="standards">
+        <div class="label" data-i18n="land.standards.label">Supported standards</div>
+        <div class="std-group">
+          <h4 data-i18n="land.standards.sigTypes">Signature types</h4>
+          <div class="pills"><span class="pill">PAdES</span><span class="pill">CAdES</span><span class="pill">PKCS#7</span></div>
+        </div>
+        <div class="std-group">
+          <h4 data-i18n="land.standards.pki">Recognized PKI</h4>
+          <div class="pills"><span class="pill pill-violet">CR Firma Digital</span></div>
+        </div>
+        <div class="std-group">
+          <h4 data-i18n="land.standards.capabilities">Capabilities</h4>
+          <div class="pills">
+            <span class="pill pill-violet" data-i18n="land.cap.zeroUpload">Zero upload</span>
+            <span class="pill pill-violet" data-i18n="land.cap.clientSide">Client-side</span>
+            <span class="pill pill-violet-outline" data-i18n="land.cap.openSource">Open source</span>
+            <span class="pill pill-grey">X.509</span>
+            <span class="pill pill-grey">ByteRange</span>
+            <span class="pill pill-grey">Forensic mode</span>
+          </div>
+        </div>
+        <div class="std-group">
+          <h4 data-i18n="land.standards.browsers">Browsers</h4>
+          <div class="pills"><span class="pill">Chrome</span><span class="pill">Firefox</span><span class="pill">Safari</span><span class="pill">Edge</span></div>
+        </div>
+      </section>
+
+      <!-- Final CTA -->
+      <section class="section wrap final-cta">
+        <h2 data-i18n="land.finalCta.title">Take two seconds to know for sure</h2>
+        <p data-i18n="land.finalCta.body">Drop in a signed document and see exactly what it proves, no account, no upload, nothing installed.</p>
+        <div class="hero-ctas">
+          <a href="#verifier" class="btn-violet-outline" data-i18n="land.finalCta.verify">Verify a document</a>
+          <a href="https://github.com/Attestto-com/attestto-verify" class="btn-violet-text" data-i18n="land.finalCta.viewSource">View source</a>
+        </div>
+      </section>
     </main>
 
-    <footer>
-      <div class="footer-grid">
-        <div class="footer-col">
-          <h4 data-i18n="verify.footer.whatGetsVerified">What gets verified</h4>
-          <ul>
-            <li data-i18n="verify.footer.item1">Document integrity (SHA-256, ByteRange)</li>
-            <li data-i18n="verify.footer.item2">Digital signatures (PAdES, CAdES, PKCS#7)</li>
-            <li data-i18n="verify.footer.item3">PKI recognition (CR Firma Digital)</li>
-            <li data-i18n="verify.footer.item4">Security scan (JS, auto-actions, embeds)</li>
-            <li data-i18n="verify.footer.item5">Metadata analysis</li>
-          </ul>
+    <footer class="site-footer">
+      <div class="wrap">
+        <p class="transp" data-i18n="land.footer.transparency">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools serve only the application code, never your files.</p>
+        <div class="footer-meta">
+          <span data-i18n="land.footer.license">Open source under Apache 2.0</span>
+          <a href="https://github.com/Attestto-com/attestto-verify">GitHub</a>
+          <a href="https://attestto.org">attestto.org</a>
+          <a href="/sign/" data-i18n="nav.sign">Sign</a>
+          <a href="https://resolver.attestto.com">DID Resolver</a>
         </div>
-        <div class="footer-col">
-          <h4 data-i18n="verify.footer.levels">Verification Levels</h4>
-          <div class="level-list">
-            <div class="level-item"><span class="level-badge" style="background: #422006; color: #fbbf24;" data-i18n="comp.verify.badge.detected">Detected</span> <span data-i18n="verify.footer.detected">Signature found</span></div>
-            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;" data-i18n="comp.verify.badge.parsed">Parsed</span> <span data-i18n="verify.footer.parsed">Cert chain extracted</span></div>
-            <div class="level-item"><span class="level-badge" style="background: #052e16; color: #4ade80;" data-i18n="comp.verify.badge.signed">Verified</span> <span data-i18n="verify.footer.verified">Crypto proof valid</span></div>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h4 data-i18n="verify.footer.privacy">Privacy</h4>
-          <p data-i18n="verify.footer.privacyText">Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend. Anonymous usage analytics only with your consent.</p>
-          <p><a href="https://github.com/Attestto-com/attestto-verify" data-i18n="verify.footer.viewSource">View source</a> &rarr;</p>
-        </div>
-      </div>
-      <div class="footer-badges">
-        <div class="footer-badge-group">
-          <h4 data-i18n="verify.footer.signatureTypes">Signature Types</h4>
-          <div class="badge-grid">
-            <span class="pill">PAdES</span><span class="pill">CAdES</span><span class="pill">PKCS#7</span>
-          </div>
-        </div>
-        <div class="footer-badge-group">
-          <h4 data-i18n="verify.footer.recognizedPki">Recognized PKI</h4>
-          <div class="badge-grid">
-            <span class="pill pill-flag">&#x1F1E8;&#x1F1F7; CR Firma Digital</span>
-            <span class="pill pill-outline" data-i18n="verify.footer.morePki">More via did:pki</span>
-          </div>
-        </div>
-        <div class="footer-badge-group">
-          <h4 data-i18n="verify.footer.capabilities">Capabilities</h4>
-          <div class="badge-grid">
-            <span class="pill pill-green" data-i18n="verify.footer.zeroUpload">Zero upload</span>
-            <span class="pill pill-green" data-i18n="verify.footer.clientSide">Client-side</span>
-            <span class="pill pill-green" data-i18n="verify.footer.openSource">Open source</span>
-            <span class="pill">X.509</span>
-            <span class="pill">ByteRange</span>
-            <span class="pill">Forensic</span>
-          </div>
-        </div>
-        <div class="footer-badge-group">
-          <h4 data-i18n="verify.footer.browsers">Browsers</h4>
-          <div class="badge-grid">
-            <span class="pill">Chrome</span><span class="pill">Firefox</span><span class="pill">Safari</span><span class="pill">Edge</span>
-          </div>
-        </div>
-      </div>
-      <div class="transparency-note">
-        <h4 data-i18n="verify.footer.networkTransparency">Network Transparency</h4>
-        <p><span data-i18n="verify.footer.networkText">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.</span> <a href="https://github.com/Attestto-com/attestto-verify"><span data-i18n="verify.footer.verifySource">Verify in the source code</span> &rarr;</a></p>
-      </div>
-      <div class="footer-links" style="display: flex; gap: 2rem; justify-content: center; padding: 1rem 0; border-top: 1px solid #1e293b; margin-top: 1rem;">
-        <a href="https://attestto.org" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">attestto.org</a>
-        <a href="/dev/" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;" data-i18n="nav.developers">Developers</a>
-        <a href="https://github.com/Attestto-com/attestto-verify" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">GitHub</a>
-        <a href="https://resolver.attestto.com" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">DID Resolver</a>
-        <a href="https://attestto.org/standards" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;" data-i18n="verify.footer.standardsLink">Standards</a>
-      </div>
-      <div class="footer-bottom">
-        <span data-i18n="verify.footer.license">Open source under Apache 2.0</span> — <a href="https://github.com/Attestto-com/attestto-verify">attestto/verify</a>
-        &middot; <span data-i18n="verify.footer.fileNeverLeaves">Your file never leaves your device.</span>
       </div>
     </footer>
 

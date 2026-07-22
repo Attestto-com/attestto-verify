@@ -46,6 +46,33 @@ const log = logger.verify
 
 // ── Types ─────────────────────────────────────────────────────────
 
+/**
+ * A certificate on the validated path, as produced by pkijs's
+ * `CertificateChainValidationEngine`. This is `CertificateInfo`-compatible
+ * data for the certs the engine actually used to reach the trust anchor,
+ * ordered signer → … → root. It lets the UI display the FULL validated chain
+ * even when the PDF embedded only the signer leaf: the missing intermediates
+ * and root are supplied here from the bundled trust store.
+ */
+export interface ResolvedChainCert {
+  /** Subject Common Name */
+  commonName: string
+  /** Issuer Common Name */
+  issuerCommonName: string
+  /** Serial number (hex, uppercase) — used for dedupe against embedded certs */
+  serialNumber: string
+  /** Validity — not before (ISO) */
+  validFrom: string | null
+  /** Validity — not after (ISO) */
+  validTo: string | null
+  /** Subject Country (C) */
+  country: string | null
+  /** Position in chain */
+  role: 'end-entity' | 'intermediate' | 'root'
+  /** Raw DER bytes (hex, lowercase) — canonical identity for dedupe */
+  rawDerHex: string
+}
+
 export interface ChainValidationResult {
   /** True if the chain walks to a bundled trust anchor with valid signatures at every step. */
   trusted: boolean
@@ -61,6 +88,14 @@ export interface ChainValidationResult {
   pkiDid?: string
   /** End-entity hints from the DID Document — how to extract signer identity per cert type */
   endEntityHints?: Record<string, import('./pki-resolver.js').EndEntityHint> | null
+  /**
+   * The ordered certificate path pkijs used to reach the trust anchor
+   * (signer → … → root). DISPLAY ONLY. The caller merges any of these certs
+   * that were NOT embedded in the PDF into the displayed chain, tagged as
+   * "resolved from trust store". Empty/undefined when the chain did not
+   * validate or the built path was unavailable.
+   */
+  resolvedChain?: ResolvedChainCert[]
 }
 
 // ── PEM ↔ DER Helpers ─────────────────────────────────────────────
@@ -83,6 +118,155 @@ function hexToArrayBuffer(hex: string): ArrayBuffer {
     bytes[i / 2] = parseInt(clean.substring(i, i + 2), 16)
   }
   return bytes.buffer
+}
+
+// ── Validated-Path Extraction ─────────────────────────────────────
+
+function rdnValue(
+  cert: import('pkijs').Certificate,
+  which: 'subject' | 'issuer',
+  oid: string,
+): string | null {
+  try {
+    const tv = cert[which]?.typesAndValues
+    if (!tv) return null
+    const attr = tv.find((t) => t.type === oid)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((attr?.value as any)?.valueBlock?.value as string) || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Convert a pkijs `Certificate` from the validated path into
+ * `CertificateInfo`-compatible display data. `role` is assigned by position:
+ * the signer (index 0, leaf) is 'end-entity', the anchor (last) that is
+ * self-issued is 'root', everything between is 'intermediate'.
+ */
+function certToResolved(
+  cert: import('pkijs').Certificate,
+  role: 'end-entity' | 'intermediate' | 'root',
+): ResolvedChainCert {
+  const commonName = rdnValue(cert, 'subject', '2.5.4.3') || ''
+  const issuerCommonName = rdnValue(cert, 'issuer', '2.5.4.3') || ''
+  const country = rdnValue(cert, 'subject', '2.5.4.6')
+  const toIso = (t: { value?: Date } | undefined): string | null => {
+    try {
+      return t?.value instanceof Date ? t.value.toISOString() : null
+    } catch {
+      return null
+    }
+  }
+  const validFrom = toIso(cert.notBefore)
+  const validTo = toIso(cert.notAfter)
+
+  // Serial number as uppercase hex (matches certificate-parser's rendering).
+  let serialNumber = ''
+  try {
+    const bytes = new Uint8Array(cert.serialNumber.valueBlock.valueHexView)
+    serialNumber = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+  } catch {
+    serialNumber = ''
+  }
+
+  // Raw DER (lowercase hex) — canonical dedupe key.
+  let rawDerHex = ''
+  try {
+    const der = cert.toSchema().toBER(false)
+    const bytes = new Uint8Array(der)
+    rawDerHex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  } catch {
+    rawDerHex = ''
+  }
+
+  return {
+    commonName,
+    issuerCommonName,
+    serialNumber,
+    validFrom,
+    validTo,
+    country,
+    role,
+    rawDerHex,
+  }
+}
+
+/**
+ * Map the ordered validated path (signer → … → root) to display certs.
+ * The engine returns `certificatePath` root-first in some pkijs versions and
+ * leaf-first in others; we normalize to leaf-first by finding the self-issued
+ * cert (root) and orienting from the signer.
+ */
+function resolvedChainFromPath(
+  builtChain: import('pkijs').Certificate[],
+  bundledCerts: import('pkijs').Certificate[] = [],
+): ResolvedChainCert[] {
+  // DISPLAY ONLY. This must NEVER throw into the trust decision, so the whole
+  // body is guarded: any failure yields an empty resolved chain (the display
+  // simply falls back to the embedded certs) and leaves `trusted` untouched.
+  try {
+    if (!Array.isArray(builtChain) || builtChain.length === 0) return []
+
+    // Normalize orientation to signer → … → root. pkijs's certificatePath is
+    // leaf-first (index 0 = signer). Detect root as the self-issued cert.
+    const isSelfIssued = (c: import('pkijs').Certificate) =>
+      rdnValue(c, 'subject', '2.5.4.3') === rdnValue(c, 'issuer', '2.5.4.3')
+
+    let ordered = builtChain
+    if (
+      isSelfIssued(builtChain[0]) &&
+      builtChain.length > 1 &&
+      !isSelfIssued(builtChain[builtChain.length - 1])
+    ) {
+      // Root-first — reverse to leaf-first.
+      ordered = [...builtChain].reverse()
+    } else {
+      ordered = [...builtChain]
+    }
+
+    // Walk up to the self-issued root through the bundled anchors. Because we
+    // trust every bundled CA, pkijs stops `certificatePath` at the first
+    // trusted cert (often the issuing intermediate). For a leaf-only PDF that
+    // leaves the chain short (… → issuing CA), so continue upward for DISPLAY
+    // only: append each parent (issuer subject == child issuer, full DN match)
+    // until the self-issued root. Full DN matching is robust to same-CN CA
+    // generations (e.g. SINPE v2 2023 vs 2026).
+    const derHex = (c: import('pkijs').Certificate) => {
+      try {
+        return Array.from(new Uint8Array(c.toSchema().toBER(false)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
+      } catch {
+        return ''
+      }
+    }
+    const seen = new Set(ordered.map(derHex))
+    let guard = 0
+    while (guard++ < 12 && !isSelfIssued(ordered[ordered.length - 1])) {
+      const child = ordered[ordered.length - 1]
+      const parent = bundledCerts.find(
+        (cand) => cand.subject.isEqual(child.issuer) && !seen.has(derHex(cand)),
+      )
+      if (!parent) break
+      ordered.push(parent)
+      seen.add(derHex(parent))
+    }
+
+    const last = ordered.length - 1
+    return ordered.map((cert, i) => {
+      const role: 'end-entity' | 'intermediate' | 'root' =
+        i === last && isSelfIssued(cert) ? 'root' : i === 0 ? 'end-entity' : 'intermediate'
+      return certToResolved(cert, role)
+    })
+  } catch {
+    return []
+  }
 }
 
 // ── Lazy pkijs Loader ─────────────────────────────────────────────
@@ -264,6 +448,10 @@ export async function validateChain(
       anchorCommonName: anchorCn,
       error: null,
       chainLength: builtChain.length,
+      resolvedChain: resolvedChainFromPath(
+        builtChain,
+        anchors.map((a) => a.cert),
+      ),
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -627,6 +815,10 @@ async function validateChainWithDynamicAnchor(
       anchorCommonName: rootCn || anchorCn,
       error: null,
       chainLength: builtChain.length,
+      resolvedChain: resolvedChainFromPath(
+        builtChain,
+        [anchorCert, ...bundledAnchors.map((a) => a.cert)],
+      ),
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
