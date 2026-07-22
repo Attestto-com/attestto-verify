@@ -1611,9 +1611,12 @@ export class AttesttoVerify extends LitElement {
       // GAP: verify does not extract a visible signature/seal appearance image.
       signatureImage: null,
       handle,
-      // GAP: verify does not currently parse full PAdES-LTV (timestamp tier /
-      // embedded revocation), so this is left null. The card then shows the
-      // honest "no long-term validation" face instead of inventing a tier.
+      // GAP: verify does not yet parse PAdES-LTV (timestamp tier / embedded
+      // revocation) for X.509 signatures, nor an on-chain anchor for Attestto
+      // self-attested ones, so this is left null. The card then shows the honest
+      // face — "no long-term validation" for X.509, "bound to content + KYC"
+      // (NOT "anchored in time") for self-attested — instead of inventing proof.
+      // When self-sign starts anchoring, populate ltv.anchor here.
       ltv: null,
       // OPT-IN online revocation. Offered only when an OCSP responder URL is
       // known (from the signer cert AIA) AND the issuer cert is present so a

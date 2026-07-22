@@ -31,13 +31,22 @@ export interface OfficialVerifier {
 }
 
 /**
- * Long-Term Validation status. For CR Firma Digital this is the BCCR-anchored
- * archival evidence: an embedded timestamp (RFC 3161) + embedded revocation
- * (OCSP/CRL in the PDF's DSS). Without it, a signature is only valid while the
- * cert is unexpired AND BCCR's responders stay reachable.
+ * Long-Term Validation status. Two independent worlds map onto this shape:
+ *
+ *   - X.509 / PAdES (CR Firma Digital, eIDAS…): archival evidence is an embedded
+ *     timestamp (RFC 3161) + embedded revocation (OCSP/CRL in the PDF's DSS).
+ *     Without it, the signature is valid only while the cert is unexpired AND the
+ *     issuer's responders stay reachable. Described by tier/hasTimestamp/
+ *     timestampAuthority/revocationSource.
+ *
+ *   - Attestto self-attested: there is no CA or TSA, so the ONLY valid long-term
+ *     time proof is an on-chain `anchor` whose block time proves the signature
+ *     existed before T, independent of any responder. A merely self-asserted
+ *     signing clock (the signer's own `new Date()`) is NOT a time proof and must
+ *     leave `anchor` unset — otherwise the card would overclaim anchoring.
  */
 export interface SignatureLtv {
-  /** PAdES conformance tier. */
+  /** PAdES conformance tier. Use 'none' for the non-X.509 (anchor) path. */
   tier: 'B' | 'T' | 'LT' | 'LTA' | 'none'
   hasTimestamp: boolean
   /** Authoritative signing time from the TSA token, if present. */
@@ -45,6 +54,20 @@ export interface SignatureLtv {
   timestampAuthority?: string | null
   /** Where revocation evidence came from. 'embedded' = self-contained/long-term. */
   revocationSource: 'embedded' | 'live' | 'none'
+  /**
+   * On-chain time anchor. Present ONLY when a verifiable anchor exists (its block
+   * time is the authoritative "existed before T"). Never populate this from a
+   * self-asserted signing clock. This is the Attestto-native LTV: the ledger, not
+   * a CA, is the time authority.
+   */
+  anchor?: {
+    /** Anchoring network, e.g. "Solana". */
+    network: string
+    /** Transaction / anchor reference, when available. */
+    ref?: string | null
+    /** Authoritative anchor (block) time, ISO 8601. */
+    anchoredAt?: string | null
+  } | null
 }
 
 /**
@@ -120,7 +143,12 @@ export interface SignatureCardModel {
   signatureImage: string | null
   /** Attestto handle (cr-….attestto.id) or DID, shown under the ID column. */
   handle: string | null
-  /** Long-term validation status. Null when not applicable (e.g. self-attested). */
+  /**
+   * Long-term validation status. For self-attested signatures this carries the
+   * on-chain `anchor` when one exists (the only valid time proof without a CA);
+   * null when the signature is only bound to content + KYC with a self-asserted
+   * signing clock.
+   */
   ltv?: SignatureLtv | null
   /**
    * OPT-IN online revocation. The default no-network behavior is unchanged: this

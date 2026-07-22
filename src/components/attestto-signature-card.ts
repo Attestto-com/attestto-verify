@@ -95,12 +95,29 @@ function ltvFace(
 ): { label: string; detail: string; tone: LtvTone } | null {
   const es = lang === 'es'
   if (status === 'self-attested') {
+    // No CA and no TSA here, so the ONLY honest "anchored in time" claim is a
+    // verifiable on-chain anchor. When one exists, the ledger's block time proves
+    // the signature existed before T. Without it, the signing date is the
+    // signer's own asserted clock — the signature is bound to content + KYC, but
+    // NOT anchored in time. Deriving from `ltv.anchor` keeps the badge honest.
+    if (ltv?.anchor) {
+      const at = ltv.anchor.anchoredAt ? ` · ${ltv.anchor.anchoredAt}` : ''
+      return {
+        tone: 'good',
+        label: es ? 'Anclada en el tiempo' : 'Point-in-time anchored',
+        detail:
+          (es
+            ? `Anclada en ${ltv.anchor.network}: su existencia antes de esa fecha es verificable en cadena, sin depender de ninguna CA.`
+            : `Anchored on ${ltv.anchor.network}: existence before that time is verifiable on-chain, independent of any CA.`) +
+          at,
+      }
+    }
     return {
       tone: 'neutral',
-      label: es ? 'Anclada en el tiempo' : 'Point-in-time anchored',
+      label: es ? 'Vinculada al contenido y KYC' : 'Bound to content + KYC',
       detail: es
-        ? 'Validez anclada al hash del documento y al KYC del firmante en el momento de firmar.'
-        : 'Validity anchored to the document hash and the signer’s KYC at signing time.',
+        ? 'Prueba propiedad de la bóveda del firmante y que el contenido no cambió, pero la fecha es la declarada por el firmante — sin anclaje de tiempo verificable.'
+        : 'Proves the signer’s vault ownership and that the content is unchanged, but the date is the signer’s own — no verifiable time anchor.',
     }
   }
   if (!ltv || ltv.tier === 'none' || ltv.tier === 'B') {
@@ -1132,10 +1149,22 @@ export class AttesttoSignatureCard extends LitElement {
     </div>`
   }
 
+  /**
+   * Mask long digit runs inside a handle so an identifier that embeds a national
+   * ID (e.g. `cr-111290877.attestto.id`) does not broadcast the number on every
+   * verification. Keeps the first and last two digits for recognizability. The
+   * full handle stays available under "advanced details" behind an explicit
+   * expand. This is a display-side defense; the real fix is the signer minting a
+   * handle without PII (see public-identifier-no-pii design).
+   */
+  private maskHandle(handle: string): string {
+    return handle.replace(/\d{6,}/g, (run) => run.slice(0, 2) + '•'.repeat(run.length - 4) + run.slice(-2))
+  }
+
   private renderId(s: SignatureCardModel) {
     const es = this._lang === 'es'
     if (!s.nationalId) {
-      return html`<span class="meta-value">${s.handle || '—'}</span>`
+      return html`<span class="meta-value">${s.handle ? this.maskHandle(s.handle) : '—'}</span>`
     }
     // Masked always. The user CONFIRMS by typing what they already know; the
     // full value is never displayed by the tool.
