@@ -18,11 +18,16 @@ import {
   type SignatureTrustMark,
 } from '../model/signature-card.js'
 import { checkOcspOnline, type OnlineOcspResult } from '../composables/online-ocsp.js'
+import {
+  checkRevocationViaResolver,
+  crSinpeCaFromIssuer,
+  type ResolverRevocationResult,
+} from '../composables/resolver-revocation.js'
 
 /** Per-signature state for the opt-in online revocation check (keyed by index). */
 interface OnlineRevState {
   checking: boolean
-  result: OnlineOcspResult | null
+  result: OnlineOcspResult | ResolverRevocationResult | null
 }
 
 /**
@@ -1640,7 +1645,11 @@ export class AttesttoVerify extends LitElement {
     cc: PdfSignatureInfo['certChain'],
     cardIndex: number,
   ): SignatureCardModel['onlineRevocation'] {
-    const available = Boolean(cc?.signerOcspUrl && cc?.issuerDerHex && cc?.signer?.rawDerHex)
+    // CR Firma Digital certs are checked via our resolver CRL endpoint (no OCSP
+    // URL / issuer DER needed); everything else needs the direct-OCSP inputs.
+    const isCrSinpe = crSinpeCaFromIssuer(cc?.signer?.issuerCommonName) !== null
+    const available =
+      isCrSinpe || Boolean(cc?.signerOcspUrl && cc?.issuerDerHex && cc?.signer?.rawDerHex)
     if (!available) return null
     const st = this._onlineRev.get(cardIndex)
     return {
@@ -1661,17 +1670,28 @@ export class AttesttoVerify extends LitElement {
   private async runOnlineRevocation(cardIndex: number) {
     const sig = this.result?.signatures?.[cardIndex - 1]
     const cc = sig?.certChain
-    if (!cc?.signerOcspUrl || !cc.issuerDerHex || !cc.signer?.rawDerHex) return
+    if (!cc) return
     if (this._onlineRev.get(cardIndex)?.checking) return
+
+    const crCa = crSinpeCaFromIssuer(cc.signer?.issuerCommonName)
+    // Non-CR certs need the direct-OCSP prerequisites; CR uses the resolver CRL.
+    if (!crCa && (!cc.signerOcspUrl || !cc.issuerDerHex || !cc.signer?.rawDerHex)) return
 
     this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: true, result: null })
 
-    const result = await checkOcspOnline(
-      cc.signer.rawDerHex,
-      cc.issuerDerHex,
-      cc.signerOcspUrl,
-      this._lang,
-    )
+    let result: OnlineOcspResult | ResolverRevocationResult
+    if (crCa && cc.signer?.serialNumber) {
+      // CR Firma Digital: our resolver CRL endpoint (HTTPS + CORS) instead of the
+      // SINPE OCSP responder, which the browser blocks (mixed content + CORS).
+      result = await checkRevocationViaResolver(crCa, cc.signer.serialNumber, this._lang)
+    } else {
+      result = await checkOcspOnline(
+        cc.signer!.rawDerHex,
+        cc.issuerDerHex!,
+        cc.signerOcspUrl!,
+        this._lang,
+      )
+    }
 
     this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: false, result })
   }
