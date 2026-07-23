@@ -254,6 +254,24 @@ export function countryName(code: string | null, lang: 'en' | 'es'): string | nu
   return entry ? entry[lang] : null
 }
 
+/**
+ * Map a signature method (PDF /SubFilter or Attestto scheme) to the standard
+ * FAMILY it belongs to. The `method` field already shows the raw subFilter
+ * (e.g. `ETSI.CAdES.detached`); `standard` should name the spec it implements
+ * (e.g. PAdES), not echo the same string. Returns null when the input is empty.
+ */
+export function signatureStandard(subFilter: string | null | undefined): string | null {
+  if (!subFilter) return null
+  const sf = subFilter.toLowerCase()
+  if (sf === 'etsi.cades.detached') return 'PAdES (ETSI EN 319 142)'
+  if (sf === 'etsi.rfc3161') return 'PAdES document timestamp (RFC 3161)'
+  if (sf.startsWith('adbe.pkcs7')) return 'PKCS#7 / adbe (ISO 32000)'
+  if (sf.startsWith('adbe.x509')) return 'X.509 / adbe (ISO 32000, legacy)'
+  if (sf.startsWith('attestto.self-attested')) return 'Attestto self-attested'
+  if (sf.startsWith('attestto.')) return 'Attestto'
+  return subFilter
+}
+
 /** Map Attestto DID verification relationships onto the same canonical terms. */
 export function capabilitiesFromDid(relationships: string[] = []): SignatureCapability[] {
   const out: SignatureCapability[] = []

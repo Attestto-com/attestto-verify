@@ -346,8 +346,10 @@ export class AttesttoSignatureCard extends LitElement {
       method: s.method,
       subFilter: s.methodTech,
       signedAt: s.signedAt,
-      nationalId: s.nationalId?.full ?? null,
-      handle: s.handle,
+      // Never export raw PII: the tool never displays the full national ID
+      // (renderId only confirms it), and the handle may embed the cédula.
+      nationalId: s.nationalId?.masked ?? null,
+      handle: s.handle ? this.maskHandle(s.handle) : null,
       capabilities: s.capabilities.map((c) => c.label),
       ltv: s.ltv ?? null,
       tech: { ...s.tech, pkcs7Hex: s.tech.pkcs7Hex ? `${s.tech.pkcs7Hex.slice(0, 16)}… (${s.tech.pkcs7Hex.length} chars)` : null },
@@ -750,7 +752,8 @@ export class AttesttoSignatureCard extends LitElement {
       background: #06070a;
       border: 1px solid #1c2029;
       border-radius: 12px;
-      overflow: hidden;
+      /* overflow visible (not hidden) so row tooltips can escape the panel
+         bounds; no child paints into the rounded corners, so the frame is safe. */
     }
     .internals-desc {
       font-size: 0.8rem;
@@ -826,7 +829,64 @@ export class AttesttoSignatureCard extends LitElement {
       font-size: 0.73rem;
     }
     .kv .k {
-      color: #6b7280;
+      color: #8b93a4;
+    }
+    .kv .hint {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      margin-left: 6px;
+      border: 1px solid #3a4150;
+      border-radius: 50%;
+      font-size: 9px;
+      line-height: 1;
+      color: #aeb4c0;
+      cursor: help;
+      vertical-align: middle;
+      user-select: none;
+    }
+    .kv .hint:hover,
+    .kv .hint:focus {
+      color: #ffffff;
+      border-color: #5b6472;
+      background: #1a1e27;
+      outline: none;
+    }
+    .kv .hint .tip {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 8px);
+      width: max-content;
+      max-width: 280px;
+      padding: 8px 11px;
+      background: #1b1f2a;
+      border: 1px solid #333a48;
+      border-radius: 8px;
+      color: #e8eaef;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 400;
+      line-height: 1.45;
+      text-align: left;
+      white-space: normal;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(3px);
+      transition:
+        opacity 0.12s ease,
+        transform 0.12s ease;
+      z-index: 50;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    }
+    .kv .hint:hover .tip,
+    .kv .hint:focus .tip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
     }
     .kv .v {
       color: #cbd0d8;
@@ -1161,6 +1221,79 @@ export class AttesttoSignatureCard extends LitElement {
     return handle.replace(/\d{6,}/g, (run) => run.slice(0, 2) + '•'.repeat(run.length - 4) + run.slice(-2))
   }
 
+  /**
+   * Plain-language definition for a technical Firma-tab row label, so a `?`
+   * marker can explain the jargon on hover. Returns null for self-evident rows.
+   */
+  private techHint(label: string): string | null {
+    const es = this._lang === 'es'
+    // [es, en] per label key.
+    const g: Record<string, [string, string]> = {
+      signed: [
+        'Fecha y hora de firma declaradas por el firmante. No prueban el momento real salvo que exista un sello de tiempo.',
+        'Signing date and time as declared by the signer. Not proof of the actual moment unless a timestamp is present.',
+      ],
+      commitment: [
+        'Motivo o compromiso declarado de la firma (por ejemplo aprobación o autoría).',
+        'The declared reason or commitment of the signature (for example approval or authorship).',
+      ],
+      method: [
+        'Mecanismo técnico de la firma: el subtipo del PDF (/SubFilter) o el esquema Attestto.',
+        "The signature's technical mechanism: the PDF /SubFilter or the Attestto scheme.",
+      ],
+      standard: [
+        'Norma que implementa la firma (por ejemplo PAdES para PDF, o PKCS#7).',
+        'The standard the signature implements (for example PAdES for PDF, or PKCS#7).',
+      ],
+      'key id': [
+        'Identificador de la clave pública del firmante (por ejemplo un did:key). No contiene datos personales.',
+        "Identifier of the signer's public key (for example a did:key). Contains no personal data.",
+      ],
+      handle: [
+        'Identificador legible del firmante. Se enmascara si incluye un dato personal como la cédula.',
+        'Human-readable identifier of the signer. Masked when it embeds personal data such as a national ID.',
+      ],
+      location: [
+        'Lugar de firma declarado por el firmante. Es autoafirmado y no se verifica.',
+        'Signing location declared by the signer. Self-asserted and not verified.',
+      ],
+      'cert valid': [
+        'Periodo de validez del certificado del firmante (desde y hasta).',
+        "Validity period of the signer's certificate (from and to).",
+      ],
+      digest: [
+        'Algoritmo de hash usado al calcular la firma.',
+        'Hash algorithm used when computing the signature.',
+      ],
+      'byte range': [
+        'Rango de bytes del documento que cubre la firma. Un cambio fuera de ese rango la invalida.',
+        'Byte range of the document covered by the signature. A change outside it breaks the signature.',
+      ],
+      'PKCS#7 size': [
+        'Tamaño del contenedor criptográfico (PKCS#7/CMS) que envuelve la firma.',
+        'Size of the cryptographic container (PKCS#7/CMS) that wraps the signature.',
+      ],
+      'LTV tier': [
+        'Nivel de validación a largo plazo: evidencia embebida para poder verificar años después.',
+        'Long-term validation tier: embedded evidence so the signature can be verified years later.',
+      ],
+      timestamp: [
+        'Sello de tiempo de confianza que prueba cuándo existió la firma.',
+        'Trusted timestamp proving when the signature existed.',
+      ],
+      revocation: [
+        'Origen de la evidencia de revocación (OCSP/CRL) que se consultó.',
+        'Source of the revocation evidence (OCSP/CRL) that was checked.',
+      ],
+    }
+    const entry = g[label]
+    if (entry) return es ? entry[0] : entry[1]
+    // The raw-reference fallback labels mean the same as "signed".
+    if (label.startsWith('firma (ref') || label.startsWith('signed (raw'))
+      return es ? g.signed[0] : g.signed[1]
+    return null
+  }
+
   private renderId(s: SignatureCardModel) {
     const es = this._lang === 'es'
     if (!s.nationalId) {
@@ -1274,13 +1407,17 @@ export class AttesttoSignatureCard extends LitElement {
     if (s.tech.reason) kv.push(['commitment', s.tech.reason])
     if (s.method) kv.push(['method', s.method])
     if (s.tech.standard) kv.push(['standard', s.tech.standard])
-    if (s.tech.producer) kv.push(['producer', s.tech.producer])
+    // `pdf producer` (PDF /Producer) is just the last app that wrote the file
+    // bytes, not the signing authority — noise in a signature card, so it is
+    // intentionally NOT displayed. It stays in tech.producer for the JSON export.
     if (s.cert?.validFrom || s.cert?.validTo) kv.push(['cert valid', `${s.cert?.validFrom ?? '?'} – ${s.cert?.validTo ?? '?'}`])
     if (s.tech.digestAlgorithm) kv.push(['digest', s.tech.digestAlgorithm])
     if (s.tech.byteRange) kv.push(['byte range', `[${s.tech.byteRange.join(', ')}]`])
     if (s.tech.pkcs7Size) kv.push(['PKCS#7 size', `${s.tech.pkcs7Size} bytes`])
     if (s.tech.keyId) kv.push(['key id', s.tech.keyId])
-    if (s.handle) kv.push(['handle', s.handle])
+    // Mask the handle: it may embed a national ID (cr-<cédula>.attestto.id).
+    // The tool never displays that PII in cleartext (see renderId).
+    if (s.handle) kv.push(['handle', this.maskHandle(s.handle)])
     if (s.tech.location) kv.push(['location', s.tech.location])
     if (s.ltv) {
       kv.push(['LTV tier', s.ltv.tier])
@@ -1288,7 +1425,18 @@ export class AttesttoSignatureCard extends LitElement {
       kv.push(['revocation', s.ltv.revocationSource])
     }
     return html`
-      <div class="kv">${kv.map(([k, v]) => html`<span class="k">${k}</span><span class="v">${v}</span>`)}</div>
+      <div class="kv">
+        ${kv.map(([k, v]) => {
+          const hint = this.techHint(k)
+          return html`<span class="k"
+              >${k}${hint
+                ? html`<span class="hint" tabindex="0" role="button" aria-label=${hint}
+                    >?<span class="tip">${hint}</span></span
+                  >`
+                : ''}</span
+            ><span class="v">${v}</span>`
+        })}
+      </div>
       <div class="copy-row">
         ${s.tech.pkcs7Hex
           ? html`<button class="copy-btn" @click=${() => this.copy(s.tech.pkcs7Hex!, 'pkcs7')}>

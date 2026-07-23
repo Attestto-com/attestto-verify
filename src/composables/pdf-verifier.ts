@@ -251,14 +251,29 @@ export async function computeHash(buffer: ArrayBuffer): Promise<string> {
 export function formatPdfDate(raw: string): string | null {
   if (!raw) return null
   try {
-    const cleaned = raw.replace(/^D:/, '')
+    // PDF literal strings may octal-escape punctuation, so a date like
+    // "D:20260716213402+02'00'" can arrive as
+    // "D\07220260716213402\05302\04700\047" (\072=':', \053='+', \047="'").
+    // Decode those escapes first, or every date parser rejects it and the
+    // card falls back to dumping the raw reference.
+    const unescaped = raw.replace(/\\([0-7]{1,3}|[nrtbf()\\])/g, (_, esc) => {
+      if (/^[0-7]{1,3}$/.test(esc)) return String.fromCharCode(parseInt(esc, 8))
+      const map: Record<string, string> = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f' }
+      return map[esc] ?? esc
+    })
+    const cleaned = unescaped.replace(/^D:/, '')
     const year = cleaned.substring(0, 4)
+    if (!/^\d{4}$/.test(year)) return raw
     const month = cleaned.substring(4, 6) || '01'
     const day = cleaned.substring(6, 8) || '01'
     const hour = cleaned.substring(8, 10) || '00'
     const min = cleaned.substring(10, 12) || '00'
     const sec = cleaned.substring(12, 14) || '00'
-    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`).toISOString()
+    // Timezone: "Z", or "+HH'mm'" / "-HH'mm'" (apostrophes already decoded).
+    let tz = 'Z'
+    const tzMatch = cleaned.substring(14).match(/^([+-])(\d{2})'?(\d{2})?'?/)
+    if (tzMatch) tz = `${tzMatch[1]}${tzMatch[2]}:${tzMatch[3] ?? '00'}`
+    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}${tz}`).toISOString()
   } catch {
     return raw
   }

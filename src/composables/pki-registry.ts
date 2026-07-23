@@ -38,6 +38,13 @@ export interface PkiRegistryEntry {
   governingLaw: string
   /** Root authority institution name */
   rootAuthority: string
+  /**
+   * Official authority / program websites (verified live). The FIRST entry is
+   * the primary link used by the landing pill; all entries are listed in the
+   * footer. A country may have several distinct authorities (operator CA,
+   * national program, accreditation/competent authority).
+   */
+  officialLinks: { label: string; url: string }[]
 }
 
 export interface CertTypeRule {
@@ -88,6 +95,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 8454',
     rootAuthority: 'CA RAIZ NACIONAL - COSTA RICA',
+    officialLinks: [
+      { label: 'BCCR — Firma Digital', url: 'https://www.bccr.fi.cr/firma-digital' },
+      { label: 'MICITT — DCFD (acreditación)', url: 'https://www.micitt.go.cr/servicios/firma-digital-certificada' },
+    ],
   },
 
   // ── Mexico ──────────────────────────────────────────────────────
@@ -116,6 +127,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley de Firma Electrónica Avanzada (2012)',
     rootAuthority: 'Servicio de Administración Tributaria (SAT)',
+    officialLinks: [
+      { label: 'SAT — e.firma', url: 'https://www.sat.gob.mx/' },
+      { label: 'Secretaría de Economía — PSC (NOM-151)', url: 'https://psc.economia.gob.mx/' },
+    ],
   },
 
   // ── Colombia ────────────────────────────────────────────────────
@@ -151,6 +166,13 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 527 de 1999',
     rootAuthority: 'ONAC under MinTIC',
+    officialLinks: [
+      { label: 'Certicámara', url: 'https://web.certicamara.com/' },
+      {
+        label: 'ONAC — acreditación ECD',
+        url: 'https://onac.org.co/informacion-por-esquemas-de-acreditacion/certificacion-digital-ecd/',
+      },
+    ],
   },
 
   // ── Brazil ──────────────────────────────────────────────────────
@@ -191,6 +213,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'MP 2.200-2 de 2001',
     rootAuthority: 'ITI — Instituto Nacional de Tecnologia da Informação',
+    officialLinks: [
+      { label: 'ITI — ICP-Brasil', url: 'https://www.gov.br/iti/pt-br' },
+      { label: 'ITI — ICP-Brasil (AC-Raiz)', url: 'https://www.gov.br/iti/pt-br/assuntos/icp-brasil' },
+    ],
   },
 
   // ── Chile ───────────────────────────────────────────────────────
@@ -218,6 +244,13 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 19.799 de 2002',
     rootAuthority: 'Ministerio de Economía — División de Acreditación',
+    officialLinks: [
+      {
+        label: 'ChileAtiende — Firma Electrónica Avanzada',
+        url: 'https://www.chileatiende.gob.cl/fichas/21201-firma-electronica-avanzada',
+      },
+      { label: 'Entidad Acreditadora — PSC', url: 'https://www.entidadacreditadora.gob.cl/entidades/' },
+    ],
   },
 
   // ── Peru ────────────────────────────────────────────────────────
@@ -250,6 +283,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 27269 de 2000',
     rootAuthority: 'INDECOPI — Autoridad Administrativa Competente',
+    officialLinks: [
+      { label: 'RENIEC — PKI / ECEP', url: 'https://pki.reniec.gob.pe/' },
+      { label: 'INDECOPI — IOFE (autoridad competente)', url: 'https://www.gob.pe/12453' },
+    ],
   },
 
   // ── Argentina ───────────────────────────────────────────────────
@@ -284,6 +321,13 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 25.506 de 2001',
     rootAuthority: 'Jefatura de Gabinete de Ministros',
+    officialLinks: [
+      {
+        label: 'Argentina.gob.ar — Firma Digital',
+        url: 'https://www.argentina.gob.ar/jefatura/innovacion-ciencia-y-tecnologia/innovacion/firma-digital',
+      },
+      { label: 'AC ONTI — repositorio raíz', url: 'http://pki.jgm.gov.ar/app/' },
+    ],
   },
 
   // ── Ecuador ─────────────────────────────────────────────────────
@@ -315,6 +359,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 67 de 2002',
     rootAuthority: 'MINTEL / Banco Central del Ecuador',
+    officialLinks: [
+      { label: 'ECIBCE — Firma Electrónica', url: 'https://www.eci.bce.ec/firma-electronica' },
+      { label: 'ARCOTEL — acreditación', url: 'https://www.arcotel.gob.ec/firma-electronica-acreditada/' },
+    ],
   },
 
   // ── Uruguay ─────────────────────────────────────────────────────
@@ -345,6 +393,13 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     ],
     governingLaw: 'Ley 18.600 de 2009',
     rootAuthority: 'AGESIC — Unidad de Certificación Electrónica',
+    officialLinks: [
+      { label: 'UCE (AGESIC)', url: 'https://www.gub.uy/unidad-certificacion-electronica/' },
+      {
+        label: 'AGESIC — ACRN (raíz nacional)',
+        url: 'https://www.gub.uy/agencia-gobierno-electronico-sociedad-informacion-conocimiento/comunicacion/publicaciones/autoridad-certificadora-raiz-nacional',
+      },
+    ],
   },
 ]
 

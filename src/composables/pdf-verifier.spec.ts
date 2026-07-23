@@ -27,6 +27,27 @@ describe('pdf-verifier', () => {
     })
   })
 
+  describe('formatPdfDate', () => {
+    it('parses a plain PDF date', () => {
+      expect(formatPdfDate('D:20260719155520Z')).toBe('2026-07-19T15:55:20.000Z')
+    })
+
+    it('parses a date with a numeric timezone offset', () => {
+      // D:20260716213402+02'00' — 21:34 in UTC+2 == 19:34 UTC
+      expect(formatPdfDate("D:20260716213402+02'00'")).toBe('2026-07-16T19:34:02.000Z')
+    })
+
+    it('decodes octal-escaped punctuation (real eIDAS signer /M field)', () => {
+      // Colon/plus/apostrophe arrive octal-escaped: \072=':', \053='+', \047="'".
+      const raw = 'D\\07220260716213402\\05302\\04700\\047'
+      expect(formatPdfDate(raw)).toBe('2026-07-16T19:34:02.000Z')
+    })
+
+    it('returns the raw string when it is not a parseable date', () => {
+      expect(formatPdfDate('not-a-date')).toBe('not-a-date')
+    })
+  })
+
   describe('extractSignaturesFromBytes — known-good PAdES reference', () => {
     it('detects the PKCS#7 digital signature', async () => {
       const bytes = await readFile(REFERENCE_PDF)

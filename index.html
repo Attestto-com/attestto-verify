@@ -251,12 +251,22 @@
         gap: 1rem; flex-wrap: wrap;
       }
       .preview-head .label { margin: 0; }
-      .seg {
-        display: inline-flex; border: 1px solid var(--v-border);
-        border-radius: 999px; overflow: hidden; font-size: 0.72rem; font-weight: 600;
+      /* Live status chip — hidden until a file is dropped, then reflects the
+         real verifier state (scanning → verified / no-signature / issue). */
+      .live-status {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        border: 1px solid var(--v-border); border-radius: 999px;
+        padding: 0.35rem 0.85rem; font-size: 0.72rem; font-weight: 600;
+        color: var(--v-muted-2);
       }
-      .seg span { padding: 0.35rem 0.75rem; color: var(--v-muted-2); }
-      .seg span.on { background: rgba(123,114,237,0.18); color: var(--violet); }
+      .live-status[hidden] { display: none; }
+      .live-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+      .live-status.is-scanning { color: var(--violet); border-color: rgba(123,114,237,0.4); }
+      .live-status.is-scanning .live-dot { animation: live-pulse 1.1s ease-in-out infinite; }
+      .live-status.is-verified { color: #3ecf8e; border-color: rgba(62,207,142,0.4); }
+      .live-status.is-unsigned { color: #e0b34d; border-color: rgba(224,179,77,0.4); }
+      .live-status.is-issue { color: #ff6b6b; border-color: rgba(255,107,107,0.45); }
+      @keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
       .preview-body { padding: 1.5rem; }
 
       /* ── Stats band ─────────────────────────────── */
@@ -335,6 +345,10 @@
       .pill-violet { background: var(--violet-2); border-color: var(--violet-2); color: #fff; }
       .pill-violet-outline { background: transparent; border-color: var(--violet); color: var(--violet); }
       .pill-grey { background: transparent; border-color: var(--v-border); color: var(--v-muted-2); }
+      .std-note { margin-top: 0.7rem; font-size: 0.72rem; line-height: 1.5; color: var(--v-muted-2); max-width: 560px; }
+      .pill-link { text-decoration: none; cursor: pointer; transition: filter 0.12s ease, background 0.12s ease; }
+      .pill-link:hover { filter: brightness(1.12); }
+      .pill-violet-outline.pill-link:hover { background: rgba(123,114,237,0.12); }
 
       /* ── Final CTA ──────────────────────────────── */
       .final-cta { text-align: center; }
@@ -348,6 +362,16 @@
       .footer-meta { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; font-size: 0.85rem; color: var(--v-muted-2); }
       .footer-meta a { color: var(--violet); text-decoration: none; }
       .footer-meta a:hover { color: #9d95f5; }
+      .footer-pki { margin-bottom: 1.75rem; }
+      .footer-pki h4 {
+        font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--v-muted-2); margin-bottom: 0.75rem;
+      }
+      .pki-authorities { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; max-width: 720px; }
+      .pki-authorities li { font-size: 0.8rem; color: var(--v-muted-2); line-height: 1.5; }
+      .pki-auth-country { color: var(--v-text); }
+      .pki-authorities a { color: var(--violet); text-decoration: none; }
+      .pki-authorities a:hover { color: #9d95f5; text-decoration: underline; }
 
       /* Dark theme overrides for web components */
       attestto-verify {
@@ -527,12 +551,11 @@
       <section class="section wrap">
         <div class="preview-card" id="verifier-card">
           <div class="preview-head">
-            <span class="label" data-i18n="land.preview.label">Live preview</span>
-            <div class="seg" aria-hidden="true">
-              <span class="on" data-i18n="land.preview.idle">Idle</span>
-              <span data-i18n="land.preview.scanning">Scanning</span>
-              <span data-i18n="land.preview.issue">Issue found</span>
-            </div>
+            <span class="label" data-i18n="land.preview.label">Online verifier</span>
+            <span class="live-status" id="live-status" role="status" aria-live="polite" hidden>
+              <span class="live-dot"></span>
+              <span class="live-text" id="live-status-text"></span>
+            </span>
           </div>
           <div class="preview-body">
             <attestto-verify id="verifier"></attestto-verify>
@@ -618,7 +641,8 @@
         </div>
         <div class="std-group">
           <h4 data-i18n="land.standards.pki">Recognized PKI</h4>
-          <div class="pills"><span class="pill pill-violet">CR Firma Digital</span></div>
+          <div class="pills" id="pki-pills"><a class="pill pill-link pill-violet" href="https://www.bccr.fi.cr/firma-digital" target="_blank" rel="noopener noreferrer" title="Sistema Nacional de Certificación Digital — Firma Digital Costa Rica. Autoridad raíz: BCCR. Ley 8454.">CR Firma Digital</a></div>
+          <p class="std-note" id="pki-note" data-i18n="land.standards.pkiNote">Filled: chain validated against bundled trusted roots. Outline: certificate recognized (issuer, type, national ID); chain validated online when the resolver publishes that PKI.</p>
         </div>
         <div class="std-group">
           <h4 data-i18n="land.standards.capabilities">Capabilities</h4>
@@ -626,9 +650,9 @@
             <span class="pill pill-violet" data-i18n="land.cap.zeroUpload">Zero upload</span>
             <span class="pill pill-violet" data-i18n="land.cap.clientSide">Client-side</span>
             <span class="pill pill-violet-outline" data-i18n="land.cap.openSource">Open source</span>
-            <span class="pill pill-grey">X.509</span>
-            <span class="pill pill-grey">ByteRange</span>
-            <span class="pill pill-grey">Forensic mode</span>
+            <span class="pill pill-violet-outline">X.509</span>
+            <span class="pill pill-violet-outline">ByteRange</span>
+            <span class="pill pill-violet-outline" data-i18n="land.cap.forensic">Forensic audit</span>
           </div>
         </div>
         <div class="std-group">
@@ -650,6 +674,10 @@
 
     <footer class="site-footer">
       <div class="wrap">
+        <div class="footer-pki">
+          <h4 data-i18n="land.footer.pkiTitle">Recognized PKI authorities</h4>
+          <ul class="pki-authorities" id="pki-authorities"></ul>
+        </div>
         <p class="transp" data-i18n="land.footer.transparency">All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools serve only the application code, never your files.</p>
         <div class="footer-meta">
           <span data-i18n="land.footer.license">Open source under Apache 2.0</span>
@@ -663,6 +691,81 @@
 
     <attestto-consent ga="G-JCE4RZ8CCC"></attestto-consent>
     <script type="module" src="/src/index.ts"></script>
+    <script type="module">
+      // Recognized-PKI pills, driven by the real registry (single source of
+      // truth) so this list can never drift from what the verifier recognizes.
+      // Each pill links to the PKI's verified official site with SEO-rich text.
+      import { PKI_REGISTRY } from '/src/composables/pki-registry.ts'
+      import { currentLang } from '/src/i18n.ts'
+      // Countries with bundled trust anchors = full offline chain validation.
+      // Keep in sync with chain-validator.ts imports (@attestto/trust/{cr,br,ar}).
+      const ANCHORED = new Set(['CR', 'BR', 'AR'])
+      // ISO 3166-1 alpha-2 → regional-indicator flag emoji (e.g. "CR" → 🇨🇷).
+      const flag = (cc) =>
+        /^[A-Za-z]{2}$/.test(cc)
+          ? String.fromCodePoint(...[...cc.toUpperCase()].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65))
+          : ''
+      const pkiHost = document.getElementById('pki-pills')
+      const pkiAuthHost = document.getElementById('pki-authorities')
+      const sortedPki = () =>
+        [...PKI_REGISTRY].sort((a, b) => {
+          const rank = (c) => (ANCHORED.has(c.countryCode) ? 0 : 1)
+          return rank(a) - rank(b) || a.name.localeCompare(b.name)
+        })
+      function renderPkiPills() {
+        if (!pkiHost || !Array.isArray(PKI_REGISTRY) || !PKI_REGISTRY.length) return
+        const es = currentLang() === 'es'
+        pkiHost.replaceChildren(
+          ...sortedPki().map((e) => {
+            const a = document.createElement('a')
+            a.className = 'pill pill-link ' + (ANCHORED.has(e.countryCode) ? 'pill-violet' : 'pill-violet-outline')
+            a.href = (e.officialLinks && e.officialLinks[0] && e.officialLinks[0].url) || '#'
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            const fl = flag(e.countryCode)
+            a.textContent = fl ?`${fl}  ${e.name}` : e.name
+            // SEO-rich, accessible label: program, root authority, law, purpose.
+            a.title = es
+              ? `${e.fullName}. Autoridad raíz: ${e.rootAuthority}. ${e.governingLaw}. Verifica firmas digitales de esta PKI nacional en el navegador con Attestto.`
+              : `${e.fullName}. Root authority: ${e.rootAuthority}. ${e.governingLaw}. Verify digital signatures from this national PKI in your browser with Attestto.`
+            a.setAttribute('aria-label', a.title)
+            return a
+          }),
+        )
+      }
+      // Footer: every official authority link per country, in text mode.
+      function renderPkiAuthorities() {
+        if (!pkiAuthHost || !Array.isArray(PKI_REGISTRY) || !PKI_REGISTRY.length) return
+        pkiAuthHost.replaceChildren(
+          ...sortedPki().map((e) => {
+            const li = document.createElement('li')
+            const fl = flag(e.countryCode)
+            const head = document.createElement('span')
+            head.className = 'pki-auth-country'
+            head.textContent = `${fl ? fl + ' ' : ''}${e.name}: `
+            li.appendChild(head)
+            const links = (e.officialLinks || []).filter((l) => l && l.url)
+            links.forEach((l, i) => {
+              const a = document.createElement('a')
+              a.href = l.url
+              a.target = '_blank'
+              a.rel = 'noopener noreferrer'
+              a.textContent = l.label
+              a.title = `${l.label} — ${e.fullName} (${e.governingLaw})`
+              li.appendChild(a)
+              if (i < links.length - 1) li.appendChild(document.createTextNode(' · '))
+            })
+            return li
+          }),
+        )
+      }
+      function renderPki() {
+        renderPkiPills()
+        renderPkiAuthorities()
+      }
+      renderPki()
+      window.addEventListener('attestto-lang-change', renderPki)
+    </script>
     <script type="module">
       import { t, currentLang, setLang } from '/src/i18n.ts'
 
@@ -706,7 +809,30 @@
     <script type="module">
       import { t } from '/src/i18n.ts'
 
+      // Live status chip — reflects the real verifier state. Hidden until the
+      // first file is dropped, then scanning → verified / unsigned / issue.
+      let liveState = null // null | 'scanning' | 'verified' | 'unsigned' | 'issue'
+      const liveEl = document.getElementById('live-status')
+      const liveText = document.getElementById('live-status-text')
+      function renderLiveStatus() {
+        if (!liveEl || !liveText) return
+        liveEl.classList.remove('is-scanning', 'is-verified', 'is-unsigned', 'is-issue')
+        if (!liveState) { liveEl.hidden = true; return }
+        liveEl.hidden = false
+        liveEl.classList.add('is-' + liveState)
+        const key = liveState === 'scanning' ? 'land.preview.scanning'
+          : liveState === 'verified' ? 'land.preview.verified'
+          : liveState === 'unsigned' ? 'land.preview.unsigned'
+          : 'land.preview.issue'
+        liveText.textContent = t(key)
+      }
+      document.addEventListener('verification-started', () => { liveState = 'scanning'; renderLiveStatus() })
+      window.addEventListener('attestto-lang-change', renderLiveStatus)
+
       document.addEventListener('verification-complete', (e) => {
+        liveState = e.detail?.issue ? 'issue' : e.detail?.verified ? 'verified' : 'unsigned'
+        renderLiveStatus()
+
         const audit = e.detail?.audit
         const panel = document.getElementById('audit-panel')
         const content = document.getElementById('audit-content')

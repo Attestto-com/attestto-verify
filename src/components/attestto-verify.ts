@@ -13,6 +13,7 @@ import {
   capabilitiesFromCert,
   countryName,
   officialVerifierFor,
+  signatureStandard,
   type SignatureCardModel,
   type SignatureStatus,
   type SignatureTrustMark,
@@ -1624,7 +1625,9 @@ export class AttesttoVerify extends LitElement {
       onlineRevocation: this.onlineRevocationModel(cc, index + 1),
       trustMarks: trustMarks.length ? trustMarks : null,
       tech: {
-        standard: sig.subFilter,
+        // The standard FAMILY (PAdES, PKCS#7, …), not a duplicate of `method`
+        // which already carries the raw subFilter.
+        standard: signatureStandard(sig.subFilter) ?? (isSelfAttested ? 'Attestto self-attested' : null),
         reason: sig.reason,
         producer: this.result?.metadata?.producer ?? null,
         location: sig.location,
@@ -1840,6 +1843,14 @@ export class AttesttoVerify extends LitElement {
       )
       const documentLocked = hasPadesSig || hasAttesttoFinal
 
+      // Overall verdict for the live-status chip on the landing page.
+      // Honest: a tampered/unknown signature or active content is an issue;
+      // "verified" requires at least one cryptographically verified signature.
+      const anyBadSig = sigList.some((s) => s.level === 'tampered' || s.level === 'unknown')
+      const hasActiveContent = !!(this.result.audit?.hasJavaScript || this.result.audit?.hasOpenAction)
+      const issue = anyBadSig || hasActiveContent
+      const verified = !issue && sigList.some((s) => s.level === 'verified')
+
       // Dispatch result event
       this.dispatchEvent(
         new CustomEvent('verification-complete', {
@@ -1852,6 +1863,10 @@ export class AttesttoVerify extends LitElement {
             documentLocked,
             /** ATT-361 — true when the current sig set still allows another sig. */
             canCounterSign: !documentLocked && !this.result.audit?.encrypted,
+            /** Landing live-status verdict: a real problem was detected. */
+            issue,
+            /** Landing live-status verdict: at least one verified signature, no issue. */
+            verified,
           },
           composed: true,
           bubbles: true,
