@@ -18,7 +18,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        sign: resolve(__dirname, 'sign/index.html'),
+        // The public "Sign" demo is intentionally not built/published. Source
+        // is kept in the repo (sign/index.html + composables) so it can be
+        // re-enabled, but it is unreachable from the public site.
         dev: resolve(__dirname, 'dev/index.html'),
         // Open Credential Handoff landing page — canonical at /offer/,
         // legacy alias /c/ kept for backwards compat with existing
