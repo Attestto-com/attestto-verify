@@ -188,6 +188,8 @@ const KEY_USAGE_LABELS: Record<string, string> = {
   keyEncipherment: 'Encryption',
   dataEncipherment: 'Encryption',
   keyAgreement: 'Encryption',
+  encipherOnly: 'Encryption',
+  decipherOnly: 'Encryption',
   keyCertSign: 'Certificate signing',
   cRLSign: 'Certificate signing',
 }
@@ -195,9 +197,11 @@ const KEY_USAGE_LABELS: Record<string, string> = {
 const EKU_LABELS: Record<string, string> = {
   emailProtection: 'Email protection',
   clientAuth: 'Authentication',
+  smartCardLogin: 'Authentication',
   serverAuth: 'Server authentication',
   codeSigning: 'Code signing',
   timeStamping: 'Timestamping',
+  ocspSigning: 'OCSP signing',
   documentSigning: 'Document signing',
 }
 

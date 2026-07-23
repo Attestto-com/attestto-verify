@@ -15,28 +15,25 @@ describe('certificate-parser', () => {
     // first value byte = digitalSignature.
     it('decodes a nonRepudiation-only signing cert (the CR Firma Digital case)', () => {
       // 0x40 = 0100_0000 → bit 1 set (nonRepudiation); 6 unused trailing bits.
-      expect(decodeKeyUsageBits(new Uint8Array([0x06, 0x40]))).toEqual(['Non-Repudiation'])
+      expect(decodeKeyUsageBits(new Uint8Array([0x06, 0x40]))).toEqual(['nonRepudiation'])
     })
 
     it('decodes digitalSignature + nonRepudiation', () => {
       // 0xC0 = 1100_0000 → bits 0,1 set; 6 unused trailing bits.
       expect(decodeKeyUsageBits(new Uint8Array([0x06, 0xc0]))).toEqual([
-        'Digital Signature',
-        'Non-Repudiation',
+        'digitalSignature',
+        'nonRepudiation',
       ])
     })
 
     it('decodes digitalSignature only', () => {
       // 0x80 = 1000_0000 → bit 0; 7 unused trailing bits.
-      expect(decodeKeyUsageBits(new Uint8Array([0x07, 0x80]))).toEqual(['Digital Signature'])
+      expect(decodeKeyUsageBits(new Uint8Array([0x07, 0x80]))).toEqual(['digitalSignature'])
     })
 
     it('decodes a CA cert (keyCertSign + cRLSign)', () => {
       // 0x06 = 0000_0110 → bits 5,6 set; 1 unused trailing bit.
-      expect(decodeKeyUsageBits(new Uint8Array([0x01, 0x06]))).toEqual([
-        'Certificate Signing',
-        'CRL Signing',
-      ])
+      expect(decodeKeyUsageBits(new Uint8Array([0x01, 0x06]))).toEqual(['keyCertSign', 'cRLSign'])
     })
 
     it('returns empty for a short/empty BIT STRING', () => {

@@ -108,9 +108,9 @@ export interface CertificateChainResult {
   nationalId: string | null
   /** Signer name cleaned up (no backslash escapes) */
   signerDisplayName: string | null
-  /** Key Usage flags from signer cert (e.g. Digital Signature, Non-Repudiation) */
+  /** Key Usage — canonical ids from signer cert (e.g. digitalSignature, nonRepudiation) */
   keyUsage: string[]
-  /** Extended Key Usage labels from signer cert (e.g. Email Protection, Document Signing) */
+  /** Extended Key Usage — canonical ids or raw OIDs (e.g. emailProtection, clientAuth) */
   extKeyUsage: string[]
   /** Signer email from cert (Subject email or SAN) */
   signerEmail: string | null
@@ -213,17 +213,22 @@ const CR_SUBJECT_OIDS: Record<string, string> = {
 
 // ── Key Usage / Extended Key Usage ───────────────────────────────
 
-/** Key Usage bit flags (2.5.29.15) — bit position → label */
+/**
+ * Key Usage bit flags (2.5.29.15) — bit position → canonical identifier.
+ * These are the raw RFC 5280 names; friendly, deduped display labels are the
+ * model's job (see KEY_USAGE_LABELS in signature-card.ts). Keep them canonical
+ * so the model can map and dedup them against DID-derived capabilities.
+ */
 const KEY_USAGE_BITS: string[] = [
-  'Digital Signature',
-  'Non-Repudiation',
-  'Key Encipherment',
-  'Data Encipherment',
-  'Key Agreement',
-  'Certificate Signing',
-  'CRL Signing',
-  'Encipher Only',
-  'Decipher Only',
+  'digitalSignature',
+  'nonRepudiation',
+  'keyEncipherment',
+  'dataEncipherment',
+  'keyAgreement',
+  'keyCertSign',
+  'cRLSign',
+  'encipherOnly',
+  'decipherOnly',
 ]
 
 /**
@@ -257,16 +262,20 @@ export function decodeKeyUsageBits(content: Uint8Array): string[] {
   return out
 }
 
-/** Extended Key Usage OIDs (2.5.29.37) → human label */
+/**
+ * Extended Key Usage OIDs (2.5.29.37) → canonical identifier. Friendly display
+ * labels are the model's job (EKU_LABELS in signature-card.ts). Unknown OIDs
+ * pass through as their raw dotted string (the model maps or drops those).
+ */
 const EKU_OIDS: Record<string, string> = {
-  '1.3.6.1.5.5.7.3.1': 'Server Authentication',
-  '1.3.6.1.5.5.7.3.2': 'Client Authentication',
-  '1.3.6.1.5.5.7.3.3': 'Code Signing',
-  '1.3.6.1.5.5.7.3.4': 'Email Protection',
-  '1.3.6.1.5.5.7.3.8': 'Time Stamping',
-  '1.3.6.1.5.5.7.3.9': 'OCSP Signing',
-  '1.3.6.1.4.1.311.10.3.12': 'Document Signing',
-  '2.16.840.1.101.2.1.11.10': 'Smart Card Login',
+  '1.3.6.1.5.5.7.3.1': 'serverAuth',
+  '1.3.6.1.5.5.7.3.2': 'clientAuth',
+  '1.3.6.1.5.5.7.3.3': 'codeSigning',
+  '1.3.6.1.5.5.7.3.4': 'emailProtection',
+  '1.3.6.1.5.5.7.3.8': 'timeStamping',
+  '1.3.6.1.5.5.7.3.9': 'ocspSigning',
+  '1.3.6.1.4.1.311.10.3.12': 'documentSigning',
+  '2.16.840.1.101.2.1.11.10': 'smartCardLogin',
 }
 
 // ── Hex Blob Extraction ───────────────────────────────────────────
