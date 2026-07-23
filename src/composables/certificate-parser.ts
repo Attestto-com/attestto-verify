@@ -226,6 +226,37 @@ const KEY_USAGE_BITS: string[] = [
   'Decipher Only',
 ]
 
+/**
+ * Decode a DER KeyUsage BIT STRING value into labels.
+ *
+ * `content` is the raw BIT STRING contents: `content[0]` is the number of
+ * UNUSED (trailing, low-order) bits in the final byte; the rest are value
+ * bytes. Named bits are numbered from the MOST-significant bit of the first
+ * value byte (bit 0 = digitalSignature, bit 1 = nonRepudiation, …).
+ *
+ * The unused-bits count trims the TRAILING (rightmost) bits of the last byte,
+ * not the leading ones. A previous version skipped by left-position, which for
+ * a typical signing cert (e.g. nonRepudiation only → 6 unused bits) wrongly
+ * skipped the meaningful high bits and returned an EMPTY key usage — so the
+ * card showed no "Non-repudiation"/"Document signing" capability at all.
+ */
+export function decodeKeyUsageBits(content: Uint8Array): string[] {
+  const out: string[] = []
+  if (content.length < 2) return out
+  const unusedBits = content[0]
+  const bytes = content.slice(1)
+  for (let byteIdx = 0; byteIdx < bytes.length; byteIdx++) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const bitPos = byteIdx * 8 + (7 - bit)
+      if (bitPos >= KEY_USAGE_BITS.length) return out
+      // Trailing unused bits are the low-order bits of the LAST byte.
+      if (byteIdx === bytes.length - 1 && bit < unusedBits) continue
+      if (bytes[byteIdx] & (1 << bit)) out.push(KEY_USAGE_BITS[bitPos])
+    }
+  }
+  return out
+}
+
 /** Extended Key Usage OIDs (2.5.29.37) → human label */
 const EKU_OIDS: Record<string, string> = {
   '1.3.6.1.5.5.7.3.1': 'Server Authentication',
@@ -621,20 +652,8 @@ function parseExtension(
 
     // 2.5.29.15 = KeyUsage (BIT STRING)
     if (oid === '2.5.29.15') {
-      if (inner.tag === ASN1_TAG.BIT_STRING && inner.content.length >= 2) {
-        const unusedBits = inner.content[0]
-        const bytes = inner.content.slice(1)
-        for (let byteIdx = 0; byteIdx < bytes.length; byteIdx++) {
-          for (let bit = 7; bit >= 0; bit--) {
-            const bitPos = byteIdx * 8 + (7 - bit)
-            if (bitPos >= KEY_USAGE_BITS.length) break
-            // Skip unused trailing bits in the last byte
-            if (byteIdx === bytes.length - 1 && (7 - bit) < unusedBits) continue
-            if (bytes[byteIdx] & (1 << bit)) {
-              out.keyUsage.push(KEY_USAGE_BITS[bitPos])
-            }
-          }
-        }
+      if (inner.tag === ASN1_TAG.BIT_STRING) {
+        for (const label of decodeKeyUsageBits(inner.content)) out.keyUsage.push(label)
       }
     }
 

@@ -5,10 +5,46 @@ import {
   cleanSignerName,
   parseCertificateChain,
   extractPkcs7Hex,
+  decodeKeyUsageBits,
 } from './certificate-parser.js'
 import { PKI_REGISTRY, findPkiByCountry } from './pki-registry.js'
 
 describe('certificate-parser', () => {
+  describe('decodeKeyUsageBits', () => {
+    // DER BIT STRING content = [unusedBits, ...valueBytes]. Bit 0 = MSB of the
+    // first value byte = digitalSignature.
+    it('decodes a nonRepudiation-only signing cert (the CR Firma Digital case)', () => {
+      // 0x40 = 0100_0000 → bit 1 set (nonRepudiation); 6 unused trailing bits.
+      expect(decodeKeyUsageBits(new Uint8Array([0x06, 0x40]))).toEqual(['Non-Repudiation'])
+    })
+
+    it('decodes digitalSignature + nonRepudiation', () => {
+      // 0xC0 = 1100_0000 → bits 0,1 set; 6 unused trailing bits.
+      expect(decodeKeyUsageBits(new Uint8Array([0x06, 0xc0]))).toEqual([
+        'Digital Signature',
+        'Non-Repudiation',
+      ])
+    })
+
+    it('decodes digitalSignature only', () => {
+      // 0x80 = 1000_0000 → bit 0; 7 unused trailing bits.
+      expect(decodeKeyUsageBits(new Uint8Array([0x07, 0x80]))).toEqual(['Digital Signature'])
+    })
+
+    it('decodes a CA cert (keyCertSign + cRLSign)', () => {
+      // 0x06 = 0000_0110 → bits 5,6 set; 1 unused trailing bit.
+      expect(decodeKeyUsageBits(new Uint8Array([0x01, 0x06]))).toEqual([
+        'Certificate Signing',
+        'CRL Signing',
+      ])
+    })
+
+    it('returns empty for a short/empty BIT STRING', () => {
+      expect(decodeKeyUsageBits(new Uint8Array([]))).toEqual([])
+      expect(decodeKeyUsageBits(new Uint8Array([0x00]))).toEqual([])
+    })
+  })
+
   describe('cleanSignerName', () => {
     it('strips backslash escapes from PDF encoding', () => {
       expect(cleanSignerName('GUILLERMO CHAVARRIA CRUZ \\(FIRMA\\)')).toBe(
