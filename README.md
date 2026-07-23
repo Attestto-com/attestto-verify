@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@attestto/verify.svg)](https://www.npmjs.com/package/@attestto/verify)
 [![license](https://img.shields.io/npm/l/@attestto/verify.svg)](./LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-db61a2)](https://github.com/sponsors/Attestto-com)
 
 ![Works with: Vanilla JS](https://img.shields.io/badge/Vanilla_JS-✓-F7DF1E?logo=javascript&logoColor=black)
 ![Works with: React](https://img.shields.io/badge/React-✓-61DAFB?logo=react&logoColor=black)
