@@ -20,29 +20,33 @@
 import { logger } from '../logger.js'
 import { resolveAndMatchChain, type PkiResolverOptions } from './pki-resolver.js'
 
-// Trust anchors from the centralized @attestto/trust package.
+// Trust anchors from the centralized @attestto/trust package. The root package
+// re-exports every promoted directory country as a namespace (e.g. `cr`, `de`),
+// each exposing an `ALL_CERTS` array of that country's promoted CA certificates.
 // PEM strings are bundled into the dist at build time — zero runtime fetches.
-import {
-  CA_RAIZ_NACIONAL_COSTA_RICA_V2 as RAIZ_NACIONAL_PEM,
-  CA_POLITICA_PERSONA_JURIDICA_COSTA_RICA_V2 as POLITICA_PJ_PEM,
-  CA_POLITICA_PERSONA_FISICA_COSTA_RICA_V2 as POLITICA_PF_PEM,
-  CA_POLITICA_SELLADO_DE_TIEMPO_COSTA_RICA_V2 as POLITICA_TSA_PEM,
-  CA_SINPE_PERSONA_JURIDICA_V2 as SINPE_PJ_PEM,
-  CA_SINPE_PERSONA_FISICA_V2 as SINPE_PF_PEM,
-  CA_SINPE_PERSONA_FISICA_V2_2023 as SINPE_PF_2023_PEM,
-  CA_SINPE_PERSONA_FISICA_V2_2026 as SINPE_PF_2026_PEM,
-  CA_SINPE_PERSONA_JURIDICA_V2_2026 as SINPE_PJ_2026_PEM,
-} from '@attestto/trust/cr'
-import {
-  AC_RAIZ_ICP_BRASIL_V5 as BR_RAIZ_V5_PEM,
-  AC_RAIZ_ICP_BRASIL_V10 as BR_RAIZ_V10_PEM,
-  AC_RAIZ_ICP_BRASIL_V11 as BR_RAIZ_V11_PEM,
-  AC_RAIZ_ICP_BRASIL_V12 as BR_RAIZ_V12_PEM,
-} from '@attestto/trust/br'
-import {
-  AC_RAIZ_REPUBLICA_ARGENTINA as AR_RAIZ_PEM,
-  AUTORIDAD_CERTIFICANTE_FIRMA_DIGITAL as AR_ACFD_PEM,
-} from '@attestto/trust/ar'
+//
+// The bundled set here MUST stay equal to the "filled" pill set on the landing
+// page (both = the 14 directory countries), so the "chain validated against
+// bundled trusted roots" claim is honest for every filled country.
+import * as trust from '@attestto/trust'
+
+interface TrustCert {
+  name: string
+  exportName: string
+  pem: string
+  sha256?: string
+}
+
+/**
+ * Promoted directory countries whose CA roots are bundled for offline validation,
+ * derived from @attestto/trust's own re-exported namespaces (each country namespace
+ * exposes `ALL_CERTS`). Deriving — rather than hard-coding — keeps this set
+ * automatically equal to the trust directory and the landing page's "filled" pill
+ * set, so no country can be shown "filled" without its roots actually bundled here.
+ */
+const TRUST_COUNTRIES: string[] = Object.keys(trust)
+  .filter((k) => Array.isArray((trust as Record<string, { ALL_CERTS?: unknown[] }>)[k]?.ALL_CERTS))
+  .sort()
 
 const log = logger.verify
 
@@ -313,25 +317,21 @@ async function loadTrustAnchors(): Promise<LoadedAnchor[]> {
 
   const { pkijs, asn1js } = await loadPkijs()
 
-  const pems: Array<{ pem: string; label: string }> = [
-    { pem: RAIZ_NACIONAL_PEM, label: 'CA RAIZ NACIONAL - COSTA RICA v2' },
-    { pem: POLITICA_PJ_PEM, label: 'CA POLITICA PERSONA JURIDICA - COSTA RICA v2' },
-    { pem: POLITICA_PF_PEM, label: 'CA POLITICA PERSONA FISICA - COSTA RICA v2' },
-    { pem: SINPE_PJ_PEM, label: 'CA SINPE - PERSONA JURIDICA v2' },
-    { pem: SINPE_PJ_2026_PEM, label: 'CA SINPE - PERSONA JURIDICA v2 (2026)' },
-    { pem: SINPE_PF_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2019)' },
-    { pem: SINPE_PF_2023_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2023)' },
-    { pem: SINPE_PF_2026_PEM, label: 'CA SINPE - PERSONA FISICA v2 (2026)' },
-    { pem: POLITICA_TSA_PEM, label: 'CA POLITICA SELLADO DE TIEMPO - COSTA RICA v2' },
-    // Brazil — ICP-Brasil root CAs (ATT-314)
-    { pem: BR_RAIZ_V5_PEM, label: 'AC Raiz ICP-Brasil v5' },
-    { pem: BR_RAIZ_V10_PEM, label: 'AC Raiz ICP-Brasil v10' },
-    { pem: BR_RAIZ_V11_PEM, label: 'AC Raiz ICP-Brasil v11' },
-    { pem: BR_RAIZ_V12_PEM, label: 'AC Raiz ICP-Brasil v12' },
-    // Argentina — AC Raíz Nacional (ATT-314)
-    { pem: AR_RAIZ_PEM, label: 'AC Raíz de la República Argentina' },
-    { pem: AR_ACFD_PEM, label: 'Autoridad Certificante de Firma Digital (ONTI)' },
-  ]
+  // Collect every promoted CA cert from all 14 directory countries. The set is
+  // derived, not hand-listed, so it always matches the trust directory (and the
+  // filled-pill set) — no country can be marked "filled" without its roots here.
+  const pems: Array<{ pem: string; label: string }> = []
+  for (const cc of TRUST_COUNTRIES) {
+    const ns = (trust as Record<string, { ALL_CERTS?: TrustCert[] }>)[cc]
+    const certs = ns?.ALL_CERTS
+    if (!Array.isArray(certs) || certs.length === 0) {
+      log.warn(`[chain-validator] @attestto/trust exposes no ALL_CERTS for '${cc}' — skipping`)
+      continue
+    }
+    for (const c of certs) {
+      if (c?.pem) pems.push({ pem: c.pem, label: `${cc.toUpperCase()} — ${c.name}` })
+    }
+  }
 
   const loaded: LoadedAnchor[] = []
   for (const { pem, label } of pems) {

@@ -39,30 +39,21 @@ vi.mock('asn1js', () => {
   }
 })
 
-// Stub the bundled PEM imports from the centralized trust package.
-vi.mock('@attestto/trust/cr', () => ({
-  CA_RAIZ_NACIONAL_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_POLITICA_PERSONA_JURIDICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_POLITICA_PERSONA_FISICA_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_POLITICA_SELLADO_DE_TIEMPO_COSTA_RICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_SINPE_PERSONA_JURIDICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_SINPE_PERSONA_FISICA_V2: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_SINPE_PERSONA_FISICA_V2_2023: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_SINPE_PERSONA_FISICA_V2_2026: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  CA_SINPE_PERSONA_JURIDICA_V2_2026: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-}))
-
-vi.mock('@attestto/trust/br', () => ({
-  AC_RAIZ_ICP_BRASIL_V5: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  AC_RAIZ_ICP_BRASIL_V10: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  AC_RAIZ_ICP_BRASIL_V11: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  AC_RAIZ_ICP_BRASIL_V12: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-}))
-
-vi.mock('@attestto/trust/ar', () => ({
-  AC_RAIZ_REPUBLICA_ARGENTINA: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-  AUTORIDAD_CERTIFICANTE_FIRMA_DIGITAL: '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----',
-}))
+// Stub the bundled trust package. The real package re-exports every promoted
+// directory country as a namespace with an `ALL_CERTS` array; chain-validator
+// now iterates all 14. We give each country one fake cert so the loader has a
+// non-empty anchor set for every filled country.
+vi.mock('@attestto/trust', () => {
+  const FAKE = '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----'
+  const countries = ['ar', 'at', 'be', 'br', 'cr', 'de', 'ee', 'es', 'fr', 'gr', 'it', 'nl', 'pe', 'pt']
+  const mod: Record<string, unknown> = {}
+  for (const cc of countries) {
+    mod[cc] = {
+      ALL_CERTS: [{ name: `${cc}-fake-root`, exportName: `${cc.toUpperCase()}_FAKE_ROOT`, pem: FAKE, sha256: cc }],
+    }
+  }
+  return mod
+})
 
 // Silence the verify logger noise during tests.
 vi.mock('../logger.js', () => ({
@@ -388,12 +379,13 @@ describe('validateChain', () => {
       result: { mock: 'cert' },
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
-    // After anchors + signer, the intermediate parse throws
+    // After anchors + signer, the intermediate parse throws.
+    // Anchors = one fake cert per bundled directory country (14) + signer (1),
+    // so the 16th fromBER call is the (malformed) intermediate.
     let callCount = 0
     vi.mocked(asn1js.fromBER).mockImplementation(() => {
       callCount++
-      // 15th call is intermediate — make it fail with offset:-1
-      if (callCount === 15) {
+      if (callCount === 16) {
         return { offset: -1, result: null } as unknown as ReturnType<typeof asn1js.fromBER>
       }
       return { offset: 0, result: { mock: `cert-${callCount}` } } as unknown as ReturnType<typeof asn1js.fromBER>

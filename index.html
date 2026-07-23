@@ -792,7 +792,9 @@
           })
           for (const c of sortedDir) {
             const fl = c.flag || flag(c.code)
-            const primary = (c.relatedLinks && c.relatedLinks[0] && c.relatedLinks[0].url) || c.authorityUrl || '#'
+            // Link to the canonical human-readable trust directory country page,
+            // never the raw TSL .xml. e.g. cr -> https://trust.attestto.org/cr
+            const primary = `https://trust.attestto.org/${c.code.toLowerCase()}`
             const auth = c.authorityName || c.name
             const title = es
               ? `${c.name} — raíces de CA incluidas en @attestto/trust; cadena validada sin conexión. Autoridad: ${auth}.`
@@ -854,7 +856,13 @@
               head.className = 'pki-auth-country'
               head.textContent = `${fl ? fl + ' ' : ''}${e.name}: `
               li.appendChild(head)
-              const links = (e.relatedLinks || []).filter((l) => l && l.url)
+              // Canonical human-readable directory page first, then the curated
+              // official links — dropping any raw TSL .xml URL (unusable in a
+              // browser: clicking dumps raw XML).
+              const links = [
+                { label: 'Attestto trust directory', url: `https://trust.attestto.org/${e.code.toLowerCase()}` },
+                ...(e.relatedLinks || []).filter((l) => l && l.url && !/\.xml(\?|#|$)/i.test(l.url)),
+              ]
               links.forEach((l, i) => {
                 const a = document.createElement('a')
                 a.href = l.url
