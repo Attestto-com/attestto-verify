@@ -101,6 +101,16 @@ export class AttesttoVerify extends LitElement {
         color: var(--attestto-text-muted, #64748b);
         margin-top: 0.5rem;
       }
+      .file-error {
+        margin-top: 0.9rem;
+        padding: 0.7rem 1rem;
+        border: 1px solid rgba(255, 107, 107, 0.45);
+        border-radius: 10px;
+        background: rgba(255, 107, 107, 0.08);
+        color: #ff8f8f;
+        font-size: 0.85rem;
+        text-align: center;
+      }
 
       input[type='file'] {
         display: none;
@@ -1211,8 +1221,8 @@ export class AttesttoVerify extends LitElement {
   @property({ type: String }) hash = ''
   /** Expected hash from a shared verification link (#sha256=...) */
   @property({ type: String, attribute: 'expected-hash' }) expectedHash = ''
-  /** Whether the share link was just copied */
-  @state() private showShareCopied = false
+  /** Non-PDF rejection message (verifier only supports PDFs). */
+  @state() private _fileError: string | null = null
   /** Whether the summary text was just copied */
   @state() private showSummaryCopied = false
   /** Timestamp of when verification completed */
@@ -1294,8 +1304,9 @@ export class AttesttoVerify extends LitElement {
         <div class="drop-zone-hint">
           ${hasExpected ? t('comp.verify.dropHintShared') : t('comp.verify.dropHint')}
         </div>
-        <input type="file" @change=${this.onFileSelect} accept=".pdf,.doc,.docx,.txt,.json" />
+        <input type="file" @change=${this.onFileSelect} accept=".pdf,application/pdf" />
       </div>
+      ${this._fileError ? html`<div class="file-error" part="file-error">${this._fileError}</div>` : ''}
     `
   }
 
@@ -1491,19 +1502,8 @@ export class AttesttoVerify extends LitElement {
         ${this.expectedHash ? this.renderHashMatch() : ''}
 
         <div class="share-actions">
-          <button
-            class="share-btn"
-            @click=${this.shareVerification}
-            title="${t('comp.verify.shareLink')}"
-          >
-            ${this.showShareCopied ? t('comp.verify.shareLinkCopied') : t('comp.verify.shareLink')}
-          </button>
           <button class="reset-btn" @click=${this.reset}>${t('comp.verify.verifyAnother')}</button>
         </div>
-
-        ${this.result && !this.expectedHash
-          ? html` <div class="share-hint">${t('comp.verify.shareHint')}</div> `
-          : ''}
       </div>
     `
   }
@@ -1774,6 +1774,16 @@ export class AttesttoVerify extends LitElement {
   }
 
   private async verify(file: File) {
+    // The verifier only supports PDFs. Reject anything else up front with a
+    // clear message instead of running a doomed signature parse.
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+    if (!isPdf) {
+      this._fileError = t('comp.verify.pdfOnly')
+      this.verifying = false
+      this.result = null
+      return
+    }
+    this._fileError = null
     this.verifying = true
     this.verifyStep = t('comp.verify.readingFile')
     this.result = null
@@ -1931,37 +1941,8 @@ export class AttesttoVerify extends LitElement {
     }
   }
 
-  private async shareVerification() {
-    if (!this.result?.hash) return
-    const url = `${window.location.origin}${window.location.pathname}#sha256=${this.result.hash}`
-    const shareData = {
-      title: t('comp.verify.shareTitle'),
-      text: t('comp.verify.shareText'),
-      url,
-    }
-
-    // Try native share (mobile), fall back to clipboard
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share(shareData)
-        return
-      } catch {
-        // User cancelled or share failed — fall through to clipboard
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(url)
-      this.showShareCopied = true
-      setTimeout(() => {
-        this.showShareCopied = false
-      }, 2000)
-    } catch {
-      // Clipboard not available
-    }
-  }
-
   private reset() {
+    this._fileError = null
     this.result = null
     this.pluginResults = null
     this.verifiedAt = null

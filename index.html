@@ -183,8 +183,13 @@
         display: flex; align-items: center; justify-content: space-between;
         height: 68px;
       }
-      .brand { display: flex; align-items: center; text-decoration: none; }
+      .brand { display: flex; align-items: center; gap: 0.55rem; text-decoration: none; }
       .brand img { height: 24px; width: auto; }
+      .beta-badge {
+        font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--violet); border: 1px solid var(--violet); border-radius: 999px;
+        padding: 0.1rem 0.45rem; line-height: 1.4;
+      }
       .nav { display: flex; align-items: center; gap: 1.75rem; }
       .nav a {
         color: var(--v-muted); text-decoration: none;
@@ -362,6 +367,7 @@
       .footer-meta { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; font-size: 0.85rem; color: var(--v-muted-2); }
       .footer-meta a { color: var(--violet); text-decoration: none; }
       .footer-meta a:hover { color: #9d95f5; }
+      .footer-version { color: var(--v-muted-2); opacity: 0.65; font-variant-numeric: tabular-nums; }
       .footer-pki { margin-bottom: 1.75rem; }
       .footer-pki h4 {
         font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
@@ -525,7 +531,7 @@
   <body>
     <header class="site-header">
       <div class="wrap">
-        <a href="/" class="brand"><img src="/logo-full-white.svg" alt="Attestto" /></a>
+        <a href="/" class="brand"><img src="/logo-full-white.svg" alt="Attestto" /><span class="beta-badge">Beta</span></a>
         <nav class="nav">
           <a href="#how-it-works" data-i18n="land.nav.howItWorks">How it works</a>
           <a href="#privacy" data-i18n="land.nav.privacy">Privacy</a>
@@ -540,7 +546,7 @@
       <!-- Hero -->
       <section class="hero wrap">
         <h1><span data-i18n="land.hero.title1">Verify any document.</span><br /><span class="line2" data-i18n="land.hero.title2">Nothing leaves your device.</span></h1>
-        <p class="sub" data-i18n="land.hero.sub">Attestto checks integrity, digital signatures and certificate chains for any file, PDF, Word, anything, entirely inside your browser. No upload, no server, no account.</p>
+        <p class="sub" data-i18n="land.hero.sub">Attestto checks the integrity, digital signatures and certificate chains of any signed PDF, entirely inside your browser. No upload, no server, no account.</p>
         <div class="hero-ctas">
           <a href="#verifier" class="btn-violet-outline" data-i18n="land.hero.cta">Verify a document</a>
           <a href="#how-it-works" class="btn-violet-text" data-i18n="land.hero.seeHow">See how it works</a>
@@ -684,6 +690,7 @@
           <a href="https://github.com/Attestto-com/attestto-verify">GitHub</a>
           <a href="https://attestto.org">attestto.org</a>
           <a href="https://resolver.attestto.com">DID Resolver</a>
+          <span class="footer-version" id="app-version">Beta</span>
         </div>
       </div>
     </footer>
@@ -764,6 +771,12 @@
       }
       renderPki()
       window.addEventListener('attestto-lang-change', renderPki)
+    </script>
+    <script type="module">
+      // Version stamp, injected from package.json at build time (Vite define).
+      const v = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null
+      const el = document.getElementById('app-version')
+      if (el) el.textContent = v ? `Beta · v${v}` : 'Beta'
     </script>
     <script type="module">
       import { t, currentLang, setLang } from '/src/i18n.ts'

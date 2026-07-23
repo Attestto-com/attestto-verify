@@ -1,5 +1,8 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
 
 /**
  * Vite config for GitHub Pages site build.
@@ -7,6 +10,9 @@ import { resolve } from 'node:path'
  * Usage: vite build --config vite.config.pages.ts
  */
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
