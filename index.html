@@ -279,7 +279,7 @@
         background: linear-gradient(120deg, var(--violet-deep) 0%, var(--violet-2) 50%, #6a4fd8 100%);
       }
       .stats-inner {
-        display: grid; grid-template-columns: repeat(4, 1fr);
+        display: grid; grid-template-columns: repeat(5, 1fr);
         gap: 1.5rem; padding: clamp(2rem, 5vw, 3.25rem) 1.5rem; text-align: center;
       }
       .stat-num { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1; color: #fff; }
@@ -287,6 +287,7 @@
         margin-top: 0.6rem; font-size: 0.7rem; font-weight: 600;
         text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.82);
       }
+      @media (max-width: 900px) { .stats-inner { grid-template-columns: repeat(3, 1fr); } }
       @media (max-width: 640px) { .stats-inner { grid-template-columns: repeat(2, 1fr); } }
 
       /* ── Checked list ───────────────────────────── */
@@ -392,6 +393,9 @@
       }
       .footer-icon-links a:hover { color: var(--violet); text-decoration: none; }
       .footer-ico { flex: none; }
+      /* Attestto mark tinted per destination: violet for .com, white for .org */
+      .brand-com .footer-ico { color: var(--violet); }
+      .brand-org .footer-ico { color: #fff; }
 
       /* Dark theme overrides for web components */
       attestto-verify {
@@ -597,6 +601,7 @@
             <div><div class="stat-num">3</div><div class="stat-lbl" data-i18n="land.stats.standards">Signature standards checked</div></div>
             <div><div class="stat-num">100%</div><div class="stat-lbl" data-i18n="land.stats.browser">Runs in your browser</div></div>
             <div><div class="stat-num">4</div><div class="stat-lbl" data-i18n="land.stats.browsers">Browsers supported</div></div>
+            <div><div class="stat-num" id="stat-countries">0</div><div class="stat-lbl" data-i18n="land.stats.countries">National PKIs supported</div></div>
           </div>
         </div>
       </section>
@@ -713,8 +718,14 @@
             <span>attestto-trust</span>
           </a>
           <a href="https://resolver.attestto.com" rel="noopener noreferrer" target="_blank" title="DID Resolver">resolver.attestto.com</a>
-          <a href="https://attestto.com" rel="noopener noreferrer" target="_blank" title="Attestto">attestto.com</a>
-          <a href="https://attestto.org" rel="noopener noreferrer" target="_blank" title="Attestto Open">attestto.org</a>
+          <a href="https://attestto.com" rel="noopener noreferrer" target="_blank" title="Attestto" class="brand-link brand-com">
+            <svg class="footer-ico" viewBox="0 0 140 140" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M97.5792 102.409C90.5585 102.409 85.1363 100.998 81.3125 98.1775C77.5514 95.294 75.6708 90.2479 75.6708 83.0391V66.6783H64.1055V53.3265H76.4231L82.9109 38H94.2883V53.3265H113V66.6783H94.2883V81.2526C94.2883 82.569 94.539 83.7913 95.0405 84.9197C95.6046 86.048 96.5763 86.9569 97.9553 87.6465C99.3971 88.2733 101.434 88.5867 104.067 88.5867C105.697 88.5867 107.327 88.3987 108.957 88.0226C110.649 87.6465 111.997 87.145 113 86.5181V99.682C111.245 100.56 108.925 101.218 106.042 101.657C103.158 102.158 100.337 102.409 97.5792 102.409Z"/><path d="M60.4737 102.409C53.453 102.409 48.0308 100.998 44.207 98.1775C40.4459 95.294 38.5654 90.2479 38.5654 83.0391V66.6783H27V53.3265H39.3176L45.8055 38H57.1828V53.3265H75.8942V66.6783H57.1828V81.2526C57.1828 82.569 57.4335 83.7913 57.935 84.9197C58.4992 86.048 59.4708 86.9569 60.8499 87.6465C62.2916 88.2733 64.3289 88.5867 66.9616 88.5867C68.5914 88.5867 70.2213 88.3987 71.8511 88.0226C73.5436 87.6465 74.8913 87.145 75.8942 86.5181V99.682C74.1391 100.56 71.8197 101.218 68.9362 101.657C66.0527 102.158 63.2319 102.409 60.4737 102.409Z"/></svg>
+            <span>attestto.com</span>
+          </a>
+          <a href="https://attestto.org" rel="noopener noreferrer" target="_blank" title="Attestto Open" class="brand-link brand-org">
+            <svg class="footer-ico" viewBox="0 0 140 140" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M97.5792 102.409C90.5585 102.409 85.1363 100.998 81.3125 98.1775C77.5514 95.294 75.6708 90.2479 75.6708 83.0391V66.6783H64.1055V53.3265H76.4231L82.9109 38H94.2883V53.3265H113V66.6783H94.2883V81.2526C94.2883 82.569 94.539 83.7913 95.0405 84.9197C95.6046 86.048 96.5763 86.9569 97.9553 87.6465C99.3971 88.2733 101.434 88.5867 104.067 88.5867C105.697 88.5867 107.327 88.3987 108.957 88.0226C110.649 87.6465 111.997 87.145 113 86.5181V99.682C111.245 100.56 108.925 101.218 106.042 101.657C103.158 102.158 100.337 102.409 97.5792 102.409Z"/><path d="M60.4737 102.409C53.453 102.409 48.0308 100.998 44.207 98.1775C40.4459 95.294 38.5654 90.2479 38.5654 83.0391V66.6783H27V53.3265H39.3176L45.8055 38H57.1828V53.3265H75.8942V66.6783H57.1828V81.2526C57.1828 82.569 57.4335 83.7913 57.935 84.9197C58.4992 86.048 59.4708 86.9569 60.8499 87.6465C62.2916 88.2733 64.3289 88.5867 66.9616 88.5867C68.5914 88.5867 70.2213 88.3987 71.8511 88.0226C73.5436 87.6465 74.8913 87.145 75.8942 86.5181V99.682C74.1391 100.56 71.8197 101.218 68.9362 101.657C66.0527 102.158 63.2319 102.409 60.4737 102.409Z"/></svg>
+            <span>attestto.org</span>
+          </a>
           <a href="https://discord.gg/F3AhFVarXz" rel="noopener noreferrer" target="_blank" title="Attestto community on Discord">
             <svg class="footer-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1826 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
             <span>Discord</span>
@@ -731,8 +742,10 @@
       // Each pill links to the PKI's verified official site with SEO-rich text.
       import { PKI_REGISTRY } from '/src/composables/pki-registry.ts'
       import { currentLang } from '/src/i18n.ts'
-      // Countries with bundled trust anchors = full offline chain validation.
-      // Keep in sync with chain-validator.ts imports (@attestto/trust/{cr,br,ar}).
+      // Countries whose CA roots are BUNDLED in @attestto/trust (promoted current/
+      // certs → offline chain validation). Filled pills. Derived at build time from
+      // the trust directory (__TRUST_DIRECTORY__); falls back to the verify app's
+      // hard-wired chain-validator anchors (@attestto/trust/{cr,br,ar}) on dev server.
       const ANCHORED = new Set(['CR', 'BR', 'AR'])
       // ISO 3166-1 alpha-2 → regional-indicator flag emoji (e.g. "CR" → 🇨🇷).
       const flag = (cc) =>
@@ -746,26 +759,80 @@
           const rank = (c) => (ANCHORED.has(c.countryCode) ? 0 : 1)
           return rank(a) - rank(b) || a.name.localeCompare(b.name)
         })
+      // Uppercased set of country codes bundled in the trust directory. These
+      // become FILLED pills. When the build-time define is present it is the
+      // authoritative source (all promoted directory countries); otherwise we
+      // fall back to the verify app's hard-wired anchors.
+      function bundledCodes() {
+        if (trustDir && trustDir.length) return new Set(trustDir.map((c) => c.code.toUpperCase()))
+        return ANCHORED
+      }
+      function pill(cls, href, label, title) {
+        const a = document.createElement('a')
+        a.className = 'pill pill-link ' + cls
+        a.href = href || '#'
+        a.target = '_blank'
+        a.rel = 'noopener noreferrer'
+        a.textContent = label
+        a.title = title
+        a.setAttribute('aria-label', title)
+        return a
+      }
       function renderPkiPills() {
-        if (!pkiHost || !Array.isArray(PKI_REGISTRY) || !PKI_REGISTRY.length) return
+        if (!pkiHost) return
         const es = currentLang() === 'es'
-        pkiHost.replaceChildren(
-          ...sortedPki().map((e) => {
-            const a = document.createElement('a')
-            a.className = 'pill pill-link ' + (ANCHORED.has(e.countryCode) ? 'pill-violet' : 'pill-violet-outline')
-            a.href = (e.officialLinks && e.officialLinks[0] && e.officialLinks[0].url) || '#'
-            a.target = '_blank'
-            a.rel = 'noopener noreferrer'
+        const bundled = bundledCodes()
+        const pills = []
+        // FILLED — CA roots bundled in @attestto/trust (offline chain validation).
+        if (trustDir && trustDir.length) {
+          const sortedDir = [...trustDir].sort((a, b) => {
+            if (a.code === 'cr') return -1
+            if (b.code === 'cr') return 1
+            return a.name.localeCompare(b.name)
+          })
+          for (const c of sortedDir) {
+            const fl = c.flag || flag(c.code)
+            const primary = (c.relatedLinks && c.relatedLinks[0] && c.relatedLinks[0].url) || c.authorityUrl || '#'
+            const auth = c.authorityName || c.name
+            const title = es
+              ? `${c.name} — raíces de CA incluidas en @attestto/trust; cadena validada sin conexión. Autoridad: ${auth}.`
+              : `${c.name} — CA roots bundled in @attestto/trust; chain validated offline. Authority: ${auth}.`
+            pills.push(pill('pill-violet', primary, fl ? `${fl}  ${c.name}` : c.name, title))
+          }
+        } else if (Array.isArray(PKI_REGISTRY)) {
+          for (const e of PKI_REGISTRY.filter((e) => ANCHORED.has(e.countryCode))) {
             const fl = flag(e.countryCode)
-            a.textContent = fl ?`${fl}  ${e.name}` : e.name
-            // SEO-rich, accessible label: program, root authority, law, purpose.
-            a.title = es
-              ? `${e.fullName}. Autoridad raíz: ${e.rootAuthority}. ${e.governingLaw}. Verifica firmas digitales de esta PKI nacional en el navegador con Attestto.`
-              : `${e.fullName}. Root authority: ${e.rootAuthority}. ${e.governingLaw}. Verify digital signatures from this national PKI in your browser with Attestto.`
-            a.setAttribute('aria-label', a.title)
-            return a
-          }),
-        )
+            pills.push(
+              pill(
+                'pill-violet',
+                (e.officialLinks && e.officialLinks[0] && e.officialLinks[0].url) || '#',
+                fl ? `${fl}  ${e.name}` : e.name,
+                `${e.fullName}. ${e.governingLaw}.`,
+              ),
+            )
+          }
+        }
+        // OUTLINE — recognized authorities not (yet) bundled in the directory.
+        if (Array.isArray(PKI_REGISTRY)) {
+          const recognized = PKI_REGISTRY.filter((e) => !bundled.has(e.countryCode.toUpperCase())).sort((a, b) =>
+            a.name.localeCompare(b.name),
+          )
+          for (const e of recognized) {
+            const fl = flag(e.countryCode)
+            const title = es
+              ? `${e.fullName}. Autoridad raíz: ${e.rootAuthority}. ${e.governingLaw}. Certificado reconocido; cadena validada en línea cuando el resolver publica esta PKI.`
+              : `${e.fullName}. Root authority: ${e.rootAuthority}. ${e.governingLaw}. Certificate recognized; chain validated online when the resolver publishes this PKI.`
+            pills.push(
+              pill(
+                'pill-violet-outline',
+                (e.officialLinks && e.officialLinks[0] && e.officialLinks[0].url) || '#',
+                fl ? `${fl}  ${e.name}` : e.name,
+                title,
+              ),
+            )
+          }
+        }
+        if (pills.length) pkiHost.replaceChildren(...pills)
       }
       // Footer PKI authority list — sourced from the trust directory (attestto-trust
       // countries/*/meta.json, injected at build time via __TRUST_DIRECTORY__).
@@ -826,9 +893,23 @@
           )
         }
       }
+      // Supported-country count in the stats band — same trust directory source
+      // as the footer PKI list, so it auto-updates as countries are added.
+      function renderCountryCount() {
+        const el = document.getElementById('stat-countries')
+        if (!el) return
+        const count =
+          trustDir && trustDir.length
+            ? trustDir.length
+            : Array.isArray(PKI_REGISTRY)
+              ? PKI_REGISTRY.length
+              : 0
+        el.textContent = String(count)
+      }
       function renderPki() {
         renderPkiPills()
         renderPkiAuthorities()
+        renderCountryCount()
       }
       renderPki()
       window.addEventListener('attestto-lang-change', renderPki)
