@@ -1,8 +1,43 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
+
+// Read per-country authority metadata from the sibling attestto-trust repo.
+// meta.json is not included in the npm package's `files` allowlist, so we
+// read directly from the sibling path (safe because package.json uses
+// `link:../attestto-trust`, so this always resolves to the local directory).
+function loadTrustDirectory() {
+  const trustRoot = resolve(__dirname, '../attestto-trust/countries')
+  try {
+    const countries = readdirSync(trustRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => {
+        try {
+          const meta = JSON.parse(readFileSync(resolve(trustRoot, d.name, 'meta.json'), 'utf-8'))
+          return {
+            code: meta.code ?? d.name,
+            name: meta.name ?? d.name,
+            flag: meta.flag ?? '',
+            authorityName: meta.authority?.name ?? '',
+            authorityUrl: meta.authority?.url ?? '',
+            relatedLinks: (meta.relatedLinks ?? []).filter(
+              (l: { url?: string }) => l.url && !l.url.includes('attestto'),
+            ),
+          }
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+    return countries
+  } catch {
+    return []
+  }
+}
+
+const trustDirectory = loadTrustDirectory()
 
 /**
  * Vite config for GitHub Pages site build.
@@ -12,6 +47,7 @@ const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __TRUST_DIRECTORY__: JSON.stringify(trustDirectory),
   },
   resolve: {
     alias: {
