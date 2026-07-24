@@ -1702,30 +1702,6 @@ export class AttesttoVerify extends LitElement {
     this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: false, result })
   }
 
-  /**
-   * Automatically resolve revocation for CR Firma Digital signatures via our
-   * resolver CRL endpoint, right after verification. Runs for every CR card but
-   * shares a single deduped + cached fetch per CA (so N cards do not each pull
-   * the list). Non-CR certs are left to the explicit opt-in OCSP button.
-   */
-  private async autoCheckCrRevocation() {
-    const sigs = this.result?.signatures
-    if (!sigs?.length) return
-    await Promise.all(
-      sigs.map(async (sig, i) => {
-        const cc = sig.certChain
-        const ca = crSinpeCaFromIssuer(cc?.signer?.issuerCommonName)
-        if (!ca || !cc?.signer?.serialNumber) return
-        const cardIndex = i + 1
-        const st = this._onlineRev.get(cardIndex)
-        if (st?.result || st?.checking) return
-        this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: true, result: null })
-        const result = await checkRevocationViaResolver(ca, cc.signer.serialNumber, this._lang)
-        this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: false, result })
-      }),
-    )
-  }
-
   private renderHashMatch() {
     if (!this.result || !this.expectedHash) return ''
     const match = this.result.hash === this.expectedHash
@@ -1820,11 +1796,11 @@ export class AttesttoVerify extends LitElement {
         second: '2-digit',
       })
 
-      // Auto-check CR Firma Digital revocation via our resolver. The list is
-      // public and comes from our own host (no per-cert leak), deduped + cached,
-      // so this is safe to run without the opt-in gesture. Non-CR certs keep the
-      // explicit OCSP opt-in (that path sends the serial to a third-party CA).
-      void this.autoCheckCrRevocation()
+      // Revocation is opt-in for ALL certs (CR included): the signature card
+      // shows a "Check revocation online" control that the user activates. We do
+      // not auto-fetch the CR CRL on verify — it is a 1.2 MB download that slows
+      // resolution and pulls the network without a user gesture. See
+      // runOnlineRevocation / the card's request-online-revocation event.
 
       // 2. Run registered verifier plugins (can only ADD trust, never bypass core)
       const verifiers = attesttoPlugins.getByType('verifier')

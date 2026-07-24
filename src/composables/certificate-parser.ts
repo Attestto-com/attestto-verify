@@ -22,7 +22,7 @@ import {
   type Asn1Node,
 } from './asn1-parser.js'
 import { logger } from '../logger.js'
-import { validateChain, validateChainWithResolver } from './chain-validator-client.js'
+import { validateChainWithResolver } from './chain-validator-client.js'
 import { derivePkiDids } from './pki-did-derivation.js'
 
 const log = logger.verify
@@ -1086,7 +1086,7 @@ export async function parseCertificateChain(
         if (result.trusted) {
           cryptographicallyVerified = true
           cryptoVerificationWarning = null
-          trustSource = result.trustSource || 'bundled'
+          trustSource = result.trustSource || 'resolver'
           log.event(
             `[cert] ✓ Chain CRYPTOGRAPHICALLY VERIFIED — anchor: ${result.anchorCommonName} ` +
               `(length: ${result.chainLength}, source: ${trustSource}` +
@@ -1096,8 +1096,8 @@ export async function parseCertificateChain(
           cryptographicallyVerified = false
           cryptoVerificationWarning =
             `Cryptographic chain validation FAILED: ${result.error || 'unknown error'}. ` +
-            'Structure was parsed but the chain does not link to any trusted anchor ' +
-            '(checked resolver.attestto.com and bundled certs). ' +
+            'Structure was parsed but the chain does not link to a ' +
+            'resolver-verified trust anchor (checked resolver.attestto.com). ' +
             'The signature may be forged, self-signed, or issued by a CA we do not trust.'
           log.warn(`[cert] ✗ Chain validation failed: ${result.error}`)
         }

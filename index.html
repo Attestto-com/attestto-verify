@@ -667,7 +667,7 @@
         <div class="std-group">
           <h4 data-i18n="land.standards.pki">Recognized PKI</h4>
           <div class="pills" id="pki-pills"><a class="pill pill-link pill-violet" href="https://www.bccr.fi.cr/firma-digital" target="_blank" rel="noopener noreferrer" title="Sistema Nacional de Certificación Digital — Firma Digital Costa Rica. Autoridad raíz: BCCR. Ley 8454.">CR Firma Digital</a></div>
-          <p class="std-note" id="pki-note" data-i18n="land.standards.pkiNote">Filled: chain validated against bundled trusted roots. Outline: certificate recognized (issuer, type, national ID); chain validated online when the resolver publishes that PKI.</p>
+          <p class="std-note" id="pki-note" data-i18n="land.standards.pkiNote">Filled: chain validated against a trust anchor resolved on demand via resolver.attestto.com (did:pki). Outline: certificate recognized (issuer, type, national ID); chain validated when the resolver publishes that PKI.</p>
         </div>
         <div class="std-group">
           <h4 data-i18n="land.standards.capabilities">Capabilities</h4>
@@ -742,10 +742,12 @@
       // Each pill links to the PKI's verified official site with SEO-rich text.
       import { PKI_REGISTRY } from '/src/composables/pki-registry.ts'
       import { currentLang } from '/src/i18n.ts'
-      // Countries whose CA roots are BUNDLED in @attestto/trust (promoted current/
-      // certs → offline chain validation). Filled pills. Derived at build time from
-      // the trust directory (__TRUST_DIRECTORY__); falls back to the verify app's
-      // hard-wired chain-validator anchors (@attestto/trust/{cr,br,ar}) on dev server.
+      // Countries PUBLISHED in the Attestto trust directory (promoted PKIs whose
+      // trust anchor the resolver can serve on demand → resolver-based chain
+      // validation). Filled pills. Derived at build time from the trust directory
+      // (__TRUST_DIRECTORY__); falls back to a small hard-wired set on the dev
+      // server where the build-time define is absent. NOTE: the FE bundles NO
+      // national PKI certs — anchors are resolved via resolver.attestto.com.
       const ANCHORED = new Set(['CR', 'BR', 'AR'])
       // ISO 3166-1 alpha-2 → regional-indicator flag emoji (e.g. "CR" → 🇨🇷).
       const flag = (cc) =>
@@ -759,10 +761,10 @@
           const rank = (c) => (ANCHORED.has(c.countryCode) ? 0 : 1)
           return rank(a) - rank(b) || a.name.localeCompare(b.name)
         })
-      // Uppercased set of country codes bundled in the trust directory. These
+      // Uppercased set of country codes published in the trust directory. These
       // become FILLED pills. When the build-time define is present it is the
       // authoritative source (all promoted directory countries); otherwise we
-      // fall back to the verify app's hard-wired anchors.
+      // fall back to the small hard-wired set above.
       function bundledCodes() {
         if (trustDir && trustDir.length) return new Set(trustDir.map((c) => c.code.toUpperCase()))
         return ANCHORED
@@ -783,7 +785,7 @@
         const es = currentLang() === 'es'
         const bundled = bundledCodes()
         const pills = []
-        // FILLED — CA roots bundled in @attestto/trust (offline chain validation).
+        // FILLED — PKI published in the Attestto trust directory (anchor resolved on demand).
         if (trustDir && trustDir.length) {
           const sortedDir = [...trustDir].sort((a, b) => {
             if (a.code === 'cr') return -1
@@ -797,8 +799,8 @@
             const primary = `https://trust.attestto.org/${c.code.toLowerCase()}`
             const auth = c.authorityName || c.name
             const title = es
-              ? `${c.name} — raíces de CA incluidas en @attestto/trust; cadena validada sin conexión. Autoridad: ${auth}.`
-              : `${c.name} — CA roots bundled in @attestto/trust; chain validated offline. Authority: ${auth}.`
+              ? `${c.name} — publicada en el directorio de confianza de Attestto; la raíz de confianza se resuelve bajo demanda vía resolver.attestto.com (did:pki). Autoridad: ${auth}.`
+              : `${c.name} — published in the Attestto trust directory; trust anchor resolved on demand via resolver.attestto.com (did:pki). Authority: ${auth}.`
             pills.push(pill('pill-violet', primary, fl ? `${fl}  ${c.name}` : c.name, title))
           }
         } else if (Array.isArray(PKI_REGISTRY)) {

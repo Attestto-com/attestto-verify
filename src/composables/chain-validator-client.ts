@@ -63,7 +63,10 @@ function getWorker(): Worker | null {
   }
 }
 
-function sendToWorker<T>(type: WorkerRequest['type'], payload: WorkerRequest['payload']): Promise<T> {
+function sendToWorker<T>(
+  type: WorkerRequest['type'],
+  payload: WorkerRequest['payload'],
+): Promise<T> {
   const w = getWorker()
   if (!w) return Promise.reject(new Error('no-worker'))
 
@@ -77,27 +80,9 @@ function sendToWorker<T>(type: WorkerRequest['type'], payload: WorkerRequest['pa
 // ── Public API (same signatures as chain-validator.ts) ────────────
 
 /**
- * Validate a certificate chain. Runs in Web Worker when available,
- * falls back to main-thread import.
- */
-export async function validateChain(
-  signerCertHex: string,
-  intermediateCertsHex: string[],
-): Promise<ChainValidationResult> {
-  try {
-    return await sendToWorker<ChainValidationResult>('validateChain', {
-      signerHex: signerCertHex,
-      intermediatesHex: intermediateCertsHex,
-    })
-  } catch {
-    // Fallback: direct main-thread execution
-    const mod = await import('./chain-validator.js')
-    return mod.validateChain(signerCertHex, intermediateCertsHex)
-  }
-}
-
-/**
  * Validate with resolver-backed trust anchors. Web Worker or fallback.
+ * This is the only chain-validation entry point — trust is resolver-only
+ * (no bundled national PKI certs).
  */
 export async function validateChainWithResolver(
   signerCertHex: string,
@@ -114,7 +99,12 @@ export async function validateChainWithResolver(
     })
   } catch {
     const mod = await import('./chain-validator.js')
-    return mod.validateChainWithResolver(signerCertHex, intermediateCertsHex, pkiDid, resolverOptions)
+    return mod.validateChainWithResolver(
+      signerCertHex,
+      intermediateCertsHex,
+      pkiDid,
+      resolverOptions,
+    )
   }
 }
 

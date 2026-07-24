@@ -1,13 +1,18 @@
 /**
- * Tests for chain-validator — focused on Phase A (document integrity).
+ * Tests for chain-validator — document integrity + resolver-only chain trust.
  *
- * The chain-validation engine itself is exercised against real BCCR PDFs in
- * regression fixtures (tracked separately). These tests cover the new
- * `verifyDocumentIntegrity` function and the `reconstructSignedBytes` helper
- * that close the ATT-309 reputational gap: until 2026-04-07
- * verify.attestto.com showed a green "verified" badge for tampered PDFs as
- * long as the certificate chain was intact. This file pins the new
- * behaviour so the regression cannot recur.
+ * The chain-validation engine is exercised through mocked pkijs so the wrapper
+ * logic is deterministic. Two behaviours are pinned here:
+ *
+ *  1. `verifyDocumentIntegrity` / `reconstructSignedBytes` — the ATT-309 gap:
+ *     until 2026-04-07 verify.attestto.com showed a green "verified" badge for
+ *     tampered PDFs as long as the certificate chain was intact.
+ *
+ *  2. `validateChainWithResolver` — trust is RESOLVER-ONLY. The FE bundles NO
+ *     national PKI certs; the only trust anchor is a PDF-embedded CA cert whose
+ *     key fingerprint matches what resolver.attestto.com publishes for the
+ *     issuing did:pki. If the resolver does not resolve/match, the result is an
+ *     honest `trusted: false` — there is no bundled fallback.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -39,22 +44,6 @@ vi.mock('asn1js', () => {
   }
 })
 
-// Stub the bundled trust package. The real package re-exports every promoted
-// directory country as a namespace with an `ALL_CERTS` array; chain-validator
-// now iterates all 14. We give each country one fake cert so the loader has a
-// non-empty anchor set for every filled country.
-vi.mock('@attestto/trust', () => {
-  const FAKE = '-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----'
-  const countries = ['ar', 'at', 'be', 'br', 'cr', 'de', 'ee', 'es', 'fr', 'gr', 'it', 'nl', 'pe', 'pt']
-  const mod: Record<string, unknown> = {}
-  for (const cc of countries) {
-    mod[cc] = {
-      ALL_CERTS: [{ name: `${cc}-fake-root`, exportName: `${cc.toUpperCase()}_FAKE_ROOT`, pem: FAKE, sha256: cc }],
-    }
-  }
-  return mod
-})
-
 // Silence the verify logger noise during tests.
 vi.mock('../logger.js', () => ({
   logger: {
@@ -77,7 +66,6 @@ import { resolveAndMatchChain } from './pki-resolver'
 import {
   verifyDocumentIntegrity,
   reconstructSignedBytes,
-  validateChain,
   validateChainWithResolver,
   _resetChainValidatorCache,
 } from './chain-validator'
@@ -245,175 +233,17 @@ describe('verifyDocumentIntegrity', () => {
   })
 })
 
-// ── validateChain ─────────────────────────────────────────────────
-
-describe('validateChain', () => {
-  it('returns trusted=false with "No trust anchors bundled" when all anchor loads fail', async () => {
-    // The mock pkijs.Certificate constructor works (returns {subject:{typesAndValues:[]}}),
-    // but asn1js.fromBER returns offset:-1 for every anchor PEM parse, so no anchors load.
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: -1,
-      result: null,
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(false)
-    expect(r.error).toMatch(/No trust anchors/)
-    expect(r.chainLength).toBe(0)
-  })
-
-  it('returns trusted=false when signer cert ASN.1 parse fails', async () => {
-    // First 13 calls: anchor loading succeeds (7 CR + 4 BR + 2 AR)
-    for (let i = 0; i < 13; i++) {
-      vi.mocked(asn1js.fromBER).mockReturnValueOnce({
-        offset: 0,
-        result: { mock: `anchor-${i}` },
-      } as unknown as ReturnType<typeof asn1js.fromBER>)
-    }
-    // 14th call: signer cert parse fails
-    vi.mocked(asn1js.fromBER).mockReturnValueOnce({
-      offset: -1,
-      result: null,
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(false)
-    expect(r.error).toMatch(/Signer certificate ASN\.1 parse failed/)
-  })
-
-  it('returns trusted=false with resultMessage when engine.verify fails', async () => {
-    // All fromBER calls succeed
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: 0,
-      result: { mock: 'cert' },
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    // Engine verify returns failure
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
-      () =>
-        ({
-          verify: vi.fn().mockResolvedValue({
-            result: false,
-            resultMessage: 'Certificate expired',
-          }),
-        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
-    )
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(false)
-    expect(r.error).toBe('Certificate expired')
-    expect(r.chainLength).toBe(0)
-  })
-
-  it('returns trusted=true with anchor CN when chain validates', async () => {
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: 0,
-      result: { mock: 'cert' },
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    const fakeCert = {
-      subject: {
-        typesAndValues: [
-          { type: '2.5.4.3', value: { valueBlock: { value: 'CA RAIZ NACIONAL' } } },
-        ],
-      },
-    }
-
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
-      () =>
-        ({
-          verify: vi.fn().mockResolvedValue({
-            result: true,
-            certificatePath: [{ subject: { typesAndValues: [] } }, fakeCert],
-          }),
-        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
-    )
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(true)
-    expect(r.anchorCommonName).toBe('CA RAIZ NACIONAL')
-    expect(r.chainLength).toBe(2)
-  })
-
-  it('returns trusted=true with null CN when root has no CN attribute', async () => {
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: 0,
-      result: { mock: 'cert' },
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
-      () =>
-        ({
-          verify: vi.fn().mockResolvedValue({
-            result: true,
-            certificatePath: [{ subject: { typesAndValues: [] } }],
-          }),
-        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
-    )
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(true)
-    expect(r.anchorCommonName).toBeNull()
-    expect(r.chainLength).toBe(1)
-  })
-
-  it('catches thrown errors and returns trusted=false', async () => {
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: 0,
-      result: { mock: 'cert' },
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(() => {
-      throw new Error('engine construction boom')
-    })
-
-    const r = await validateChain('aabb', [])
-    expect(r.trusted).toBe(false)
-    expect(r.error).toBe('engine construction boom')
-  })
-
-  it('skips malformed intermediate certs without failing', async () => {
-    // Anchors load fine
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: 0,
-      result: { mock: 'cert' },
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    // After anchors + signer, the intermediate parse throws.
-    // Anchors = one fake cert per bundled directory country (14) + signer (1),
-    // so the 16th fromBER call is the (malformed) intermediate.
-    let callCount = 0
-    vi.mocked(asn1js.fromBER).mockImplementation(() => {
-      callCount++
-      if (callCount === 16) {
-        return { offset: -1, result: null } as unknown as ReturnType<typeof asn1js.fromBER>
-      }
-      return { offset: 0, result: { mock: `cert-${callCount}` } } as unknown as ReturnType<typeof asn1js.fromBER>
-    })
-
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementationOnce(
-      () =>
-        ({
-          verify: vi.fn().mockResolvedValue({
-            result: true,
-            certificatePath: [{ subject: { typesAndValues: [] } }],
-          }),
-        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
-    )
-
-    const r = await validateChain('aabb', ['ccdd'])
-    expect(r.trusted).toBe(true)
-  })
-})
-
-// ── validateChainWithResolver (ATT-438) ──────────────────────────────
+// ── validateChainWithResolver (resolver-only) ─────────────────────────
 
 describe('validateChainWithResolver', () => {
-  // Helper: make asn1js.fromBER and pkijs work for N anchor loads + signer parse
+  // Helper: make asn1js.fromBER + pkijs return a given engine result for the
+  // dynamic-anchor validation step.
   function setupPkijsForChainValidation(engineResult: {
     result: boolean
     resultMessage?: string
-    certificatePath?: Array<{ subject: { typesAndValues: Array<{ type: string; value: { valueBlock: { value: string } } }> } }>
+    certificatePath?: Array<{
+      subject: { typesAndValues: Array<{ type: string; value: { valueBlock: { value: string } } }> }
+    }>
   }) {
     vi.mocked(asn1js.fromBER).mockReturnValue({
       offset: 0,
@@ -428,8 +258,8 @@ describe('validateChainWithResolver', () => {
     )
   }
 
-  it('uses resolver when pkiDid is provided and fingerprint matches', async () => {
-    // Mock: resolver finds a fingerprint match at index 0
+  it('trusts via resolver when pkiDid is provided and a fingerprint matches', async () => {
+    // Resolver finds a fingerprint match at index 0 (a PDF-embedded CA cert)
     vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
       matched: true,
       matchedCertIndex: 0,
@@ -442,19 +272,32 @@ describe('validateChainWithResolver', () => {
       resolution: {
         did: 'did:pki:cr:sinpe:persona-fisica',
         keys: [],
-        metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing', parentDid: 'did:pki:cr:politica:persona-fisica' },
+        metadata: {
+          country: 'CR',
+          countryName: 'Costa Rica',
+          hierarchy: 'Test',
+          administrator: 'Test',
+          level: 'issuing',
+          parentDid: 'did:pki:cr:politica:persona-fisica',
+        },
         cached: false,
         endEntityHints: null,
         ocspEndpoints: [],
       },
     })
 
-    // Mock: pkijs chain validation succeeds with the dynamic anchor
+    // pkijs chain validation succeeds using the resolver-matched cert as anchor
     setupPkijsForChainValidation({
       result: true,
       certificatePath: [
         { subject: { typesAndValues: [] } },
-        { subject: { typesAndValues: [{ type: '2.5.4.3', value: { valueBlock: { value: 'CA SINPE - PERSONA FISICA v2' } } }] } },
+        {
+          subject: {
+            typesAndValues: [
+              { type: '2.5.4.3', value: { valueBlock: { value: 'CA SINPE - PERSONA FISICA v2' } } },
+            ],
+          },
+        },
       ],
     })
 
@@ -471,71 +314,59 @@ describe('validateChainWithResolver', () => {
     )
   })
 
-  it('falls back to bundled certs when resolver returns no match', async () => {
-    // Mock: resolver found keys but no fingerprint match
+  it('returns an honest trusted=false (no bundled fallback) when resolver returns no match', async () => {
+    // Resolver found keys but no fingerprint match, and no parent DID to retry
     vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
       matched: false,
       matchedCertIndex: -1,
       matchedKey: null,
       resolution: {
         did: 'did:pki:cr:sinpe:persona-fisica',
-        keys: [{ keyId: '#key-1', publicKeyJwk: { kty: 'RSA' }, fingerprint: 'xxx', status: 'active' }],
-        metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
+        keys: [
+          { keyId: '#key-1', publicKeyJwk: { kty: 'RSA' }, fingerprint: 'xxx', status: 'active' },
+        ],
+        metadata: {
+          country: 'CR',
+          countryName: 'Costa Rica',
+          hierarchy: 'Test',
+          administrator: 'Test',
+          level: 'issuing',
+        },
         cached: false,
         endEntityHints: null,
         ocspEndpoints: [],
       },
     })
 
-    // Mock: bundled chain validation succeeds
-    setupPkijsForChainValidation({
-      result: true,
-      certificatePath: [
-        { subject: { typesAndValues: [] } },
-        { subject: { typesAndValues: [{ type: '2.5.4.3', value: { valueBlock: { value: 'CA RAIZ NACIONAL' } } }] } },
-      ],
-    })
-
     const r = await validateChainWithResolver('aabb', ['ccdd'], 'did:pki:cr:sinpe:persona-fisica')
 
-    expect(r.trusted).toBe(true)
-    expect(r.trustSource).toBe('bundled')
-    expect(r.pkiDid).toBeUndefined() // bundled path doesn't set pkiDid
+    expect(r.trusted).toBe(false)
+    expect(r.trustSource).toBeUndefined()
+    expect(r.error).toMatch(/resolver-verified trust anchor/i)
+    // The dynamic-anchor validation step must NOT run when nothing matched.
+    expect(pkijs.CertificateChainValidationEngine).not.toHaveBeenCalled()
   })
 
-  it('falls back to bundled certs when resolver fails (network error)', async () => {
-    // Mock: resolver throws
+  it('returns an honest trusted=false when the resolver call throws (network error)', async () => {
     vi.mocked(resolveAndMatchChain).mockRejectedValueOnce(new Error('network down'))
-
-    // Mock: bundled chain validation succeeds
-    setupPkijsForChainValidation({
-      result: true,
-      certificatePath: [
-        { subject: { typesAndValues: [] } },
-      ],
-    })
 
     const r = await validateChainWithResolver('aabb', [], 'did:pki:cr:sinpe:persona-fisica')
 
-    expect(r.trusted).toBe(true)
-    expect(r.trustSource).toBe('bundled')
+    expect(r.trusted).toBe(false)
+    expect(r.trustSource).toBeUndefined()
+    expect(r.error).toMatch(/resolver-verified trust anchor/i)
   })
 
-  it('falls back to bundled certs when no pkiDid provided', async () => {
-    // No pkiDid → skip resolver entirely, go straight to bundled
-    setupPkijsForChainValidation({
-      result: true,
-      certificatePath: [{ subject: { typesAndValues: [] } }],
-    })
-
+  it('returns an honest trusted=false when no pkiDid provided (resolver skipped)', async () => {
     const r = await validateChainWithResolver('aabb', [], null)
 
-    expect(r.trusted).toBe(true)
-    expect(r.trustSource).toBe('bundled')
+    expect(r.trusted).toBe(false)
+    expect(r.trustSource).toBeUndefined()
+    expect(r.error).toMatch(/no issuing did:pki/i)
     expect(resolveAndMatchChain).not.toHaveBeenCalled()
   })
 
-  it('tries parent DID when issuing CA fingerprint does not match', async () => {
+  it('tries the parent DID when the issuing CA fingerprint does not match', async () => {
     // First call (issuing CA): no match but has parentDid
     vi.mocked(resolveAndMatchChain)
       .mockResolvedValueOnce({
@@ -544,15 +375,20 @@ describe('validateChainWithResolver', () => {
         matchedKey: null,
         resolution: {
           did: 'did:pki:cr:sinpe:persona-fisica',
-          keys: [{ keyId: '#key-1', publicKeyJwk: { kty: 'RSA' }, fingerprint: 'xxx', status: 'active' }],
+          keys: [
+            { keyId: '#key-1', publicKeyJwk: { kty: 'RSA' }, fingerprint: 'xxx', status: 'active' },
+          ],
           metadata: {
-            country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test',
-            administrator: 'Test', level: 'issuing',
+            country: 'CR',
+            countryName: 'Costa Rica',
+            hierarchy: 'Test',
+            administrator: 'Test',
+            level: 'issuing',
             parentDid: 'did:pki:cr:politica:persona-fisica',
           },
           cached: false,
           endEntityHints: null,
-        ocspEndpoints: [],
+          ocspEndpoints: [],
         },
       })
       // Second call (parent DID): fingerprint match!
@@ -568,12 +404,18 @@ describe('validateChainWithResolver', () => {
         resolution: null,
       })
 
-    // Mock: pkijs validates the chain with the parent's matched cert
+    // pkijs validates the chain with the parent's matched cert
     setupPkijsForChainValidation({
       result: true,
       certificatePath: [
         { subject: { typesAndValues: [] } },
-        { subject: { typesAndValues: [{ type: '2.5.4.3', value: { valueBlock: { value: 'CA POLITICA PERSONA FISICA' } } }] } },
+        {
+          subject: {
+            typesAndValues: [
+              { type: '2.5.4.3', value: { valueBlock: { value: 'CA POLITICA PERSONA FISICA' } } },
+            ],
+          },
+        },
       ],
     })
 
@@ -592,36 +434,7 @@ describe('validateChainWithResolver', () => {
     )
   })
 
-  it('returns trusted=false when both resolver and bundled fail', async () => {
-    // Resolver: no match
-    vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
-      matched: false,
-      matchedCertIndex: -1,
-      matchedKey: null,
-      resolution: {
-        did: 'did:pki:cr:sinpe:persona-fisica',
-        keys: [],
-        metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
-        cached: false,
-        endEntityHints: null,
-        ocspEndpoints: [],
-      },
-    })
-
-    // Bundled: also fails (no matching anchors)
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: -1,
-      result: null,
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
-    const r = await validateChainWithResolver('aabb', [], 'did:pki:cr:sinpe:persona-fisica')
-
-    expect(r.trusted).toBe(false)
-    expect(r.trustSource).toBeUndefined()
-  })
-
   it('returns trusted=false when resolver matches but pkijs chain validation fails', async () => {
-    // Resolver: fingerprint match
     vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
       matched: true,
       matchedCertIndex: 0,
@@ -634,33 +447,33 @@ describe('validateChainWithResolver', () => {
       resolution: {
         did: 'did:pki:cr:sinpe:persona-fisica',
         keys: [],
-        metadata: { country: 'CR', countryName: 'Costa Rica', hierarchy: 'Test', administrator: 'Test', level: 'issuing' },
+        metadata: {
+          country: 'CR',
+          countryName: 'Costa Rica',
+          hierarchy: 'Test',
+          administrator: 'Test',
+          level: 'issuing',
+        },
         cached: false,
         endEntityHints: null,
         ocspEndpoints: [],
       },
     })
 
-    // pkijs: chain validation fails (e.g., cert expired)
+    // pkijs: chain validation fails (e.g., cert expired). No parent DID to retry.
     setupPkijsForChainValidation({
       result: false,
       resultMessage: 'Certificate has expired',
     })
 
-    // Also make bundled path fail
-    vi.mocked(asn1js.fromBER).mockReturnValue({
-      offset: -1,
-      result: null,
-    } as unknown as ReturnType<typeof asn1js.fromBER>)
-
     const r = await validateChainWithResolver('aabb', ['ccdd'], 'did:pki:cr:sinpe:persona-fisica')
 
-    // Should fall through to bundled (which also fails)
     expect(r.trusted).toBe(false)
+    expect(r.trustSource).toBeUndefined()
+    expect(r.error).toMatch(/resolver-verified trust anchor/i)
   })
 
-  it('resolver resolution returns null → falls back to bundled', async () => {
-    // Resolver: returns null (DID not found)
+  it('resolver resolution returns null → honest trusted=false', async () => {
     vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
       matched: false,
       matchedCertIndex: -1,
@@ -668,15 +481,10 @@ describe('validateChainWithResolver', () => {
       resolution: null,
     })
 
-    // Bundled: succeeds
-    setupPkijsForChainValidation({
-      result: true,
-      certificatePath: [{ subject: { typesAndValues: [] } }],
-    })
-
     const r = await validateChainWithResolver('aabb', [], 'did:pki:xx:unknown')
 
-    expect(r.trusted).toBe(true)
-    expect(r.trustSource).toBe('bundled')
+    expect(r.trusted).toBe(false)
+    expect(r.trustSource).toBeUndefined()
+    expect(r.error).toMatch(/resolver-verified trust anchor/i)
   })
 })

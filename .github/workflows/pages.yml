@@ -70,6 +70,13 @@ jobs:
 
       - run: pnpm vite build --config vite.config.pages.ts
 
+      # Bundle-size tripwire: fails if the verify worker gzipped exceeds the
+      # resolver-only budget (250 KB). Catches re-bundling of national PKI certs
+      # (e.g. an 'import ... from "@attestto/trust"' creeping back into the trust
+      # path — the ~1.18 MB gz regression this guard exists to prevent).
+      - name: Bundle-size guard (verify worker)
+        run: node scripts/check-bundle-size.mjs dist-pages
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-pages

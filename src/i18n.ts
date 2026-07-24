@@ -90,7 +90,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.standards.sigTypes': 'Signature types',
     'land.standards.pki': 'Recognized PKI',
     'land.standards.pkiNote':
-      'Filled: chain validated against bundled trusted roots. Outline: certificate recognized (issuer, type, national ID); chain validated online when the resolver publishes that PKI.',
+      'Filled: chain validated against a trust anchor resolved on demand via resolver.attestto.com (did:pki). Outline: certificate recognized (issuer, type, national ID); chain validated when the resolver publishes that PKI.',
     'land.standards.capabilities': 'Capabilities',
     'land.standards.browsers': 'Browsers',
     'land.cap.zeroUpload': 'Zero upload',
@@ -301,7 +301,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Verification banners (ATT-286)
     'comp.verify.cryptoVerified.title': 'Cryptographically verified.',
-    'comp.verify.cryptoVerified.body': 'The certificate chain has been validated end-to-end against a bundled trust anchor, AND the document content matches the signed hash exactly. The signer\'s identity is cryptographically proven and the document is intact.',
+    'comp.verify.cryptoVerified.body': 'The certificate chain has been validated end-to-end against a trust anchor resolved via resolver.attestto.com (did:pki), AND the document content matches the signed hash exactly. The signer\'s identity is cryptographically proven and the document is intact.',
     'comp.verify.integrityUnknown.title': 'Integrity check could not be completed.',
     'comp.verify.integrityUnknown.body': 'The verifier was unable to run the cryptographic integrity check on this signature (loader, parser or runtime error). This is not a tamper signal — the document state is unknown. Please retry, hard-reload, or report the issue with the reason below.',
     'comp.verify.structureParsed.title': 'Structure parsed only.',
@@ -439,7 +439,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.standards.sigTypes': 'Tipos de firma',
     'land.standards.pki': 'PKI reconocida',
     'land.standards.pkiNote':
-      'Relleno: cadena validada contra raíces de confianza incluidas. Contorno: certificado reconocido (emisor, tipo, identificación); cadena validada en línea cuando el resolver publica esa PKI.',
+      'Relleno: cadena validada contra una raíz de confianza resuelta bajo demanda vía resolver.attestto.com (did:pki). Contorno: certificado reconocido (emisor, tipo, identificación); cadena validada cuando el resolver publica esa PKI.',
     'land.standards.capabilities': 'Capacidades',
     'land.standards.browsers': 'Navegadores',
     'land.cap.zeroUpload': 'Sin subidas',
@@ -650,7 +650,7 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Verification banners (ATT-286)
     'comp.verify.cryptoVerified.title': 'Verificado criptográficamente.',
-    'comp.verify.cryptoVerified.body': 'La cadena de certificados fue validada de extremo a extremo contra una raíz de confianza, Y el contenido del documento coincide exactamente con el hash firmado. La identidad del firmante está criptográficamente probada y el documento está íntegro.',
+    'comp.verify.cryptoVerified.body': 'La cadena de certificados fue validada de extremo a extremo contra una raíz de confianza resuelta vía resolver.attestto.com (did:pki), Y el contenido del documento coincide exactamente con el hash firmado. La identidad del firmante está criptográficamente probada y el documento está íntegro.',
     'comp.verify.integrityUnknown.title': 'No se pudo completar la verificación de integridad.',
     'comp.verify.integrityUnknown.body': 'El verificador no pudo ejecutar la comprobación criptográfica de integridad en esta firma (error de carga, parser o ejecución). Esto no es una señal de alteración — el estado del documento es desconocido. Intente de nuevo, recargue la página o reporte el problema con la razón indicada.',
     'comp.verify.structureParsed.title': 'Solo estructura analizada.',

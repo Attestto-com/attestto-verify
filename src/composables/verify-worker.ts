@@ -10,7 +10,6 @@
  */
 
 import {
-  validateChain,
   validateChainWithResolver,
   verifyDocumentIntegrity,
   type ChainValidationResult,
@@ -20,7 +19,7 @@ import type { PkiResolverOptions } from './pki-resolver.js'
 
 export interface WorkerRequest {
   id: number
-  type: 'validateChain' | 'validateChainWithResolver' | 'verifyDocumentIntegrity'
+  type: 'validateChainWithResolver' | 'verifyDocumentIntegrity'
   payload: {
     signerHex?: string
     intermediatesHex?: string[]
@@ -43,9 +42,6 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
     let result: ChainValidationResult | IntegrityResult
 
     switch (type) {
-      case 'validateChain':
-        result = await validateChain(payload.signerHex!, payload.intermediatesHex ?? [])
-        break
       case 'validateChainWithResolver':
         result = await validateChainWithResolver(
           payload.signerHex!,
