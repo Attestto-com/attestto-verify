@@ -17,9 +17,12 @@
  *     bundled-anchor machinery), and the whole non-test `src/` tree is free of
  *     that import.
  *
- *  2. `attestto-verify.ts` does not auto-run revocation on verify — the online
- *     revocation check is strictly opt-in (user clicks "Check revocation
- *     online"); the model starts empty.
+ *  2. `attestto-verify.ts` performs no SURPRISE auto-fetch by default. Revocation
+ *     is opt-in: nothing runs unless the user acts (per-card button, the
+ *     document-level "check all" control) OR has explicitly enabled the
+ *     remembered `attestto:autoRevocation` preference (default OFF). The
+ *     preference-gated auto path IS allowed; what is banned is any UNconditional
+ *     auto-run on verify/load. The online-revocation model still starts empty.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -79,19 +82,44 @@ describe('no bundled national PKI certs (resolver-only trust)', () => {
   })
 })
 
-describe('revocation is opt-in, never automatic on verify', () => {
-  it('attestto-verify.ts has no autoCheckCrRevocation / auto-revocation call', () => {
-    const src = read('components/attestto-verify.ts')
-    // The removed anti-pattern: auto-fetching the CR CRL on every verify.
-    expect(src).not.toContain('autoCheckCrRevocation')
-    expect(src).not.toMatch(/void\s+this\.autoCheck/)
-  })
-
+describe('revocation is opt-in — no SURPRISE auto-fetch by default', () => {
   it('the online-revocation model starts empty (user action only)', () => {
     const src = read('components/attestto-verify.ts')
     // The per-signature online-revocation state is an empty Map by default and
-    // is only ever written from the card's request-online-revocation handler.
+    // is only ever written from the card's request-online-revocation handler or
+    // the document-level batch control.
     expect(src).toMatch(/_onlineRev\b/)
     expect(src).toMatch(/request-online-revocation/)
+    expect(src).toMatch(/new Map\(\)/)
+  })
+
+  it('any auto-run on verify is gated behind the persisted preference', () => {
+    const src = read('components/attestto-verify.ts')
+    // The revocation batch may be auto-triggered, but ONLY inside a guard on the
+    // remembered preference — never unconditionally. We assert every
+    // fire-and-forget `void this.runAllCrRevocation()` is preceded by an
+    // `_autoRevocation` check, so removing the guard would fail this test.
+    const autoCalls = [...src.matchAll(/void\s+this\.runAllCrRevocation\(\)/g)]
+    expect(autoCalls.length).toBeGreaterThan(0)
+    for (const m of autoCalls) {
+      // The lines just before each auto-call must sit inside a guard on the
+      // preference — either the `_autoRevocation` field itself, or the `on`
+      // param that carries the same just-enabled preference in the toggle.
+      const before = src.slice(Math.max(0, m.index! - 160), m.index!)
+      expect(
+        before,
+        'auto-revocation call must be guarded by the auto-revocation preference',
+      ).toMatch(/_autoRevocation|if \(on /)
+    }
+  })
+
+  it('the auto-revocation preference defaults OFF (opt-in, remembered)', () => {
+    const src = read('components/attestto-verify.ts')
+    // Persisted key + a default-false field: a fresh visitor with no stored
+    // preference gets no auto-fetch.
+    expect(src).toContain("'attestto:autoRevocation'")
+    expect(src).toMatch(/_autoRevocation\s*=\s*false/)
+    // The stored value is only "on" when explicitly set to '1'.
+    expect(src).toMatch(/getItem\(AUTO_REVOCATION_KEY\)\s*===\s*'1'/)
   })
 })

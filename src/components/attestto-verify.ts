@@ -32,6 +32,14 @@ interface OnlineRevState {
 }
 
 /**
+ * Persisted preference: when enabled, the CR revocation check runs automatically
+ * on every verification (leveraging the browser-cached CRL). Default OFF, so the
+ * out-of-the-box behavior performs no surprise network fetch. Stored in
+ * localStorage so the choice is remembered across visits.
+ */
+const AUTO_REVOCATION_KEY = 'attestto:autoRevocation'
+
+/**
  * <attestto-verify> — Drop a PDF to verify its integrity and signatures
  *
  * Usage:
@@ -397,6 +405,59 @@ export class AttesttoVerify extends LitElement {
       .revocation-parse-error {
         background: var(--attestto-warning-bg, #fef3c7);
         color: var(--attestto-warning-text, #92400e);
+      }
+
+      /* ── Document-level revocation controls (one opt-in, all cards) ── */
+      .revocation-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--attestto-border, #e2e8f0);
+        border-radius: 8px;
+        background: var(--attestto-bg-code, #f1f5f9);
+      }
+      .revocation-controls-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .revocation-all-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        padding: 0.4rem 0.85rem;
+        border-radius: 8px;
+        cursor: pointer;
+        color: var(--attestto-info, #2563eb);
+        background: var(--attestto-info-bg, #dbeafe);
+        border: 1px solid color-mix(in srgb, var(--attestto-info, #2563eb), transparent 55%);
+      }
+      .revocation-all-btn:hover:not(:disabled) {
+        background: var(--attestto-bg-hover, #e2e8f0);
+      }
+      .revocation-all-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .revocation-fetch-note {
+        font-size: 0.72rem;
+        color: var(--attestto-text-muted, #64748b);
+      }
+      .revocation-auto {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.78rem;
+        color: var(--attestto-text-muted, #64748b);
+        cursor: pointer;
+      }
+      .revocation-auto input {
+        cursor: pointer;
       }
 
       .pkcs7-surface {
@@ -1243,13 +1304,43 @@ export class AttesttoVerify extends LitElement {
    */
   @state() private _onlineRev = new Map<number, OnlineRevState>()
 
+  /**
+   * Remembered "check revocation automatically" preference. Read from
+   * localStorage on connect; default OFF. When ON, verify() triggers the same
+   * batch check the user could run by hand — never a surprise fetch, because the
+   * user opted in and the choice persists.
+   */
+  @state() private _autoRevocation = false
+
   private _onLangChange = (e: Event) => {
     this._lang = (e as CustomEvent).detail.lang
+  }
+
+  /** Read the persisted auto-revocation preference (safe if storage is blocked). */
+  private readAutoRevocationPref(): boolean {
+    try {
+      return localStorage.getItem(AUTO_REVOCATION_KEY) === '1'
+    } catch {
+      return false
+    }
+  }
+
+  private toggleAutoRevocation(on: boolean) {
+    this._autoRevocation = on
+    try {
+      if (on) localStorage.setItem(AUTO_REVOCATION_KEY, '1')
+      else localStorage.removeItem(AUTO_REVOCATION_KEY)
+    } catch {
+      /* storage blocked — keep the in-memory choice for this session */
+    }
+    // Turning it on after a result is already shown should honor the intent now.
+    if (on && this.result) void this.runAllCrRevocation()
   }
 
   override connectedCallback() {
     super.connectedCallback()
     window.addEventListener('attestto-lang-change', this._onLangChange)
+    this._autoRevocation = this.readAutoRevocationPref()
   }
 
   override disconnectedCallback() {
@@ -1259,11 +1350,13 @@ export class AttesttoVerify extends LitElement {
 
   override render() {
     return html`
-      ${this.verifying
-        ? this.renderLoading()
-        : this.result
-          ? this.renderResult()
-          : this.renderDropZone()}
+      ${
+        this.verifying
+          ? this.renderLoading()
+          : this.result
+            ? this.renderResult()
+            : this.renderDropZone()
+      }
       ${this.showCopied ? html`<div class="copied-toast">${t('comp.verify.hashCopied')}</div>` : ''}
     `
   }
@@ -1295,11 +1388,13 @@ export class AttesttoVerify extends LitElement {
       >
         <div class="drop-zone-icon">${hasExpected ? '🔗' : '📄'}</div>
         <div class="drop-zone-text">
-          ${this.dragging
-            ? t('comp.verify.dropFile')
-            : hasExpected
-              ? t('comp.verify.dropShared')
-              : t('comp.verify.dropVerify')}
+          ${
+            this.dragging
+              ? t('comp.verify.dropFile')
+              : hasExpected
+                ? t('comp.verify.dropShared')
+                : t('comp.verify.dropVerify')
+          }
         </div>
         <div class="drop-zone-hint">
           ${hasExpected ? t('comp.verify.dropHintShared') : t('comp.verify.dropHint')}
@@ -1365,20 +1460,24 @@ export class AttesttoVerify extends LitElement {
           <div class="summary-detail">
             ${detail}${pkiNames.length > 0 ? ` · ${pkiNames.join(', ')}` : ''}
           </div>
-          ${this.verifiedAt
-            ? html`
-                <div class="summary-meta">
-                  ${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt} ·
-                  ${t('comp.verify.summary.verifiedVia')}
-                </div>
-              `
-            : ''}
+          ${
+            this.verifiedAt
+              ? html`
+                  <div class="summary-meta">
+                    ${t('comp.verify.summary.verifiedAt')} ${this.verifiedAt} ·
+                    ${t('comp.verify.summary.verifiedVia')}
+                  </div>
+                `
+              : ''
+          }
         </div>
         <div class="summary-actions">
           <button class="copy-summary-btn" @click=${this.copySummary}>
-            ${this.showSummaryCopied
-              ? t('comp.verify.summary.summaryCopied')
-              : t('comp.verify.summary.copySummary')}
+            ${
+              this.showSummaryCopied
+                ? t('comp.verify.summary.summaryCopied')
+                : t('comp.verify.summary.copySummary')
+            }
           </button>
         </div>
       </div>
@@ -1402,45 +1501,63 @@ export class AttesttoVerify extends LitElement {
               </span>
             </div>
 
-            ${r.isPdf && r.metadata
-              ? html`
-                  <div class="section-title">${t('comp.verify.metadata')}</div>
-                  <div class="meta-grid">
-                    ${r.metadata.title
-                      ? html`<span class="meta-label">${t('comp.verify.title')}</span
-                          ><span>${r.metadata.title}</span>`
-                      : ''}
-                    ${r.metadata.author
-                      ? html`<span class="meta-label">${t('comp.verify.author')}</span
-                          ><span>${r.metadata.author}</span>`
-                      : ''}
-                    ${r.metadata.subject
-                      ? html`<span class="meta-label">${t('comp.verify.subject')}</span
-                          ><span>${r.metadata.subject}</span>`
-                      : ''}
-                    ${r.metadata.creator
-                      ? html`<span class="meta-label">${t('comp.verify.creator')}</span
-                          ><span>${r.metadata.creator}</span>`
-                      : ''}
-                    ${r.metadata.producer
-                      ? html`<span class="meta-label">${t('comp.verify.producer')}</span
-                          ><span>${r.metadata.producer}</span>`
-                      : ''}
-                    ${r.metadata.creationDate
-                      ? html`<span class="meta-label">${t('comp.verify.created')}</span
-                          ><span>${r.metadata.creationDate}</span>`
-                      : ''}
-                    ${r.metadata.modDate
-                      ? html`<span class="meta-label">${t('comp.verify.modified')}</span
-                          ><span>${r.metadata.modDate}</span>`
-                      : ''}
-                  </div>
-                `
-              : ''}
-            ${r.isPdf && r.signatures.length > 0
-              ? html`
-                  <div class="section-title">${t('comp.verify.digitalSigs')}</div>
-                  ${r.signatures.map(
+            ${
+              r.isPdf && r.metadata
+                ? html`
+                    <div class="section-title">${t('comp.verify.metadata')}</div>
+                    <div class="meta-grid">
+                      ${
+                      r.metadata.title
+                        ? html`<span class="meta-label">${t('comp.verify.title')}</span
+                            ><span>${r.metadata.title}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.author
+                        ? html`<span class="meta-label">${t('comp.verify.author')}</span
+                            ><span>${r.metadata.author}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.subject
+                        ? html`<span class="meta-label">${t('comp.verify.subject')}</span
+                            ><span>${r.metadata.subject}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.creator
+                        ? html`<span class="meta-label">${t('comp.verify.creator')}</span
+                            ><span>${r.metadata.creator}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.producer
+                        ? html`<span class="meta-label">${t('comp.verify.producer')}</span
+                            ><span>${r.metadata.producer}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.creationDate
+                        ? html`<span class="meta-label">${t('comp.verify.created')}</span
+                            ><span>${r.metadata.creationDate}</span>`
+                        : ''
+                    }
+                      ${
+                      r.metadata.modDate
+                        ? html`<span class="meta-label">${t('comp.verify.modified')}</span
+                            ><span>${r.metadata.modDate}</span>`
+                        : ''
+                    }
+                    </div>
+                  `
+                : ''
+            }
+            ${
+              r.isPdf && r.signatures.length > 0
+                ? html`
+                    <div class="section-title">${t('comp.verify.digitalSigs')}</div>
+                    ${this.renderRevocationControls()}
+                    ${r.signatures.map(
                     (sig, i) => html`
                       <div class="sig-card-slot" part="sig-card">
                         <attestto-signature-card
@@ -1458,24 +1575,26 @@ export class AttesttoVerify extends LitElement {
                       </div>
                     `,
                   )}
-                `
-              : r.isPdf
-                ? html`
-                    <div class="section-title">${t('comp.verify.digitalSigs')}</div>
-                    <div class="sig-card" part="sig-card">
-                      <div class="sig-name">
-                        <span class="badge badge-none">${t('comp.verify.badge.none')}</span>
-                        ${t('comp.verify.noSigs')}
-                      </div>
-                    </div>
                   `
-                : ''}
+                : r.isPdf
+                  ? html`
+                      <div class="section-title">${t('comp.verify.digitalSigs')}</div>
+                      <div class="sig-card" part="sig-card">
+                        <div class="sig-name">
+                          <span class="badge badge-none">${t('comp.verify.badge.none')}</span>
+                          ${t('comp.verify.noSigs')}
+                        </div>
+                      </div>
+                    `
+                  : ''
+            }
           </div>
-          ${this.pluginResults && this.pluginResults.size > 0
-            ? html`
-                <div class="section-title">${t('comp.verify.extVerification')}</div>
-                <div class="plugin-results">
-                  ${Array.from(this.pluginResults.entries()).map(
+          ${
+            this.pluginResults && this.pluginResults.size > 0
+              ? html`
+                  <div class="section-title">${t('comp.verify.extVerification')}</div>
+                  <div class="plugin-results">
+                    ${Array.from(this.pluginResults.entries()).map(
                     ([name, result]) => html`
                       <div class="sig-card" part="sig-card">
                         <div class="sig-name">
@@ -1484,19 +1603,22 @@ export class AttesttoVerify extends LitElement {
                           </span>
                           ${attesttoPlugins.get(name)?.label ?? name}
                         </div>
-                        ${result.error
-                          ? html`<div
-                              style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem"
-                            >
-                              ${result.error}
-                            </div>`
-                          : ''}
+                        ${
+                          result.error
+                            ? html`<div
+                                style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem"
+                              >
+                                ${result.error}
+                              </div>`
+                            : ''
+                        }
                       </div>
                     `,
                   )}
-                </div>
-              `
-            : ''}
+                  </div>
+                `
+              : ''
+          }
         </div>
 
         ${this.expectedHash ? this.renderHashMatch() : ''}
@@ -1627,7 +1749,8 @@ export class AttesttoVerify extends LitElement {
       tech: {
         // The standard FAMILY (PAdES, PKCS#7, …), not a duplicate of `method`
         // which already carries the raw subFilter.
-        standard: signatureStandard(sig.subFilter) ?? (isSelfAttested ? 'Attestto self-attested' : null),
+        standard:
+          signatureStandard(sig.subFilter) ?? (isSelfAttested ? 'Attestto self-attested' : null),
         reason: sig.reason,
         producer: this.result?.metadata?.producer ?? null,
         location: sig.location,
@@ -1662,7 +1785,13 @@ export class AttesttoVerify extends LitElement {
       available: true,
       checking: st?.checking ?? false,
       result: st?.result
-        ? { status: st.result.status, message: st.result.message, checkedAt: st.result.checkedAt }
+        ? {
+            status: st.result.status,
+            message: st.result.message,
+            checkedAt: st.result.checkedAt,
+            // Only the resolver CRL path carries cachedUntil; OCSP results omit it.
+            cachedUntil: 'cachedUntil' in st.result ? st.result.cachedUntil : null,
+          }
         : null,
     }
   }
@@ -1700,6 +1829,112 @@ export class AttesttoVerify extends LitElement {
     }
 
     this._onlineRev = new Map(this._onlineRev).set(cardIndex, { checking: false, result })
+  }
+
+  /**
+   * The 1-based card indices whose signature is a CR Firma Digital SINPE cert
+   * (the only path served by the resolver CRL, which one opt-in can batch).
+   */
+  private crRevocationIndices(): number[] {
+    const sigs = this.result?.signatures ?? []
+    const out: number[] = []
+    sigs.forEach((sig, i) => {
+      if (crSinpeCaFromIssuer(sig.certChain?.signer?.issuerCommonName) !== null) out.push(i + 1)
+    })
+    return out
+  }
+
+  /** How many DISTINCT CRLs a batch check would fetch (one per distinct CA). */
+  private crDistinctCaCount(): number {
+    const sigs = this.result?.signatures ?? []
+    const cas = new Set<string>()
+    for (const sig of sigs) {
+      const ca = crSinpeCaFromIssuer(sig.certChain?.signer?.issuerCommonName)
+      if (ca) cas.add(ca)
+    }
+    return cas.size
+  }
+
+  /** 1-based indices of CR cards that have not yet been checked or are mid-check. */
+  private crUncheckedIndices(): number[] {
+    return this.crRevocationIndices().filter((idx) => {
+      const st = this._onlineRev.get(idx)
+      return !st || (!st.checking && !st.result)
+    })
+  }
+
+  /**
+   * Run the resolver CRL revocation check for EVERY CR signature card. Same
+   * explicit-action path as the per-card button — still user-triggered (from the
+   * document-level control or the persisted auto preference), never a silent
+   * fetch. Cards that share a CA reuse the single cached+deduped CRL, so N
+   * same-CA cards cost one network round-trip at most.
+   */
+  private async runAllCrRevocation() {
+    const indices = this.crUncheckedIndices()
+    await Promise.all(indices.map((idx) => this.runOnlineRevocation(idx)))
+  }
+
+  /**
+   * Document-level revocation control shown above the signature cards when the
+   * document has CR Firma Digital signatures. Offers a single opt-in that checks
+   * every CR card, honestly stating how many revocation lists it will fetch when
+   * the document mixes CAs, plus the remembered auto-check preference.
+   */
+  private renderRevocationControls() {
+    const total = this.crRevocationIndices().length
+    if (total === 0) return ''
+    const es = this._lang === 'es'
+    const D = (en: string, str: string) => (es ? str : en)
+    const distinctCas = this.crDistinctCaCount()
+    const unchecked = this.crUncheckedIndices().length
+    const anyChecking = this.crRevocationIndices().some((i) => this._onlineRev.get(i)?.checking)
+
+    // Honest network cost: one CRL per distinct CA. If cards share a CA it is a
+    // single fetch; a mixed-CA document fetches one list per CA.
+    const fetchNote =
+      distinctCas <= 1
+        ? D(
+            'Fetches one revocation list, reused across all cards.',
+            'Descarga una lista de revocación, reutilizada en todas las tarjetas.',
+          )
+        : D(
+            `Fetches ${distinctCas} revocation lists (one per certificate authority).`,
+            `Descarga ${distinctCas} listas de revocación (una por autoridad certificadora).`,
+          )
+
+    const allBtnLabel =
+      unchecked === total
+        ? D(
+            `Check revocation for all ${total} signatures`,
+            `Revisar la revocación de las ${total} firmas`,
+          )
+        : unchecked > 0
+          ? D(`Check the remaining ${unchecked}`, `Revisar las ${unchecked} restantes`)
+          : D('All signatures checked', 'Todas las firmas revisadas')
+
+    return html`
+      <div class="revocation-controls" part="revocation-controls">
+        <div class="revocation-controls-row">
+          <button
+            class="revocation-all-btn"
+            ?disabled=${unchecked === 0 || anyChecking}
+            @click=${() => this.runAllCrRevocation()}
+          >
+            🌐 ${anyChecking ? D('Checking…', 'Revisando…') : allBtnLabel}
+          </button>
+          <span class="revocation-fetch-note">${fetchNote}</span>
+        </div>
+        <label class="revocation-auto">
+          <input
+            type="checkbox"
+            .checked=${this._autoRevocation}
+            @change=${(e: Event) => this.toggleAutoRevocation((e.target as HTMLInputElement).checked)}
+          />
+          ${D('Check revocation automatically', 'Revisar la revocación automáticamente')}
+        </label>
+      </div>
+    `
   }
 
   private renderHashMatch() {
@@ -1797,10 +2032,16 @@ export class AttesttoVerify extends LitElement {
       })
 
       // Revocation is opt-in for ALL certs (CR included): the signature card
-      // shows a "Check revocation online" control that the user activates. We do
-      // not auto-fetch the CR CRL on verify — it is a 1.2 MB download that slows
-      // resolution and pulls the network without a user gesture. See
-      // runOnlineRevocation / the card's request-online-revocation event.
+      // shows a "Check revocation online" control, plus a document-level control
+      // that checks every CR card at once. By DEFAULT we do not auto-fetch the CR
+      // CRL on verify — it is a network fetch without a user gesture. The ONLY
+      // exception is when the user has explicitly turned on the remembered
+      // "Check revocation automatically" preference (attestto:autoRevocation);
+      // then we trigger the same batch check, reusing the browser-cached CRL.
+      if (this._autoRevocation) {
+        // Fire-and-forget: don't block the verify UI on the network round-trip.
+        void this.runAllCrRevocation()
+      }
 
       // 2. Run registered verifier plugins (can only ADD trust, never bypass core)
       const verifiers = attesttoPlugins.getByType('verifier')
@@ -1833,7 +2074,9 @@ export class AttesttoVerify extends LitElement {
       // Honest: a tampered/unknown signature or active content is an issue;
       // "verified" requires at least one cryptographically verified signature.
       const anyBadSig = sigList.some((s) => s.level === 'tampered' || s.level === 'unknown')
-      const hasActiveContent = !!(this.result.audit?.hasJavaScript || this.result.audit?.hasOpenAction)
+      const hasActiveContent = !!(
+        this.result.audit?.hasJavaScript || this.result.audit?.hasOpenAction
+      )
       const issue = anyBadSig || hasActiveContent
       const verified = !issue && sigList.some((s) => s.level === 'verified')
 

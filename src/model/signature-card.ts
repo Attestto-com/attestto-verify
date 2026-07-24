@@ -164,6 +164,12 @@ export interface SignatureCardModel {
       status: 'good' | 'revoked' | 'unknown' | 'unreachable'
       message: string
       checkedAt: string
+      /**
+       * ISO instant until which the revocation list is cached in the browser
+       * (resolver CRL path only). Present so the card can tell the user that
+       * further checks are instant and offline until then. Omitted for OCSP.
+       */
+      cachedUntil?: string | null
     } | null
     /** True while the host is performing the network check. */
     checking?: boolean

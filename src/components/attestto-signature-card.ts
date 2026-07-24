@@ -121,15 +121,23 @@ function ltvFace(
     }
   }
   if (!ltv || ltv.tier === 'none' || ltv.tier === 'B') {
+    // LTV-absence is a PROPERTY of how the document was signed, not an error and
+    // not a fault of the certificate or the issuing authority — so this is a
+    // neutral, informational badge (not a warning), and its tooltip names the
+    // responsible party explicitly.
     return {
-      tone: 'warn',
-      label: es ? 'Sin validez a largo plazo' : 'No long-term validation',
+      tone: 'neutral',
+      label: es ? 'Sin validación a largo plazo (LTV)' : 'No long-term validation (LTV)',
       detail: es
-        ? 'La firma no incluye su propia prueba de revocación, así que volver a verificarla más adelante depende de que el servicio de revocación del emisor siga en línea.'
-        : 'The signature does not embed its own revocation proof, so re-verifying it later depends on the issuer’s revocation service staying online.',
+        ? 'Esta firma no incorpora datos de validación a largo plazo (sello de tiempo y estado de revocación). Es una característica de cómo se firmó el documento, no del certificado ni de la autoridad emisora.'
+        : 'This signature does not embed long-term validation data (timestamp + revocation snapshot). It reflects how the document was signed, not the certificate or the issuing authority.',
     }
   }
-  const ts = ltv.timestampAt ? (es ? ` · sellada ${ltv.timestampAt}` : ` · timestamped ${ltv.timestampAt}`) : ''
+  const ts = ltv.timestampAt
+    ? es
+      ? ` · sellada ${ltv.timestampAt}`
+      : ` · timestamped ${ltv.timestampAt}`
+    : ''
   if (ltv.revocationSource === 'embedded') {
     return {
       tone: 'good',
@@ -144,8 +152,9 @@ function ltvFace(
     tone: 'neutral',
     label: es ? 'Con sellado de tiempo' : 'Timestamped',
     detail:
-      (es ? 'Sellada, pero sin evidencia de revocación incrustada' : 'Timestamped, but no embedded revocation evidence') +
-      ts,
+      (es
+        ? 'Sellada, pero sin evidencia de revocación incrustada'
+        : 'Timestamped, but no embedded revocation evidence') + ts,
   }
 }
 
@@ -216,7 +225,10 @@ function capTooltip(label: string, kind: string, lang: Lang): string {
       'El titular puede probar el control de esta identidad.',
     )
   if (l.includes('email'))
-    return D('Authorized to sign or encrypt email (S/MIME).', 'Autorizada para firmar o cifrar correo (S/MIME).')
+    return D(
+      'Authorized to sign or encrypt email (S/MIME).',
+      'Autorizada para firmar o cifrar correo (S/MIME).',
+    )
   if (l.includes('key'))
     return D('May establish encryption keys.', 'Puede establecer claves de cifrado.')
   if (l.includes('certificate signing'))
@@ -225,8 +237,14 @@ function capTooltip(label: string, kind: string, lang: Lang): string {
       'Una clave de Autoridad Certificadora — puede emitir certificados.',
     )
   if (kind === 'eku')
-    return D('Extended key usage declared by the issuer.', 'Uso extendido de clave declarado por el emisor.')
-  return D('Declared in the certificate by the issuer.', 'Declarado en el certificado por el emisor.')
+    return D(
+      'Extended key usage declared by the issuer.',
+      'Uso extendido de clave declarado por el emisor.',
+    )
+  return D(
+    'Declared in the certificate by the issuer.',
+    'Declarado en el certificado por el emisor.',
+  )
 }
 
 /**
@@ -352,7 +370,12 @@ export class AttesttoSignatureCard extends LitElement {
       handle: s.handle ? this.maskHandle(s.handle) : null,
       capabilities: s.capabilities.map((c) => c.label),
       ltv: s.ltv ?? null,
-      tech: { ...s.tech, pkcs7Hex: s.tech.pkcs7Hex ? `${s.tech.pkcs7Hex.slice(0, 16)}… (${s.tech.pkcs7Hex.length} chars)` : null },
+      tech: {
+        ...s.tech,
+        pkcs7Hex: s.tech.pkcs7Hex
+          ? `${s.tech.pkcs7Hex.slice(0, 16)}… (${s.tech.pkcs7Hex.length} chars)`
+          : null,
+      },
     }
   }
 
@@ -360,7 +383,12 @@ export class AttesttoSignatureCard extends LitElement {
     :host {
       display: block;
       --radius: 16px;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
     }
     .card {
       display: flex;
@@ -866,7 +894,12 @@ export class AttesttoSignatureCard extends LitElement {
       border: 1px solid #333a48;
       border-radius: 8px;
       color: #e8eaef;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
       font-size: 0.72rem;
       font-weight: 400;
       line-height: 1.45;
@@ -1012,6 +1045,11 @@ export class AttesttoSignatureCard extends LitElement {
       align-items: center;
       gap: 7px;
     }
+    .online-rev-cached {
+      font-size: 0.7rem;
+      color: #8b90a0;
+      line-height: 1.4;
+    }
   `
 
   render() {
@@ -1043,41 +1081,47 @@ export class AttesttoSignatureCard extends LitElement {
               </div>
               <p class="subtitle">${s.subtitle}</p>
             </div>
-            ${s.officialVerifier
-              ? html`<a
-                  class="official-tr"
-                  part="official-link"
-                  href=${s.officialVerifier.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title=${t('comp.verify.verifyOfficial')}
-                  >${s.country ? html`<span class="flag-sq">${flagEmoji(s.country)}</span>` : ''}${s.officialVerifier.name}<span
-                    class="ext"
-                    >↗</span
-                  ></a
-                >`
-              : ''}
+            ${
+              s.officialVerifier
+                ? html`<a
+                    class="official-tr"
+                    part="official-link"
+                    href=${s.officialVerifier.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title=${t('comp.verify.verifyOfficial')}
+                    >${s.country ? html`<span class="flag-sq">${flagEmoji(s.country)}</span>` : ''}${s.officialVerifier.name}<span
+                      class="ext"
+                      >↗</span
+                    ></a
+                  >`
+                : ''
+            }
           </div>
 
-          ${s.trustMarks?.length || ltv
-            ? html`<div class="signals" part="signals">
-                ${(s.trustMarks ?? []).map(
+          ${
+            s.trustMarks?.length || ltv
+              ? html`<div class="signals" part="signals">
+                  ${(s.trustMarks ?? []).map(
                   (m) =>
                     html`<span class="tmark" style="--m:${MARK_COLOR[m.scheme]}"
                       ><span class="tmark-ico">🛡</span>${m.label}</span
                     >`,
                 )}
-                ${ltv
-                  ? html`<span
-                      class="tmark has-tip"
-                      part="ltv"
-                      data-tip=${ltv.detail}
-                      style="--m:${LTV_TONE_COLOR[ltv.tone]}"
-                      ><span class="tmark-ico">◷</span>${ltv.label}</span
-                    >`
-                  : ''}
-              </div>`
-            : ''}
+                  ${
+                  ltv
+                    ? html`<span
+                        class="tmark has-tip"
+                        part="ltv"
+                        data-tip=${ltv.detail}
+                        style="--m:${LTV_TONE_COLOR[ltv.tone]}"
+                        ><span class="tmark-ico">◷</span>${ltv.label}</span
+                      >`
+                    : ''
+                }
+                </div>`
+              : ''
+          }
           ${this.renderOnlineRevocation(s)}
           <hr />
 
@@ -1094,9 +1138,11 @@ export class AttesttoSignatureCard extends LitElement {
             </div>
             <div>
               <span class="meta-label">${t('comp.verify.certificate')}</span>
-              ${cf
-                ? html`<span class="meta-value" style="color:${cf.color}">${cf.text}</span>`
-                : html`<span class="meta-value">—</span>`}
+              ${
+                cf
+                  ? html`<span class="meta-value" style="color:${cf.color}">${cf.text}</span>`
+                  : html`<span class="meta-value">—</span>`
+              }
             </div>
             <div>
               <span class="meta-label">${t('comp.verify.nationalId')}</span>
@@ -1104,29 +1150,37 @@ export class AttesttoSignatureCard extends LitElement {
             </div>
           </div>
 
-          ${s.capabilities.length
-            ? html`<div style="margin-top:16px">
-                <span class="meta-label">${t('comp.verify.capabilities')}</span>
-                <div class="caps" part="capabilities">
-                  ${s.capabilities.map(
+          ${
+            s.capabilities.length
+              ? html`<div style="margin-top:16px">
+                  <span class="meta-label">${t('comp.verify.capabilities')}</span>
+                  <div class="caps" part="capabilities">
+                    ${s.capabilities.map(
                     (c) =>
-                      html`<span class="cap has-tip" part="capability" data-tip=${capTooltip(c.label, c.kind, this._lang)}
+                      html`<span
+                        class="cap has-tip"
+                        part="capability"
+                        data-tip=${capTooltip(c.label, c.kind, this._lang)}
                         ><span class="cap-ico">${capIcon(c.label)}</span>${c.label}</span
                       >`,
                   )}
-                </div>
-              </div>`
-            : ''}
-          ${s.signatureImage
-            ? html`<div style="margin-top:16px">
-                <span class="meta-label">${t('comp.verify.trustPermissions')}</span>
-                <img class="seal" src=${s.signatureImage} alt="signature" />
-              </div>`
-            : ''}
+                  </div>
+                </div>`
+              : ''
+          }
+          ${
+            s.signatureImage
+              ? html`<div style="margin-top:16px">
+                  <span class="meta-label">${t('comp.verify.trustPermissions')}</span>
+                  <img class="seal" src=${s.signatureImage} alt="signature" />
+                </div>`
+              : ''
+          }
 
           <div class="footer">
             <button class="see-data" @click=${() => (this._dataOpen = !this._dataOpen)}>
-              ${this._dataOpen ? '▾' : '⌗'} ${this._lang === 'es' ? 'Datos avanzados' : 'Advanced data'}
+              ${this._dataOpen ? '▾' : '⌗'}
+              ${this._lang === 'es' ? 'Datos avanzados' : 'Advanced data'}
             </button>
           </div>
           ${this._dataOpen ? this.renderInternals(s) : ''}
@@ -1157,10 +1211,15 @@ export class AttesttoSignatureCard extends LitElement {
 
     if (rev.result) {
       const r = rev.result
-      const color =
-        r.status === 'good' ? '#22c55e' : r.status === 'revoked' ? '#ef4444' : '#93c5fd'
+      const color = r.status === 'good' ? '#22c55e' : r.status === 'revoked' ? '#ef4444' : '#93c5fd'
       const icon =
-        r.status === 'good' ? '✓' : r.status === 'revoked' ? '✗' : r.status === 'unknown' ? '?' : '⚠'
+        r.status === 'good'
+          ? '✓'
+          : r.status === 'revoked'
+            ? '✗'
+            : r.status === 'unknown'
+              ? '?'
+              : '⚠'
       const heading =
         r.status === 'good'
           ? D('Not revoked', 'No revocado')
@@ -1170,14 +1229,26 @@ export class AttesttoSignatureCard extends LitElement {
               ? D('Unknown', 'Desconocido')
               : D('Responder unreachable', 'Servicio no disponible')
       const when = fmtDate(r.checkedAt, this._lang)
+      // Cached-until line: only for the resolver CRL path (which sets
+      // cachedUntil) and only when we actually reached it. Uses the same date
+      // helper so the format matches everywhere.
+      const cachedUntil = r.status !== 'unreachable' ? fmtDate(r.cachedUntil, this._lang) : null
       return html`<div class="online-rev" part="online-revocation">
         <span class="online-rev-result" style="--rev:${color}"
-          >${icon} <strong>${heading}.</strong> ${r.message}${when
-            ? html` <span style="opacity:0.7"
-                >${D('Checked', 'Revisado')} ${when}</span
-              >`
-            : ''}</span
+          >${icon} <strong>${heading}.</strong> ${r.message}${
+            when ? html` <span style="opacity:0.7">${D('Checked', 'Revisado')} ${when}</span>` : ''
+          }</span
         >
+        ${
+          cachedUntil
+            ? html`<span class="online-rev-cached"
+                >${D(
+                `Revocation list cached in your browser until ${cachedUntil}. Further checks are instant and offline until then.`,
+                `Lista de revocación en caché en tu navegador hasta el ${cachedUntil}. Las verificaciones siguientes son instantáneas y sin conexion hasta entonces.`,
+              )}</span
+              >`
+            : ''
+        }
       </div>`
     }
 
@@ -1192,7 +1263,8 @@ export class AttesttoSignatureCard extends LitElement {
     return html`<div class="online-rev" part="online-revocation">
       <div class="online-rev-warn">
         <span class="rc-note"
-          >⚠ ${D(
+          >⚠
+          ${D(
             'This sends the certificate serial to the issuer’s revocation server. It leaves your device.',
             'Esto envía el número de serie del certificado al servidor de revocación del emisor. Sale de tu dispositivo.',
           )}</span
@@ -1218,7 +1290,10 @@ export class AttesttoSignatureCard extends LitElement {
    * handle without PII (see public-identifier-no-pii design).
    */
   private maskHandle(handle: string): string {
-    return handle.replace(/\d{6,}/g, (run) => run.slice(0, 2) + '•'.repeat(run.length - 4) + run.slice(-2))
+    return handle.replace(
+      /\d{6,}/g,
+      (run) => run.slice(0, 2) + '•'.repeat(run.length - 4) + run.slice(-2),
+    )
   }
 
   /**
@@ -1312,33 +1387,42 @@ export class AttesttoSignatureCard extends LitElement {
       <div class="id-row">
         <span class="meta-value" part="national-id">${s.nationalId.masked}</span>
         ${badge}
-        ${showCheckBtn
-          ? html`<button class="reveal" @click=${() => (this._idOpen = true)}>${es ? 'Comprobar' : 'Check'}</button>`
-          : ''}
+        ${
+          showCheckBtn
+            ? html`<button class="reveal" @click=${() => (this._idOpen = true)}>
+                ${es ? 'Comprobar' : 'Check'}
+              </button>`
+            : ''
+        }
       </div>
-      ${this.allowIdCheck && this._idOpen && this._idResult !== 'match'
-        ? html`<div class="id-check" part="id-check">
-            <span class="rc-note"
-              >🔒 ${es
-                ? 'Escribe la identificación que ya conoces para confirmar. Nunca mostramos el dato completo.'
-                : 'Type the ID you already know to confirm. We never display the full value.'}</span
-            >
-            <div class="id-check-row">
-              <input
-                class="id-input"
-                .value=${this._idInput}
-                @input=${(e: Event) => (this._idInput = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => {
+      ${
+        this.allowIdCheck && this._idOpen && this._idResult !== 'match'
+          ? html`<div class="id-check" part="id-check">
+              <span class="rc-note"
+                >🔒
+                ${
+                es
+                  ? 'Escribe la identificación que ya conoces para confirmar. Nunca mostramos el dato completo.'
+                  : 'Type the ID you already know to confirm. We never display the full value.'
+              }</span
+              >
+              <div class="id-check-row">
+                <input
+                  class="id-input"
+                  .value=${this._idInput}
+                  @input=${(e: Event) => (this._idInput = (e.target as HTMLInputElement).value)}
+                  @keydown=${(e: KeyboardEvent) => {
                   if (e.key === 'Enter') this.checkId(s.index, s.nationalId!.full)
                 }}
-                placeholder=${s.nationalId.masked}
-              />
-              <button class="rc-yes" @click=${() => this.checkId(s.index, s.nationalId!.full)}>
-                ${es ? 'Comprobar' : 'Check'}
-              </button>
-            </div>
-          </div>`
-        : ''}
+                  placeholder=${s.nationalId.masked}
+                />
+                <button class="rc-yes" @click=${() => this.checkId(s.index, s.nationalId!.full)}>
+                  ${es ? 'Comprobar' : 'Check'}
+                </button>
+              </div>
+            </div>`
+          : ''
+      }
     </div>`
   }
 
@@ -1350,22 +1434,33 @@ export class AttesttoSignatureCard extends LitElement {
       <div class="internals" part="internals">
         <p class="internals-desc">${desc}</p>
         <div class="tabs">
-          <button class="tab ${this._tab === 'chain' ? 'active' : ''}" @click=${() => (this._tab = 'chain')}>
+          <button
+            class="tab ${this._tab === 'chain' ? 'active' : ''}"
+            @click=${() => (this._tab = 'chain')}
+          >
             ${t('comp.verify.certChain')}
           </button>
-          <button class="tab ${this._tab === 'sig' ? 'active' : ''}" @click=${() => (this._tab = 'sig')}>
+          <button
+            class="tab ${this._tab === 'sig' ? 'active' : ''}"
+            @click=${() => (this._tab = 'sig')}
+          >
             ${es ? 'Firma' : 'Signature'}
           </button>
-          <button class="tab ${this._tab === 'trust' ? 'active' : ''}" @click=${() => (this._tab = 'trust')}>
+          <button
+            class="tab ${this._tab === 'trust' ? 'active' : ''}"
+            @click=${() => (this._tab = 'trust')}
+          >
             ${es ? 'Confianza' : 'Trust'}
           </button>
         </div>
         <div class="pane">
-          ${this._tab === 'chain'
-            ? this.renderChain(chain)
-            : this._tab === 'sig'
-              ? this.renderSigTab(s)
-              : this.renderTrust(s)}
+          ${
+            this._tab === 'chain'
+              ? this.renderChain(chain)
+              : this._tab === 'sig'
+                ? this.renderSigTab(s)
+                : this.renderTrust(s)
+          }
         </div>
       </div>
     `
@@ -1386,7 +1481,11 @@ export class AttesttoSignatureCard extends LitElement {
         c.source === 'trust-store'
           ? html`<span class="src" title=${trustStoreLabel}>${trustStoreLabel}</span>`
           : ''
-      return html`<div class="chain-node ${i === last ? 'leaf' : ''}" style="padding-left:${i * 14}px" title=${c.name}>
+      return html`<div
+        class="chain-node ${i === last ? 'leaf' : ''}"
+        style="padding-left:${i * 14}px"
+        title=${c.name}
+      >
         <span class="ico">${chainIcon(i, last)}</span>${c.name}${srcBadge}<span class="sub">
           ${c.issuer ? ` · ${c.issuer}` : ''}${range}${c.country ? ` · ${c.country}` : ''}</span
         >
@@ -1402,7 +1501,10 @@ export class AttesttoSignatureCard extends LitElement {
       // If the value is a clean date it already shows on the main face; if it's
       // a raw serial/DN/reference we relocate it HERE (raw, clearly labeled).
       const clean = fmtDate(s.signedAt, this._lang)
-      kv.push([clean ? 'signed' : (es ? 'firma (ref. sin procesar)' : 'signed (raw reference)'), s.signedAt])
+      kv.push([
+        clean ? 'signed' : es ? 'firma (ref. sin procesar)' : 'signed (raw reference)',
+        s.signedAt,
+      ])
     }
     if (s.tech.reason) kv.push(['commitment', s.tech.reason])
     if (s.method) kv.push(['method', s.method])
@@ -1410,7 +1512,8 @@ export class AttesttoSignatureCard extends LitElement {
     // `pdf producer` (PDF /Producer) is just the last app that wrote the file
     // bytes, not the signing authority — noise in a signature card, so it is
     // intentionally NOT displayed. It stays in tech.producer for the JSON export.
-    if (s.cert?.validFrom || s.cert?.validTo) kv.push(['cert valid', `${s.cert?.validFrom ?? '?'} – ${s.cert?.validTo ?? '?'}`])
+    if (s.cert?.validFrom || s.cert?.validTo)
+      kv.push(['cert valid', `${s.cert?.validFrom ?? '?'} – ${s.cert?.validTo ?? '?'}`])
     if (s.tech.digestAlgorithm) kv.push(['digest', s.tech.digestAlgorithm])
     if (s.tech.byteRange) kv.push(['byte range', `[${s.tech.byteRange.join(', ')}]`])
     if (s.tech.pkcs7Size) kv.push(['PKCS#7 size', `${s.tech.pkcs7Size} bytes`])
@@ -1421,7 +1524,12 @@ export class AttesttoSignatureCard extends LitElement {
     if (s.tech.location) kv.push(['location', s.tech.location])
     if (s.ltv) {
       kv.push(['LTV tier', s.ltv.tier])
-      kv.push(['timestamp', s.ltv.hasTimestamp ? `${s.ltv.timestampAt ?? 'yes'}${s.ltv.timestampAuthority ? ` · ${s.ltv.timestampAuthority}` : ''}` : 'none'])
+      kv.push([
+        'timestamp',
+        s.ltv.hasTimestamp
+          ? `${s.ltv.timestampAt ?? 'yes'}${s.ltv.timestampAuthority ? ` · ${s.ltv.timestampAuthority}` : ''}`
+          : 'none',
+      ])
       kv.push(['revocation', s.ltv.revocationSource])
     }
     return html`
@@ -1429,21 +1537,28 @@ export class AttesttoSignatureCard extends LitElement {
         ${kv.map(([k, v]) => {
           const hint = this.techHint(k)
           return html`<span class="k"
-              >${k}${hint
-                ? html`<span class="hint" tabindex="0" role="button" aria-label=${hint}
-                    >?<span class="tip">${hint}</span></span
-                  >`
-                : ''}</span
+              >${k}${
+                hint
+                  ? html`<span class="hint" tabindex="0" role="button" aria-label=${hint}
+                      >?<span class="tip">${hint}</span></span
+                    >`
+                  : ''
+              }</span
             ><span class="v">${v}</span>`
         })}
       </div>
       <div class="copy-row">
-        ${s.tech.pkcs7Hex
-          ? html`<button class="copy-btn" @click=${() => this.copy(s.tech.pkcs7Hex!, 'pkcs7')}>
-              ${this._copied === 'pkcs7' ? '✓ copied' : '⧉ Copy PKCS#7'}
-            </button>`
-          : ''}
-        <button class="copy-btn" @click=${() => this.copy(JSON.stringify(this.debugJson(s), null, 2), 'json')}>
+        ${
+          s.tech.pkcs7Hex
+            ? html`<button class="copy-btn" @click=${() => this.copy(s.tech.pkcs7Hex!, 'pkcs7')}>
+                ${this._copied === 'pkcs7' ? '✓ copied' : '⧉ Copy PKCS#7'}
+              </button>`
+            : ''
+        }
+        <button
+          class="copy-btn"
+          @click=${() => this.copy(JSON.stringify(this.debugJson(s), null, 2), 'json')}
+        >
           ${this._copied === 'json' ? '✓ copied' : '⧉ Copy details (JSON)'}
         </button>
       </div>
@@ -1460,17 +1575,25 @@ export class AttesttoSignatureCard extends LitElement {
         label: es ? 'Anclas de confianza (repositorio)' : 'Trust anchors (repository)',
         url: 'https://github.com/Attestto-com/attestto-trust',
       },
-      { label: es ? 'Resolver de confianza' : 'Trust resolver', url: 'https://resolver.attestto.com' },
+      {
+        label: es ? 'Resolver de confianza' : 'Trust resolver',
+        url: 'https://resolver.attestto.com',
+      },
     ]
     return html`
       <p class="trust-intro">
-        ${es
-          ? 'Verifica de forma independiente el origen de las raíces de confianza usadas para validar esta firma.'
-          : 'Independently check where the trust roots used to validate this signature come from.'}
+        ${
+          es
+            ? 'Verifica de forma independiente el origen de las raíces de confianza usadas para validar esta firma.'
+            : 'Independently check where the trust roots used to validate this signature come from.'
+        }
       </p>
       <div class="trust-links">
         ${links.map(
-          (l) => html`<a class="trust-link" href=${l.url} target="_blank" rel="noopener noreferrer">↗ ${l.label}</a>`,
+          (l) =>
+            html`<a class="trust-link" href=${l.url} target="_blank" rel="noopener noreferrer"
+              >↗ ${l.label}</a
+            >`,
         )}
       </div>
     `

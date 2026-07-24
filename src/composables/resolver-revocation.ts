@@ -26,6 +26,13 @@ export interface ResolverRevocationResult {
   status: 'good' | 'revoked' | 'unknown' | 'unreachable'
   message: string
   checkedAt: string
+  /**
+   * ISO 8601 instant until which this revocation list is cached in the browser
+   * (the CRL's own nextUpdate, or a one-hour floor when stale/absent). Null when
+   * the resolver was unreachable so there is nothing cached. Lets the UI tell the
+   * user that further checks are instant and offline until this date.
+   */
+  cachedUntil: string | null
 }
 
 interface CrlResponse {
@@ -131,8 +138,11 @@ export async function checkRevocationViaResolver(
         ? 'No se pudo contactar el resolver de Attestto desde el navegador.'
         : 'Could not reach the Attestto resolver from the browser.',
       checkedAt,
+      cachedUntil: null,
     }
   }
+
+  const cachedUntil = new Date(data.expiresAt).toISOString()
 
   if (target && data.revoked.has(target)) {
     return {
@@ -141,6 +151,7 @@ export async function checkRevocationViaResolver(
         ? 'Revocado: el certificado del firmante figura en la lista de revocación.'
         : 'Revoked: the signer certificate is on the revocation list.',
       checkedAt,
+      cachedUntil,
     }
   }
 
@@ -151,6 +162,7 @@ export async function checkRevocationViaResolver(
         ? 'No revocado en la lista, pero no se pudo verificar la firma de la lista.'
         : 'Not on the list, but the list signature could not be verified.',
       checkedAt,
+      cachedUntil,
     }
   }
   if (data.stale) {
@@ -160,6 +172,7 @@ export async function checkRevocationViaResolver(
         ? 'No revocado, pero la lista de revocación está vencida.'
         : 'Not revoked, but the revocation list is expired.',
       checkedAt,
+      cachedUntil,
     }
   }
 
@@ -169,6 +182,7 @@ export async function checkRevocationViaResolver(
       ? 'No revocado (lista de revocación verificada).'
       : 'Not revoked (verified revocation list).',
     checkedAt,
+    cachedUntil,
   }
 }
 
