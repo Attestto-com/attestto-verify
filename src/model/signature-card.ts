@@ -333,9 +333,10 @@ export function capabilitiesFromCert(
  * Official third-party verifier for a signature, derived from its
  * jurisdiction / method. Returns null when we have no trustworthy endpoint.
  *
- * NOTE: confirm the exact CR endpoint before shipping — `firmadigital.go.cr`
- * is the program site; the concrete "validate a signed document" URL should be
- * pinned so the "verify on the official site" link never points somewhere wrong.
+ * Where a country publishes a public document validator (ES VALIDe, EU DSS), we
+ * link to it — an independent third-party check. Costa Rica has no such public
+ * validator, so its badge links to the Attestto trust directory page for CR,
+ * which shows the CA roots the signature chains to.
  */
 export function officialVerifierFor(opts: {
   country: string | null
@@ -347,9 +348,10 @@ export function officialVerifierFor(opts: {
     return { name: 'Attestto resolver', url: 'https://resolver.attestto.com' }
   }
   if (country === 'CR') {
-    // NOTE(confirm-before-ship): pin the exact CR signed-document validator
-    // URL; `firmadigital.go.cr` is the program site, not the validate endpoint.
-    return { name: 'Firma Digital CR', url: 'https://firmadigital.go.cr' }
+    // CR has no public online document validator, so link to the trust directory
+    // page for CR (the CA roots this signature chains to) rather than the program
+    // homepage, which was a dead end.
+    return { name: 'Firma Digital CR', url: 'https://trust.attestto.org/cr' }
   }
   if (country === 'ES') {
     return { name: 'VALIDe (Gobierno de España)', url: 'https://valide.redsara.es' }
