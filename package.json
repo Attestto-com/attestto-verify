@@ -1,7 +1,7 @@
 {
   "name": "@attestto/verify",
   "version": "0.1.1",
-  "description": "Web Components for document verification and signing \u2014 verify.attestto.com",
+  "description": "Web Components for document verification and signing — verify.attestto.com",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/attestto-verify.js",
@@ -63,7 +63,6 @@
   },
   "dependencies": {
     "@attestto/id-wallet-adapter": "^0.4.1",
-    "@attestto/trust": "link:../attestto-trust",
     "asn1js": "^3.0.10",
     "lit": "^3.3.3",
     "pdf-lib": "^1.17.1",
