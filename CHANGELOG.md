@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Installing this package from its git repository produced a package with no build output, and the install still succeeded.** `dist/` is gitignored and the only build hook was `prepublishOnly`, which npm runs for a registry publish and **not** for a git dependency. A consumer writing `"@attestto/verify": "github:Attestto-com/attestto-verify#main"` got `exit 0`, `added 20 packages`, and a directory containing `LICENSE`, `package.json` and `README.md` only. `main` points at `dist/attestto-verify.js`, so it failed at import rather than at install. Adding `prepare` makes npm build after cloning: verified by installing the branch as a git dependency and confirming `dist/attestto-verify.js` is present.
+- The script is `npm run build` rather than `pnpm build`, even though this repo is pnpm-managed. `prepare` runs in the **consumer's** environment with the consumer's package manager, and npm ships with Node while pnpm may not be present.
+
+### Notes
+- This makes a git dependency a working way to consume the package before it is published, which unblocks `attestto-desktop` (it currently uses `link:../attestto-verify`, a local filesystem path). Pin a tag or commit rather than `#main`, since a branch ref silently follows whatever lands next.
+- `prepare` also runs on every local install in this repo, so `pnpm install` now builds. That is intentional (a package that cannot build should not install cleanly), but it is a behaviour change for anyone working here.
+
 ## [0.1.2] - 2026-08-12
 
 Packaging fix. `0.1.1` was published with `"@attestto/trust": "link:../attestto-trust"` in its dependencies. `link:` is a local-filesystem protocol that resolves only against a sibling `../attestto-trust` checkout, so the published `0.1.1` was uninstallable for every external consumer. The Pages workflow hid it by checking out `attestto-trust` and symlinking it as a sibling, which is why CI stayed green while the registry artifact was broken.
