@@ -1,0 +1,97 @@
+name: CI
+
+# This repo had no CI at all. Its only workflow was `pages.yml`, a deploy that
+# runs on push to main, so no pull request has ever been gated: `lint`, `test`
+# and `build` were declared in package.json and never ran in automation. The
+# package is published to npm as @attestto/verify and also serves
+# verify.attestto.com, so both the published artifact and a live site were
+# reaching users through a repo with no PR gate.
+#
+# Every branch and every pull request. A gate that only covers the last hop into
+# main is not a gate: the same narrow trigger let 37 commits reach
+# attestto-creds-extension ungated, and let a stacked PR merge unchecked in
+# attestto-did-resolver.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Required only while package.json still carries
+      # `"@attestto/trust": "link:../attestto-trust"`, which resolves against a
+      # sibling directory and therefore makes `pnpm install` fail anywhere that
+      # sibling is absent. That is the defect ATT-1231 / PR #34 removes.
+      # DELETE THIS STEP AND THE CHECKOUT ABOVE IT WHEN THAT PR LANDS — leaving
+      # them would keep CI passing for a dependency graph no consumer can
+      # reproduce, which is exactly how the broken publish went unnoticed.
+      - uses: actions/checkout@v4
+        with:
+          repository: Attestto-com/attestto-trust
+          path: attestto-trust-checkout
+
+      # MOVED OUT of the workspace, not symlinked from inside it. `pages.yml`
+      # leaves the checkout at $GITHUB_WORKSPACE/attestto-trust-checkout, which
+      # puts a second repo inside this one: vitest's default include then globs
+      # that repo's specs too, so `pnpm test` collected 30 files instead of 11
+      # and failed on attestto-trust's own devDependencies (node-forge,
+      # reflect-metadata) which are not installed here. `mv` keeps the sibling
+      # path the `link:` protocol needs while leaving the workspace clean.
+      - name: Place attestto-trust as a sibling, outside the workspace
+        run: mv attestto-trust-checkout ../attestto-trust
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Runs FIRST and deliberately: it proves the gates below can fail, by
+      # seeding a violation of each one and requiring a non-zero exit. Every
+      # blocker found in the 2026-08-11 audit was a control that existed and had
+      # never executed, so "the step is present" stopped counting as evidence.
+      # See scripts/gate-self-test.mjs.
+      - name: Gate self-test
+        run: pnpm gate-self-test
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test
+        run: pnpm test
+
+      # Runs AFTER the tests, so a failure lands on the cheapest step first.
+      - name: Build
+        run: pnpm run build
+
+      # This package is published to npm. A tarball that omits dist/ breaks every
+      # consumer, and `npm publish` is the wrong place to discover it.
+      #
+      # `pack`, NOT `publish --dry-run`: the latter also checks the registry and
+      # fails with "You cannot publish over the previously published versions"
+      # for any version already released, which is the normal state of main and
+      # would leave this red forever.
+      - name: Validate the publishable tarball
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          tarball="$(find "$RUNNER_TEMP" -name 'attestto-verify-*.tgz' | head -1)"
+          echo "packed: $tarball"
+          if ! tar -tzf "$tarball" | grep -q '^package/dist/attestto-verify.js$'; then
+            echo "::error::the tarball does not contain dist/attestto-verify.js, the package main entry"
+            tar -tzf "$tarball" | head -40
+            exit 1
+          fi

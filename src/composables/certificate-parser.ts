@@ -16,7 +16,6 @@ import {
   decodeString,
   decodeTime,
   decodeInteger,
-  findChild,
   findContext,
   ASN1_TAG,
   type Asn1Node,
@@ -492,11 +491,11 @@ function parseCertificate(node: Asn1Node): CertificateInfo | null {
   }
 
   // subject Name
-  const subjectNode = tbs.children[idx++]
+  const subjectNode = tbs.children[idx]
   const subjectFields = subjectNode ? parseRdnSequence(subjectNode) : {}
 
-  // Skip subjectPublicKeyInfo
-  idx++
+  // subjectPublicKeyInfo is not read here. The positional walk ends at the
+  // subject; extensions below are located with findContext(tbs, 3) instead.
 
   // Parse extensions [3] for BasicConstraints, policies, and CR-specific attributes
   let isCa = false

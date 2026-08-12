@@ -7,7 +7,7 @@
  *   3. Plugin overwrite protection — frozen plugins can't be silently replaced
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   attesttoPlugins,
   _resetPluginRegistry,

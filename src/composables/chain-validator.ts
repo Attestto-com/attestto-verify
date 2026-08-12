@@ -140,7 +140,7 @@ function certToResolved(
   const validTo = toIso(cert.notAfter)
 
   // Serial number as uppercase hex (matches certificate-parser's rendering).
-  let serialNumber = ''
+  let serialNumber: string
   try {
     const bytes = new Uint8Array(cert.serialNumber.valueBlock.valueHexView)
     serialNumber = Array.from(bytes)
@@ -152,7 +152,7 @@ function certToResolved(
   }
 
   // Raw DER (lowercase hex) — canonical dedupe key.
-  let rawDerHex = ''
+  let rawDerHex: string
   try {
     const der = cert.toSchema().toBER(false)
     const bytes = new Uint8Array(der)

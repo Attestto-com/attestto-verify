@@ -165,6 +165,7 @@ export async function signPdfSelfAttested(
     } catch (err) {
       throw new Error(
         `Ed25519 not supported in this browser. Use a recent Chrome/Firefox/Safari. (${(err as Error).message})`,
+        { cause: err },
       )
     }
 

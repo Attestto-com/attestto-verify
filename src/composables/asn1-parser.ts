@@ -97,23 +97,18 @@ export function parseAsn1(data: Uint8Array, offset = 0): Asn1Node {
   }
 }
 
-/**
- * Parse all top-level nodes from a byte range (for parsing certificate sets).
- */
-export function parseAsn1All(data: Uint8Array): Asn1Node[] {
-  const nodes: Asn1Node[] = []
-  let offset = 0
-  while (offset < data.length) {
-    const node = parseAsn1(data, offset)
-    nodes.push(node)
-    const headerSize = node.contentOffset - offset
-    offset += headerSize + node.contentLength
-    // Fix: parseAsn1 returns contentOffset relative to the passed data's start in memory
-    // We need to recalculate based on the subarray
-    break // For top-level, parse one at a time
-  }
-  return nodes
-}
+// SOC-199. `parseAsn1All` was removed here. It was documented "parse all
+// top-level nodes from a byte range (for parsing certificate sets)" and
+// returned an array, but `break`ed unconditionally on the first iteration, so
+// it returned at most one node for any input. A caller handed a certificate SET
+// would have silently processed only the first certificate.
+//
+// It was removed rather than repaired: it had no callers here or in
+// attestto-x509-core (where the same function was duplicated byte-identically),
+// it was never re-exported from `src/index.ts`, so it is not part of the
+// published API surface. Repairing an uncalled function would have meant
+// shipping an untested loop. If a certificate-set parser is needed later, write
+// it against a multi-element SEQUENCE fixture that fails before the fix.
 
 /**
  * Parse DER length encoding.
