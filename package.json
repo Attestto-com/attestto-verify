@@ -58,6 +58,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run lint && npm test && npm run build",
     "gate-self-test": "node scripts/gate-self-test.mjs"
   },
