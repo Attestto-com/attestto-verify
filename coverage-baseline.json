@@ -1,6 +1,6 @@
 {
   "generatedBy": "scripts/coverage-ratchet.mjs",
-  "nodeMajor": 25,
+  "nodeMajor": 22,
   "metrics": {
     "statements": 37.76,
     "branches": 67.02,
