@@ -102,5 +102,11 @@
         "content": "import { it, expect } from 'vitest'\nit('is a deliberate failure', () => { expect(1).toBe(2) })\n"
       }
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.23 <9",
+      "js-yaml": ">=4.3.1 <5"
+    }
   }
 }

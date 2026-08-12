@@ -1,0 +1,66 @@
+# Dependabot configuration — ATT-1249
+#
+# This repo had NO config, so it received Dependabot ALERTS (those are on by
+# default and need none) and no version-update PRs at all: alerts accumulated
+# with nothing opening a fix. The same gap was found in attestto-tls-audit, and
+# from the same direction — every sibling package had a config and these did
+# not.
+#
+# Grouping changes PR volume, not alert volume. A smaller PR count here is not
+# evidence of fewer vulnerabilities.
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    # TypeScript 7 cannot be installed in this repo. `typescript-eslint` caps
+    # its peer at `>=4.8.4 <6.1.0` as of 8.67.0 (the current latest), so a major
+    # bump of `typescript` fails to install with ERESOLVE before any gate runs.
+    # No pin of typescript-eslint fixes it: support for TS 7 has not shipped at
+    # any version.
+    #
+    # Minors and patches still flow. REMOVE THIS ENTRY once typescript-eslint
+    # declares a peer range that admits TypeScript 7.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    # A dependency lands in the FIRST group it matches, so the order below is
+    # deliberate. Majors are separated because they need a human to read a
+    # changelog; minors and patches do not.
+    groups:
+      # eslint and typescript-eslint are coupled by a peer range, so their
+      # majors have to move together or neither installs. Listed FIRST, and
+      # without an update-types filter, so every update to them lands here
+      # rather than being split across the dev and major groups.
+      lint-toolchain:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+      production-dependencies:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      development-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+      major-updates:
+        update-types: ["major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    groups:
+      github-actions:
+        patterns: ["*"]
