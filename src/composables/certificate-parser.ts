@@ -1001,7 +1001,7 @@ export async function parseCertificateChain(
     signerEmail: null,
     cryptographicallyVerified: false,
     cryptoVerificationWarning:
-      'Certificate parser v1.5: ASN.1 structure parsed only — chain signatures NOT cryptographically verified against bundled trust anchors. Treat results as informational, not as proof of trust. v2 (pkijs) wiring tracked in ATT-209.',
+      'No certificate chain was parsed, so nothing was cryptographically verified. Treat results as informational, not as proof of trust.',
     pkiDid: null,
     trustSource: null,
     nationalIdFormat: null,
@@ -1056,9 +1056,13 @@ export async function parseCertificateChain(
       log.info(`[cert] Derived did:pki: ${pkiDid} (via ${pkiDids.derivedVia})`)
     }
 
-    // ── Chain validation: resolver-backed with bundled fallback ──
-    // Uses resolver.attestto.com for dynamic trust anchor resolution (ATT-438),
-    // falling back to bundled BCCR trust anchors (ATT-209).
+    // ── Chain validation: resolver-backed, no bundled fallback ──
+    // Trust anchors are resolved on demand from resolver.attestto.com
+    // (ATT-438). There is deliberately NO bundled-cert fallback: the resolver
+    // returns key fingerprints, which are matched against the CA certs this
+    // PDF itself embeds. If nothing matches, the chain stays unverified and
+    // the signature does not reach 'verified' — see
+    // no-bundled-trust.regression.spec.ts.
     let cryptographicallyVerified = false
     let cryptoVerificationWarning: string | null =
       'Chain validation has not been attempted (no signer cert).'

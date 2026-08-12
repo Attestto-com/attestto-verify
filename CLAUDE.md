@@ -6,9 +6,9 @@
 
 - TypeScript + Lit Web Components (W3C standard)
 - Build: Vite
-- Testing: Vitest (19+ tests)
+- Testing: Vitest, with a coverage ratchet (`pnpm coverage:check`) enforced pre-push and in CI
 - PDF: pdf-lib (parsing), pkijs (PKCS#7/X.509 crypto)
-- Trust: @attestto/trust (multi-country PKI cert store)
+- Trust: resolved at runtime via did:pki — the FE bundles NO certs (see "No bundled fallback")
 - DID: did:pki resolution via resolver.attestto.com
 
 ## Commands
@@ -30,7 +30,6 @@
 - `src/components/` — Lit Web Components
 - `src/composables/` — framework-agnostic logic (PKI, PDF, signing)
 - `src/plugins/` — plugin implementations (did:pki, did:web, did:jwk, did:sns)
-- `src/trust-store/` — bundled trust roots (CR only, fallback)
 - `src/styles/` — component CSS
 - `src/i18n.ts` — internationalization
 
@@ -52,7 +51,21 @@ Verify uses **did:pki resolution** for multi-country trust anchor lookup instead
 - `src/composables/chain-validator.ts` — chain validation against resolved keys
 - `src/plugins/did-verifier.ts` — plugin system: did:pki, did:web, did:jwk, did:sns
 
-**Fallback:** if resolver unreachable, fall back to locally bundled CR certs in `src/trust-store/`.
+**No bundled fallback — resolver-only, and this is non-negotiable.** There is no
+`src/trust-store/`, and the FE trust path must never `import ... from '@attestto/trust'`:
+doing so bundles every promoted country's `ALL_CERTS` into the worker, which is the
+regression that shipped ~1 MB gz of PEM to every visitor. `src/composables/no-bundled-trust.regression.spec.ts`
+pins this at the source level and will fail the build if the import returns.
+
+If the resolver is unreachable, the chain simply does not reach a trust anchor and the
+signature stays at `parsed` with an honest error. Failing closed IS the design — there is
+nothing to fall back to.
+
+**Candidate anchors come only from the PDF's own embedded CA certs.** The resolver returns
+key *fingerprints*; `chain-validator.ts` matches the embedded intermediate/CA certs against
+those fingerprints and uses the matched cert as the pkijs trust anchor. A consequence worth
+knowing: a PDF that embeds only the signer leaf has no candidate anchor at all, so no
+`did:pki` is derivable and the resolver is never contacted.
 
 ### Related repos
 - `@attestto/trust` — multi-country PKI cert store (source of truth)
@@ -65,6 +78,8 @@ Verify uses **did:pki resolution** for multi-country trust anchor lookup instead
 - This is a public repo (Apache 2.0) — no PII, no private keys, no internal references
 - Web Component must work standalone in any HTML page — no framework dependency leaks
 - All crypto runs client-side — never send document content to any server
-- Trust anchors come from did:pki resolution first, local bundle as fallback only
+- Trust anchors come from did:pki resolution ONLY — never bundle national PKI certs in the FE
+- Coverage may go up, never down: `pnpm coverage:check` runs pre-push and in CI against
+  `coverage-baseline.json`. Raise the baseline with `pnpm coverage:update`; never hand-edit it
 - Do not run `pnpm dev` — user owns the dev server
 - CSS uses `::part()` for external styling — don't break part names
