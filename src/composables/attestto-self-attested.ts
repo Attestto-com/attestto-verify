@@ -221,11 +221,66 @@ function canonicalPayloadBytes(sig: AttesttoPdfSignature): Uint8Array {
 }
 
 /**
+ * Ed25519 small-order (low-order) point encodings, per libsodium's
+ * `ge25519_has_small_order` blocklist. These are the points of order
+ * 1, 2, 4 and 8 on the curve, plus the non-canonical encodings of the
+ * same points (p-1, p, p+1).
+ *
+ * SECURITY (why this exists): Web Crypto implements the RFC 8032
+ * *cofactored* verification equation, which ACCEPTS a small-order public
+ * key for a large fraction of messages. Measured against Node 25's Web
+ * Crypto: an all-zero public key with an all-zero signature verifies for
+ * roughly 1 message in 4. An attacker needs no private key at all —
+ * they craft a self-attested payload, set `publicKey` and `proofValue`
+ * to zeros, and nudge any field (e.g. `signedAt`) until one lands. That
+ * forgery would otherwise reach `level: 'verified'`.
+ *
+ * A real signer's public key is a large-order point and never appears
+ * here, so rejecting these costs nothing legitimate.
+ */
+const ED25519_SMALL_ORDER_KEYS: readonly string[] = [
+  // order 4 — the all-zero encoding
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  // order 1 — the neutral element
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  // order 8
+  '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+  // order 8
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  // p-1 — order 2
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  // p — order 4, non-canonical
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  // p+1 — order 1, non-canonical
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+]
+
+/**
+ * True if `pubkey` is a small-order Ed25519 point, i.e. unusable as a
+ * genuine signing key and exploitable for signature forgery.
+ *
+ * The comparison clears bit 255 (the x-coordinate sign bit), because
+ * every blocklisted point is equally forgeable with either sign, and a
+ * naive byte compare would miss the sign-flipped variants.
+ */
+export function isSmallOrderEd25519Key(pubkey: Uint8Array): boolean {
+  if (pubkey.length !== 32) return false
+  const normalized = new Uint8Array(pubkey)
+  normalized[31] &= 0x7f
+  const hex = Array.from(normalized, (b) => b.toString(16).padStart(2, '0')).join('')
+  return ED25519_SMALL_ORDER_KEYS.includes(hex)
+}
+
+/**
  * Verify an ed25519 signature via Web Crypto. Available in Chrome 113+,
  * Firefox 130+, Safari 17+, and Node 19+. We catch and degrade
  * gracefully on older browsers — the signature is reported as `parsed`
  * rather than `verified` so the user still sees the credential, just
  * without the green crypto badge.
+ *
+ * Returns `false` (a hard verification failure, NOT `null`) for a
+ * small-order public key: that is a forgery attempt, not a missing
+ * capability, and it must never degrade to the softer `parsed` level.
  */
 async function verifyEd25519(
   pubkey: Uint8Array,
@@ -233,6 +288,13 @@ async function verifyEd25519(
   msgBytes: Uint8Array,
 ): Promise<boolean | null> {
   if (typeof crypto === 'undefined' || !crypto.subtle) return null
+  if (isSmallOrderEd25519Key(pubkey)) {
+    log.warn(
+      '[attestto-self-attested] ✗ REJECTED: small-order Ed25519 public key — ' +
+        'this key cannot produce a genuine signature and is a known forgery vector',
+    )
+    return false
+  }
   try {
     const key = await crypto.subtle.importKey(
       'raw',
