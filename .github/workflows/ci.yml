@@ -27,28 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Required only while package.json still carries
-      # `"@attestto/trust": "link:../attestto-trust"`, which resolves against a
-      # sibling directory and therefore makes `pnpm install` fail anywhere that
-      # sibling is absent. That is the defect ATT-1231 / PR #34 removes.
-      # DELETE THIS STEP AND THE CHECKOUT ABOVE IT WHEN THAT PR LANDS — leaving
-      # them would keep CI passing for a dependency graph no consumer can
-      # reproduce, which is exactly how the broken publish went unnoticed.
-      - uses: actions/checkout@v4
-        with:
-          repository: Attestto-com/attestto-trust
-          path: attestto-trust-checkout
-
-      # MOVED OUT of the workspace, not symlinked from inside it. `pages.yml`
-      # leaves the checkout at $GITHUB_WORKSPACE/attestto-trust-checkout, which
-      # puts a second repo inside this one: vitest's default include then globs
-      # that repo's specs too, so `pnpm test` collected 30 files instead of 11
-      # and failed on attestto-trust's own devDependencies (node-forge,
-      # reflect-metadata) which are not installed here. `mv` keeps the sibling
-      # path the `link:` protocol needs while leaving the workspace clean.
-      - name: Place attestto-trust as a sibling, outside the workspace
-        run: mv attestto-trust-checkout ../attestto-trust
-
       - uses: pnpm/action-setup@v4
         with:
           version: 9

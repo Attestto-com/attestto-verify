@@ -11,9 +11,6 @@ importers:
       '@attestto/id-wallet-adapter':
         specifier: ^0.4.1
         version: 0.4.1
-      '@attestto/trust':
-        specifier: link:../attestto-trust
-        version: link:../attestto-trust
       asn1js:
         specifier: ^3.0.10
         version: 3.0.10
