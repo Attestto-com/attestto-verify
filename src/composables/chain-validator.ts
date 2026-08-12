@@ -459,6 +459,12 @@ export async function validateChainWithResolver(
   pkiDid?: string | null,
   resolverOptions?: PkiResolverOptions,
 ): Promise<ChainValidationResult> {
+  // Tracks WHY resolver-backed validation failed, so the returned error can
+  // tell the three states apart. They were previously indistinguishable — all
+  // three reported "no matching key fingerprint", including the case where the
+  // fingerprint matched perfectly and the case where the resolver was down.
+  let failureDetail: string | null = null
+
   // Try resolver-backed validation first if we have a did:pki
   if (pkiDid) {
     try {
@@ -500,14 +506,23 @@ export async function validateChainWithResolver(
 
         // Fingerprint matched but chain validation failed — cert might be
         // the wrong level in the hierarchy. Log and try the parent DID below.
+        failureDetail =
+          `the issuing CA's key fingerprint MATCHED the resolver record ` +
+          `(${pkiDid} → ${matchedKey.keyId}), but the certificate path could not be ` +
+          `built from the signer up to it: ${result.error}`
         log.warn(
           `[chain-validator] Fingerprint matched but chain validation failed: ${result.error}.`,
         )
       } else if (resolution) {
+        failureDetail =
+          `the resolver returned ${resolution.keys.length} key(s) for ${pkiDid}, but none ` +
+          `matched the fingerprint of any CA certificate embedded in this document`
         log.info(
           `[chain-validator] Resolver returned ${resolution.keys.length} key(s) ` +
             `but no fingerprint matched. Trying parent DID if available.`,
         )
+      } else {
+        failureDetail = `the resolver returned no DID document for ${pkiDid}`
       }
 
       // Also try resolving the parent DID (e.g., policy CA) if the issuing CA
@@ -544,6 +559,9 @@ export async function validateChainWithResolver(
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
+      // Most likely the resolver was unreachable. Say so, rather than
+      // reporting it as a fingerprint mismatch.
+      failureDetail = `the resolver could not be reached or returned an unusable response (${message})`
       log.warn(`[chain-validator] Resolver-backed validation error: ${message}.`)
     }
   }
@@ -556,13 +574,32 @@ export async function validateChainWithResolver(
     anchorCommonName: null,
     error: pkiDid
       ? 'Certificate structure parsed, but the chain could not be linked to a ' +
-        'resolver-verified trust anchor (no matching key fingerprint from ' +
-        'resolver.attestto.com for the issuing did:pki).'
+        `resolver-verified trust anchor: ${failureDetail ?? 'reason unavailable'}.`
       : 'Certificate structure parsed, but no issuing did:pki was derivable, ' +
         'so the chain could not be linked to a resolver-verified trust anchor.',
     chainLength: 0,
     trustSource: undefined,
   }
+}
+
+/**
+ * Byte-exact certificate identity check over the raw DER (tbsView is the
+ * signed portion, which is what actually identifies the certificate).
+ *
+ * Used to prove the validated path really starts at the signer, so a
+ * subject/CN comparison would be worthless here — CNs are attacker-chosen.
+ */
+function isSameCertificate(
+  a: import('pkijs').Certificate,
+  b: import('pkijs').Certificate,
+): boolean {
+  const av = new Uint8Array(a.tbsView)
+  const bv = new Uint8Array(b.tbsView)
+  if (av.length !== bv.length) return false
+  for (let i = 0; i < av.length; i++) {
+    if (av[i] !== bv[i]) return false
+  }
+  return true
 }
 
 /**
@@ -623,12 +660,23 @@ async function validateChainWithDynamicAnchor(
     }
 
     // Build the chain validation engine with the resolver-matched anchor as the
-    // ONLY trusted cert. The candidate pool is the signer + PDF-embedded
-    // intermediates + the anchor itself, so pkijs can complete the chain from
-    // the signer up to the resolver-verified anchor.
+    // ONLY trusted cert.
+    //
+    // ORDER IS LOAD-BEARING (do not "tidy" this array). pkijs builds its
+    // working pool as [...trustedCerts, ...certs], dedupes it, and then takes
+    // the LAST element as the end-entity to validate
+    // (pkijs/build/index.es.js:14929-14942). The signer MUST therefore be last.
+    //
+    // Putting the signer FIRST — as this did until the CR Firma Digital bug —
+    // makes pkijs treat whichever CA lands last as the leaf and try to build a
+    // path upward from an intermediate, which fails with "Incorrect name
+    // chaining" or "No valid certificate paths found" on every real CR chain.
+    //
+    // The anchor is deliberately NOT repeated in `certs`: pkijs already
+    // prepends `trustedCerts`, and appending it again shifts the leaf.
     const engine = new pkijs.CertificateChainValidationEngine({
       trustedCerts: [anchorCert],
-      certs: [signerCert, ...intermediates, anchorCert],
+      certs: [...intermediates, signerCert],
     })
 
     const result = await engine.verify()
@@ -643,6 +691,25 @@ async function validateChainWithDynamicAnchor(
     }
 
     const builtChain = result.certificatePath || []
+
+    // SECURITY FLOOR: pkijs picks the leaf POSITIONALLY, and that behaviour is
+    // undocumented — a dependency bump could shift it. If the validated path
+    // does not actually start at OUR signer, then we proved something true
+    // about some other certificate (e.g. that an intermediate chains to the
+    // anchor) and learned nothing about this signature. Refuse to report it as
+    // trusted. Without this guard, anchoring one cert higher in the hierarchy
+    // returns trusted:true for a FORGED signer — or for no signer at all.
+    const leaf = builtChain[0]
+    if (!leaf || !isSameCertificate(leaf, signerCert)) {
+      return {
+        trusted: false,
+        anchorCommonName: anchorCn,
+        error:
+          'Chain validation returned a path that does not begin at the signer ' +
+          'certificate — refusing to report it as trusted.',
+        chainLength: 0,
+      }
+    }
     const root = builtChain[builtChain.length - 1]
     let rootCn: string | null = null
     if (root) {
