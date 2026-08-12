@@ -58,6 +58,9 @@ jobs:
       # blocker found in the 2026-08-11 audit was a control that existed and had
       # never executed, so "the step is present" stopped counting as evidence.
       # See scripts/gate-self-test.mjs.
+      - name: TEMP diagnostic - run tests verbosely
+        run: pnpm test --reporter=verbose 2>&1 | tail -60
+
       - name: Gate self-test
         run: pnpm gate-self-test
 
