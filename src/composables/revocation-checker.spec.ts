@@ -11,7 +11,6 @@ import {
   parseCrl,
   checkRevocation,
   liveOcspCheck,
-  type OcspSingleResponse,
 } from './revocation-checker.js'
 import { extractDss } from './dss-parser.js'
 
@@ -379,7 +378,7 @@ describe('DSS parser (ATT-313)', () => {
   it('extracts stream objects referenced by /DSS /OCSPs', () => {
     // Build a minimal PDF with a DSS pointing to an object with a stream
     const streamContent = new Uint8Array([0x30, 0x03, 0x0a, 0x01, 0x00]) // SEQUENCE { ENUM 0 }
-    const streamHex = Array.from(streamContent).map(b => String.fromCharCode(b)).join('')
+    const _streamHex = Array.from(streamContent).map(b => String.fromCharCode(b)).join('')
 
     const pdf = new TextEncoder().encode(
       `%PDF-1.7\n` +

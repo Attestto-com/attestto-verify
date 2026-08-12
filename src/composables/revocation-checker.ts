@@ -52,7 +52,6 @@ import {
   parseAsn1,
   decodeInteger,
   decodeTime,
-  findChild,
   findContext,
   ASN1_TAG,
   type Asn1Node,

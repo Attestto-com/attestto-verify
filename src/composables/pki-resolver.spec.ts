@@ -13,7 +13,6 @@ import {
   resolveAndMatchChain,
   _resetResolverCache,
   type PkiResolutionResult,
-  type ResolvedPkiKey,
 } from './pki-resolver'
 
 // Silence logger

@@ -344,7 +344,7 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       if (!m) return null
 
       // Extract balanced parentheses content
-      let start = m.index + m[0].length
+      const start = m.index + m[0].length
       let depth = 1
       let end = start
       while (end < dict.length && depth > 0) {
