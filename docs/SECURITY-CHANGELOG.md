@@ -4,7 +4,7 @@ Security-relevant changes to `@attestto/verify`. Each entry describes the vulner
 
 ---
 
-## 2026-08-12 — ATT-1285: Self-attested signatures forgeable with a small-order Ed25519 key
+## 2026-08-12 — SOC-256: Self-attested signatures forgeable with a small-order Ed25519 key
 
 **Vector:** An all-zero Ed25519 public key is a small-order curve point, and Web Crypto implements the RFC 8032 *cofactored* verification equation, which accepts such a key for a large fraction of messages. `verifyEd25519` handed the embedded public key straight to `crypto.subtle.verify` with no validation of the key itself. An attacker sets `proof.publicKey` to 32 zero bytes and `proof.proofValue` to 64 zero bytes, then nudges any signed field (`signedAt` suffices) and retries. Measured on Node 25: 10 of 40 arbitrary messages verify, so roughly 4 attempts land a forgery.
 
