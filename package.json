@@ -57,8 +57,11 @@
     "format:check": "prettier --check 'src/**/*.ts'",
     "test": "vitest run",
     "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "coverage:check": "vitest run --coverage && node scripts/coverage-ratchet.mjs",
+    "coverage:update": "vitest run --coverage && node scripts/coverage-ratchet.mjs --update",
     "check:bundle-size": "node scripts/check-bundle-size.mjs",
-    "prepare": "npm run build",
+    "prepare": "npm run build && node scripts/install-git-hooks.mjs",
     "prepublishOnly": "npm run lint && npm test && npm run build",
     "gate-self-test": "node scripts/gate-self-test.mjs"
   },
@@ -101,6 +104,12 @@
         "script": "test",
         "seed": "src/__gate-self-test__.spec.ts",
         "content": "import { it, expect } from 'vitest'\nit('is a deliberate failure', () => { expect(1).toBe(2) })\n"
+      },
+      {
+        "name": "coverage-ratchet",
+        "script": "coverage:check",
+        "seed": "src/__ratchet-seed__.ts",
+        "content": "/**\n * Seeded by gate-self-test to prove the coverage ratchet can go red.\n *\n * Nothing imports this file, so with `coverage.all` every line below counts as\n * uncovered and drags the totals under the committed baseline. If the ratchet\n * still passes with this present, it is not reading what it claims to read.\n */\nexport function seededUncoveredA(input: number): number {\n  if (input > 10) {\n    return input * 2\n  }\n  if (input > 5) {\n    return input + 1\n  }\n  return 0\n}\n\nexport function seededUncoveredB(values: string[]): string {\n  const out: string[] = []\n  for (const value of values) {\n    if (value.length > 3) {\n      out.push(value.toUpperCase())\n    } else {\n      out.push(value.toLowerCase())\n    }\n  }\n  return out.join(',')\n}\n\nexport function seededUncoveredC(flag: boolean): string {\n  if (flag) {\n    return 'yes'\n  }\n  return 'no'\n}\n"
       }
     ]
   },

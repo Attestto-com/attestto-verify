@@ -1,0 +1,39 @@
+#!/bin/sh
+# Pre-push: regenerate coverage and enforce the ratchet.
+#
+# Installed by scripts/install-git-hooks.mjs (via `prepare`), which sets
+# core.hooksPath to this directory.
+#
+# Cost: ~5s, which is less than the push round-trip it precedes.
+#
+# Bypass with `git push --no-verify` when you must. CI runs the same gate, so a
+# bypass defers the failure rather than avoiding it — which is the intended
+# trade: never block an urgent push, never let the drop reach main.
+set -eu
+
+# A delete-only push (`git push origin :branch`) has no commits to check.
+# Every line on stdin has the form: <local ref> <local sha> <remote ref> <remote sha>
+# A local sha of all zeros means "delete this remote ref".
+zero='0000000000000000000000000000000000000000'
+has_commits=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  if [ "$local_sha" != "$zero" ]; then
+    has_commits=1
+  fi
+done
+
+# NOTE: empty stdin falls through with has_commits=0. We still run in that case
+# (see below) rather than assuming there is nothing to check — failing closed is
+# the whole point of a gate. Only an explicit, parsed delete-only push skips.
+if [ "$has_commits" = "0" ] && [ -t 0 ]; then
+  exit 0
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "pre-push: pnpm is not on PATH, so the coverage gate cannot run." >&2
+  echo "pre-push: refusing the push. Install pnpm, or bypass with --no-verify." >&2
+  exit 1
+fi
+
+echo "pre-push: running coverage ratchet..."
+pnpm run coverage:check
