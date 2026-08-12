@@ -50,5 +50,33 @@ export default defineConfig({
         external: ['lit', '@lit/reactive-element', 'lit-element', 'lit-html'],
       },
     },
+    coverage: {
+      provider: 'v8',
+      // `json-summary` feeds scripts/coverage-ratchet.mjs; `html` is the
+      // report a human actually reads (coverage/index.html); `lcov` is what
+      // external tooling consumes.
+      reporter: ['text', 'html', 'json-summary', 'lcov'],
+      reportsDirectory: 'coverage',
+      // Without `all`, a source file with no test importing it is simply
+      // absent from the report — so adding an untested module would RAISE the
+      // percentage. That is the exact opposite of a ratchet.
+      all: true,
+      include: ['src/**/*.ts'],
+      // NOTE: this REPLACES vitest's defaults, so everything must be spelled
+      // out. Kept deliberately short: the only things excluded are files with
+      // no executable logic to test. Nothing is excluded to flatter the
+      // number — in particular src/components/**, which is ~4,800 untested
+      // lines and most of the current deficit, stays IN.
+      exclude: [
+        '**/*.spec.ts',
+        '**/*.test.ts',
+        '**/*.d.ts',
+        // Type-only declarations — no runtime code to cover.
+        'src/plugins/types.ts',
+        // A re-export barrel and a bare CSS template literal.
+        'src/index.ts',
+        'src/styles/shared.ts',
+      ],
+    },
   },
 })

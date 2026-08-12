@@ -25,7 +25,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 because the coverage ratchet's NO-DROP rule resolves
+      # `git merge-base HEAD <base>` to prove the committed baseline was not
+      # lowered. The default shallow depth of 1 leaves no merge-base, and the
+      # rule would silently never run — a gate that cannot see its reference
+      # point is precisely the decorative control the self-test exists to catch.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
         with:
@@ -51,6 +58,22 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # Coverage may go up, never down. Two rules run here that a local
+      # pre-push hook cannot enforce on its own:
+      #   FLOOR   — every metric >= coverage-baseline.json
+      #   NO-DROP — the committed baseline is itself >= the baseline at the
+      #             merge-base, so a PR cannot lower the bar in the same commit
+      #             that drops coverage.
+      # The hook can be skipped with `git push --no-verify`; this step cannot.
+      #
+      # COVERAGE_BASE_REF goes through `env:` rather than being interpolated
+      # into `run:` — a branch name is attacker-influenced text, and inlining it
+      # in a shell command is the standard Actions injection sink.
+      - name: Coverage ratchet
+        env:
+          COVERAGE_BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+        run: pnpm run coverage:check
 
       # Runs AFTER the tests, so a failure lands on the cheapest step first.
       - name: Build
