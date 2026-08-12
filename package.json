@@ -62,7 +62,7 @@
     "gate-self-test": "node scripts/gate-self-test.mjs"
   },
   "dependencies": {
-    "@attestto/id-wallet-adapter": "^0.4.1",
+    "@attestto/id-wallet-adapter": "^0.7.0",
     "asn1js": "^3.0.10",
     "lit": "^3.3.3",
     "pdf-lib": "^1.17.1",
