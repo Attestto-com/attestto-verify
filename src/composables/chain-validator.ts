@@ -371,12 +371,31 @@ export async function verifyDocumentIntegrity(
     log.event('[chain-validator] ✓ Document integrity VERIFIED — content matches signature')
     return { integrityValid: true, error: null }
   } catch (err) {
-    // ATT-357: a thrown exception means the integrity check could not run
-    // (pkijs dynamic import failure, network blip, asn1js bug, …). We have
+    const message = err instanceof Error ? err.message : String(err)
+
+    // ATT-1270. pkijs signals a content mismatch by THROWING, not by returning
+    // `signatureVerified: false`, so every genuinely tampered document landed
+    // in this catch and was reported as `null` — "could not check". The
+    // `integrityValid: false` branch above was unreachable for the one case it
+    // exists to report, which is the same defect ATT-1262/1263/1264 describe
+    // elsewhere in this package: a verifier rendering neutral where it should
+    // render failed.
+    //
+    // Matched narrowly, on the mismatch messages only. Everything else keeps
+    // the ATT-357 behaviour below, and deliberately so.
+    if (/message digest doesn't match|digest mismatch/i.test(message)) {
+      log.warn(`[chain-validator] ✗ Document integrity FAILED — content was modified after signing`)
+      return {
+        integrityValid: false,
+        error: 'Signature does not match document content (tampered)',
+      }
+    }
+
+    // ATT-357: any OTHER thrown exception means the integrity check could not
+    // run (pkijs dynamic import failure, network blip, asn1js bug, …). We have
     // NO information about whether the document was tampered. Returning
     // `false` here would falsely accuse a real signer of forgery.
     // Use `null` so the caller can render an "unknown" state.
-    const message = err instanceof Error ? err.message : String(err)
     log.warn(`[chain-validator] Integrity verification threw: ${message}`)
     return {
       integrityValid: null,

@@ -8,11 +8,26 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { extractAttesttoSelfAttestedSignatures } from './attestto-self-attested'
 
-const CARTA_PATH =
-  '/Users/eduardochongkan/Attestto/1-research/Licencia-Digital/carta-ejecutiva-micitt-mopt-v1 (firmado).pdf'
+// The committed self-attested reference fixture (ATT-1270).
+//
+// This was a HARDCODED ABSOLUTE PATH containing a developer username, committed
+// to a public repo, pointing into the folder that holds real PII. It also
+// degraded silently to describe.skip when absent, so the case its own comment
+// called "the test that matters for the carta ship decision" ran on exactly one
+// machine and nothing reported that it had not run anywhere else.
+//
+// src/__fixtures__/self-attested-reference.pdf is an equivalent with a
+// synthetic signer and a throwaway Ed25519 key, produced by
+// scripts/make-self-attested-fixture.mjs. Only the signed PDF is committed.
+// The signature is real: the extractor rebuilds the canonical payload and
+// verifies Ed25519 over it, so these cases cover the crypto path.
+const CARTA_PATH = fileURLToPath(
+  new URL('../__fixtures__/self-attested-reference.pdf', import.meta.url),
+)
 
 describe('extractAttesttoSelfAttestedSignatures', () => {
   it('returns empty for a PDF without an Attestto keyword', async () => {
@@ -36,8 +51,6 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
 
   // ── Real fixture: the actual signed carta. This is the test that ──
   // ── matters for the carta ship decision. Skipped if not present. ──
-  const hasCarta = existsSync(CARTA_PATH)
-  const describeCarta = hasCarta ? describe : describe.skip
 
   it('detects unsupported version (v !== 1)', async () => {
     const payload = {
@@ -172,7 +185,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
     expect(sigs[0].subFilter).toBe('attestto.self-attested.v1')
   })
 
-  describeCarta('against the signed carta MICITT/MOPT', () => {
+  describe('against the committed self-attested reference fixture', () => {
     it('finds at least one Attestto self-attested signature', async () => {
       const bytes = new Uint8Array(readFileSync(CARTA_PATH))
       const sigs = await extractAttesttoSelfAttestedSignatures(bytes)
@@ -195,9 +208,10 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       const bytes = new Uint8Array(readFileSync(CARTA_PATH))
       const sigs = await extractAttesttoSelfAttestedSignatures(bytes)
       const attesttoSig = sigs.find((s) => s.subFilter === 'attestto.self-attested.v1')
-      // Eduardo is the only signer of the carta — this guards against
-      // the unparseable-stub fallback that would emit a generic name.
-      expect(attesttoSig?.name).toMatch(/Eduardo/i)
+      // Guards against the unparseable-stub fallback, which emits the generic
+      // 'Attestto signature (unparseable)' instead of the embedded issuerName.
+      expect(attesttoSig?.name).toBe('Attestto Test Signer')
+      expect(attesttoSig?.name).not.toMatch(/unparseable/i)
     })
   })
 })
