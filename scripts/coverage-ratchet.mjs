@@ -61,11 +61,19 @@ const summary = JSON.parse(readFileSync(SUMMARY, 'utf-8')).total
 const current = Object.fromEntries(METRICS.map((m) => [m, round(summary[m].pct)]))
 
 // The Node major version is recorded because V8 attributes statements and
-// branches slightly differently across major versions. A baseline captured on
-// Node 25 can be unreachable on the Node 22 pinned in .nvmrc, which would make
-// CI red for a reason nobody can reproduce locally. On a mismatch the FLOOR
-// rule warns instead of failing — on the engine that matters (CI, matching
-// .nvmrc) it still fails hard.
+// branches slightly differently across major versions, so a baseline is only
+// strictly comparable on the engine that produced it. Generate it on the
+// version pinned in .nvmrc (`nvm use`), which is what CI runs.
+//
+// This USED to downgrade a FLOOR failure to a warning whenever the running
+// major differed from the baseline's, to avoid an unreproducible local red.
+// That was a mistake, and CI caught it on the very first run: the baseline had
+// been captured on Node 25, CI runs the Node 22 from .nvmrc, so every FLOOR
+// breach silently became a warning and gate-self-test correctly reported that
+// `coverage:check` PASSED with a deliberate violation seeded in it.
+//
+// A gate that cannot fail is worse than a gate that occasionally fails
+// confusingly. A mismatch now warns and STILL enforces.
 const nodeMajor = Number(process.versions.node.split('.')[0])
 
 if (update) {
@@ -96,22 +104,23 @@ const engineMismatch = baselineNode !== null && baselineNode !== nodeMajor
 const failures = []
 const warnings = []
 
+if (engineMismatch) {
+  warnings.push(
+    `the baseline was captured on Node ${baselineNode} and this is Node ${nodeMajor}. ` +
+      'V8 attributes coverage slightly differently across majors, so a small ' +
+      'unexplained delta may be the engine rather than your change. This is ' +
+      'still enforced: run `nvm use` to match .nvmrc before trusting a failure.',
+  )
+}
+
 // ── FLOOR ───────────────────────────────────────────────────────────
 for (const m of METRICS) {
   const now = current[m]
   const floor = round(baseline[m] ?? 0)
   if (now + 1e-9 >= floor) continue
-  const msg =
-    `${m} dropped ${(floor - now).toFixed(2)}pp: ${now.toFixed(2)}% < baseline ${floor.toFixed(2)}%`
-  if (engineMismatch) {
-    warnings.push(
-      `${msg} — but the baseline was captured on Node ${baselineNode} and this is ` +
-        `Node ${nodeMajor}, where V8 attributes coverage differently. NOT failing on ` +
-        `that basis; CI runs the .nvmrc version and will enforce it.`,
-    )
-  } else {
-    failures.push(msg)
-  }
+  failures.push(
+    `${m} dropped ${(floor - now).toFixed(2)}pp: ${now.toFixed(2)}% < baseline ${floor.toFixed(2)}%`,
+  )
 }
 
 // ── NO-DROP ─────────────────────────────────────────────────────────
@@ -152,7 +161,7 @@ if (baseRef) {
 
 // ── DRIFT ───────────────────────────────────────────────────────────
 const risen = METRICS.filter((m) => current[m] - round(baseline[m] ?? 0) > DRIFT_PP)
-if (risen.length > 0 && !engineMismatch) {
+if (risen.length > 0) {
   const detail = risen
     .map((m) => `${m} ${round(baseline[m]).toFixed(2)}% -> ${current[m].toFixed(2)}%`)
     .join(', ')
