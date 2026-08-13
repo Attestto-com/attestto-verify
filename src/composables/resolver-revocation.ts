@@ -53,7 +53,10 @@ interface CrlData {
 
 /** Normalize a hex serial for comparison: lowercase, strip non-hex, drop leading zeros. */
 function normSerial(s: string): string {
-  return s.toLowerCase().replace(/[^0-9a-f]/g, '').replace(/^0+/, '')
+  return s
+    .toLowerCase()
+    .replace(/[^0-9a-f]/g, '')
+    .replace(/^0+/, '')
 }
 
 // Per-session parsed cache + in-flight dedup. The browser HTTP cache handles the
@@ -75,8 +78,7 @@ async function fetchCrlData(ca: CrSinpeCa, fetchFn: typeof fetch): Promise<CrlDa
     const data = (await resp.json()) as CrlResponse
     const revoked = new Set((data.revokedSerials ?? []).map(normSerial))
     const nextMs = data.nextUpdate ? Date.parse(data.nextUpdate) : NaN
-    const expiresAt =
-      Number.isFinite(nextMs) && !data.stale ? nextMs : Date.now() + FALLBACK_TTL_MS
+    const expiresAt = Number.isFinite(nextMs) && !data.stale ? nextMs : Date.now() + FALLBACK_TTL_MS
     return {
       revoked,
       signatureVerified: data.signatureVerified !== false,
@@ -195,6 +197,7 @@ export function crSinpeCaFromIssuer(issuerCommonName: string | null | undefined)
   const cn = issuerCommonName.toUpperCase()
   if (!cn.includes('SINPE')) return null
   if (cn.includes('PERSONA FISICA') || cn.includes('PERSONA FÍSICA')) return 'sinpe-persona-fisica'
-  if (cn.includes('PERSONA JURIDICA') || cn.includes('PERSONA JURÍDICA')) return 'sinpe-persona-juridica'
+  if (cn.includes('PERSONA JURIDICA') || cn.includes('PERSONA JURÍDICA'))
+    return 'sinpe-persona-juridica'
   return null
 }

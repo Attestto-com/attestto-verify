@@ -1507,47 +1507,47 @@ export class AttesttoVerify extends LitElement {
                     <div class="section-title">${t('comp.verify.metadata')}</div>
                     <div class="meta-grid">
                       ${
-                      r.metadata.title
-                        ? html`<span class="meta-label">${t('comp.verify.title')}</span
-                            ><span>${r.metadata.title}</span>`
-                        : ''
-                    }
+                        r.metadata.title
+                          ? html`<span class="meta-label">${t('comp.verify.title')}</span
+                              ><span>${r.metadata.title}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.author
-                        ? html`<span class="meta-label">${t('comp.verify.author')}</span
-                            ><span>${r.metadata.author}</span>`
-                        : ''
-                    }
+                        r.metadata.author
+                          ? html`<span class="meta-label">${t('comp.verify.author')}</span
+                              ><span>${r.metadata.author}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.subject
-                        ? html`<span class="meta-label">${t('comp.verify.subject')}</span
-                            ><span>${r.metadata.subject}</span>`
-                        : ''
-                    }
+                        r.metadata.subject
+                          ? html`<span class="meta-label">${t('comp.verify.subject')}</span
+                              ><span>${r.metadata.subject}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.creator
-                        ? html`<span class="meta-label">${t('comp.verify.creator')}</span
-                            ><span>${r.metadata.creator}</span>`
-                        : ''
-                    }
+                        r.metadata.creator
+                          ? html`<span class="meta-label">${t('comp.verify.creator')}</span
+                              ><span>${r.metadata.creator}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.producer
-                        ? html`<span class="meta-label">${t('comp.verify.producer')}</span
-                            ><span>${r.metadata.producer}</span>`
-                        : ''
-                    }
+                        r.metadata.producer
+                          ? html`<span class="meta-label">${t('comp.verify.producer')}</span
+                              ><span>${r.metadata.producer}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.creationDate
-                        ? html`<span class="meta-label">${t('comp.verify.created')}</span
-                            ><span>${r.metadata.creationDate}</span>`
-                        : ''
-                    }
+                        r.metadata.creationDate
+                          ? html`<span class="meta-label">${t('comp.verify.created')}</span
+                              ><span>${r.metadata.creationDate}</span>`
+                          : ''
+                      }
                       ${
-                      r.metadata.modDate
-                        ? html`<span class="meta-label">${t('comp.verify.modified')}</span
-                            ><span>${r.metadata.modDate}</span>`
-                        : ''
-                    }
+                        r.metadata.modDate
+                          ? html`<span class="meta-label">${t('comp.verify.modified')}</span
+                              ><span>${r.metadata.modDate}</span>`
+                          : ''
+                      }
                     </div>
                   `
                 : ''
@@ -1558,23 +1558,23 @@ export class AttesttoVerify extends LitElement {
                     <div class="section-title">${t('comp.verify.digitalSigs')}</div>
                     ${this.renderRevocationControls()}
                     ${r.signatures.map(
-                    (sig, i) => html`
-                      <div class="sig-card-slot" part="sig-card">
-                        <attestto-signature-card
-                          exportparts="card,avatar,status,name,official-link,signals,ltv,flag,national-id,id-check,capabilities,capability,internals,online-revocation"
-                          .signature=${this.buildSignatureCardModel(sig, i)}
-                          @id-confirmed=${(e: Event) =>
-                            this.emitChallengeEvent(
-                              (e as CustomEvent).detail.index,
-                              'knowledge',
-                              'revealed',
-                            )}
-                          @request-online-revocation=${(e: Event) =>
-                            this.runOnlineRevocation((e as CustomEvent).detail.index)}
-                        ></attestto-signature-card>
-                      </div>
-                    `,
-                  )}
+                      (sig, i) => html`
+                        <div class="sig-card-slot" part="sig-card">
+                          <attestto-signature-card
+                            exportparts="card,avatar,status,name,official-link,signals,ltv,flag,national-id,id-check,capabilities,capability,internals,online-revocation"
+                            .signature=${this.buildSignatureCardModel(sig, i)}
+                            @id-confirmed=${(e: Event) =>
+                              this.emitChallengeEvent(
+                                (e as CustomEvent).detail.index,
+                                'knowledge',
+                                'revealed',
+                              )}
+                            @request-online-revocation=${(e: Event) =>
+                              this.runOnlineRevocation((e as CustomEvent).detail.index)}
+                          ></attestto-signature-card>
+                        </div>
+                      `,
+                    )}
                   `
                 : r.isPdf
                   ? html`
@@ -1595,26 +1595,26 @@ export class AttesttoVerify extends LitElement {
                   <div class="section-title">${t('comp.verify.extVerification')}</div>
                   <div class="plugin-results">
                     ${Array.from(this.pluginResults.entries()).map(
-                    ([name, result]) => html`
-                      <div class="sig-card" part="sig-card">
-                        <div class="sig-name">
-                          <span class="badge ${result.valid ? 'badge-valid' : 'badge-failed'}">
-                            ${result.valid ? t('comp.verify.valid') : t('comp.verify.failed')}
-                          </span>
-                          ${attesttoPlugins.get(name)?.label ?? name}
+                      ([name, result]) => html`
+                        <div class="sig-card" part="sig-card">
+                          <div class="sig-name">
+                            <span class="badge ${result.valid ? 'badge-valid' : 'badge-failed'}">
+                              ${result.valid ? t('comp.verify.valid') : t('comp.verify.failed')}
+                            </span>
+                            ${attesttoPlugins.get(name)?.label ?? name}
+                          </div>
+                          ${
+                            result.error
+                              ? html`<div
+                                  style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem"
+                                >
+                                  ${result.error}
+                                </div>`
+                              : ''
+                          }
                         </div>
-                        ${
-                          result.error
-                            ? html`<div
-                                style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-top: 0.5rem"
-                              >
-                                ${result.error}
-                              </div>`
-                            : ''
-                        }
-                      </div>
-                    `,
-                  )}
+                      `,
+                    )}
                   </div>
                 `
               : ''

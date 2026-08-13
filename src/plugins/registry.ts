@@ -138,7 +138,7 @@ class PluginRegistry {
       if (this.frozen.has(plugin.name) && !options?.allowOverwrite) {
         console.warn(
           `[attestto] Plugin "${plugin.name}" is frozen — register() rejected. ` +
-          `Call unregister("${plugin.name}") first, or pass { allowOverwrite: true }.`,
+            `Call unregister("${plugin.name}") first, or pass { allowOverwrite: true }.`,
         )
         return
       }
@@ -251,7 +251,10 @@ class PluginRegistry {
       if (outcome.status === 'fulfilled' && outcome.value.trusted) {
         // ATT-312: cap trust level when chain is not cryptographically verified
         let pluginLevel = outcome.value.trustLevel ?? 'unknown'
-        if (!cryptographicallyVerified && (pluginLevel === 'qualified' || pluginLevel === 'recognized')) {
+        if (
+          !cryptographicallyVerified &&
+          (pluginLevel === 'qualified' || pluginLevel === 'recognized')
+        ) {
           console.warn(
             `[attestto] Trust plugin claimed "${pluginLevel}" but chain is not cryptographically verified — capped to "unknown"`,
           )

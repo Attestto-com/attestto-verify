@@ -24,7 +24,10 @@ export class AttesttoConsent extends LitElement {
   static override styles = css`
     :host {
       display: block;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
     }
 
     .banner {
@@ -44,12 +47,24 @@ export class AttesttoConsent extends LitElement {
       animation: slideUp 0.3s ease;
     }
 
-    .banner.bottom { bottom: 0; }
-    .banner.top { top: 0; border-top: none; border-bottom: 1px solid #334155; }
+    .banner.bottom {
+      bottom: 0;
+    }
+    .banner.top {
+      top: 0;
+      border-top: none;
+      border-bottom: 1px solid #334155;
+    }
 
     @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     .banner.top {
@@ -57,8 +72,14 @@ export class AttesttoConsent extends LitElement {
     }
 
     @keyframes slideDown {
-      from { transform: translateY(-100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
 
     .text {
@@ -139,8 +160,8 @@ export class AttesttoConsent extends LitElement {
     return html`
       <div class="banner ${this.position}">
         <div class="text">
-          We use anonymous analytics to understand how our tools are used. No personal data is collected.
-          Your files never leave your device.
+          We use anonymous analytics to understand how our tools are used. No personal data is
+          collected. Your files never leave your device.
         </div>
         <div class="buttons">
           <button class="reject" @click=${this.reject}>Decline</button>

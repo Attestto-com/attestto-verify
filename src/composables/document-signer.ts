@@ -128,23 +128,26 @@ export async function signWithWallet(
 
   logger.sign.info('[5/5] Pushing VC to wallet storage via ATTESTTO_CREDENTIAL_PUSH')
   const pushId = `vc-push-${Date.now()}`
-  window.postMessage({
-    type: 'ATTESTTO_CREDENTIAL_PUSH',
-    requestId: pushId,
-    credential: {
-      format: 'w3c-vc',
-      raw: JSON.stringify(credential),
-      issuer: response.did,
-      claims: {
-        type: 'DocumentSignature',
-        fileName: file.name,
-        hash,
-        signedAt: response.timestamp,
+  window.postMessage(
+    {
+      type: 'ATTESTTO_CREDENTIAL_PUSH',
+      requestId: pushId,
+      credential: {
+        format: 'w3c-vc',
+        raw: JSON.stringify(credential),
+        issuer: response.did,
+        claims: {
+          type: 'DocumentSignature',
+          fileName: file.name,
+          hash,
+          signedAt: response.timestamp,
+        },
       },
+      // storeToken comes from the extension signing response — not yet in the npm type
+      storeToken: (response as unknown as { storeToken?: string }).storeToken || null,
     },
-    // storeToken comes from the extension signing response — not yet in the npm type
-    storeToken: (response as unknown as { storeToken?: string }).storeToken || null,
-  }, '*')
+    '*',
+  )
 
   logger.sign.event('[5/5] Done — signed VC stored in wallet', { issuer: response.did, hash })
   return { credential, storedInWallet: true }
@@ -224,10 +227,7 @@ export function buildCredential(
 /**
  * Trigger a JSON download of a signed credential or signature object.
  */
-export function exportCredentialAsJson(
-  credential: object,
-  originalFileName?: string,
-): void {
+export function exportCredentialAsJson(credential: object, originalFileName?: string): void {
   const blob = new Blob([JSON.stringify(credential, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

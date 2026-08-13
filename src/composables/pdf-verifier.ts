@@ -135,14 +135,7 @@ export interface PdfSignatureInfo {
    *   - 'qualified' → plugin-elevated (e.g. vLEI / GLEIF tier)
    */
   level:
-    | 'detected'
-    | 'parsed'
-    | 'verified'
-    | 'tampered'
-    | 'unknown'
-    | 'signed'
-    | 'trusted'
-    | 'qualified'
+    'detected' | 'parsed' | 'verified' | 'tampered' | 'unknown' | 'signed' | 'trusted' | 'qualified'
   /**
    * True iff the bytes covered by the signature's ByteRange hash to the
    * exact value the signer signed (Phase A — document integrity check).
@@ -444,11 +437,7 @@ async function extractSignaturesFromBytes(bytes: Uint8Array): Promise<PdfSignatu
       const dss = extractDss(bytes)
       if (dss.found && (dss.ocspResponses.length > 0 || dss.crls.length > 0)) {
         try {
-          const result = checkRevocation(
-            certChain.signer.serialNumber,
-            dss.ocspResponses,
-            dss.crls,
-          )
+          const result = checkRevocation(certChain.signer.serialNumber, dss.ocspResponses, dss.crls)
           revocationStatus = result.status
           revocationMessage = result.message
         } catch (err) {
@@ -496,7 +485,7 @@ export function gatePluginLevel(sig: PdfSignatureInfo): PdfSignatureInfo {
   if (!verified && (sig.level === 'trusted' || sig.level === 'qualified')) {
     log.warn(
       `[security] Plugin escalation blocked: level "${sig.level}" downgraded to "parsed" ` +
-      `because certChain.cryptographicallyVerified is ${sig.certChain?.cryptographicallyVerified ?? 'null'}`,
+        `because certChain.cryptographicallyVerified is ${sig.certChain?.cryptographicallyVerified ?? 'null'}`,
     )
     return { ...sig, level: 'parsed' }
   }

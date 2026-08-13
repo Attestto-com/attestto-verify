@@ -47,7 +47,9 @@ describe('checkOcspOnline — opt-in online revocation', () => {
   it('never claims success and never throws when the fetch rejects (CORS)', async () => {
     // A rejected fetch is the exact real-world CORS failure. We must degrade to
     // 'unreachable' or 'unknown' (request could not complete) — never 'good'.
-    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch
 
     // Certs are junk, so this may fail at request-build ('unknown') or at fetch
     // ('unreachable'). Either way it must be a safe, non-throwing, non-good result.

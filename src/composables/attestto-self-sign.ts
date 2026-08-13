@@ -98,7 +98,9 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
@@ -157,11 +159,10 @@ export async function signPdfSelfAttested(
     issuer = opts.externalSigner.did
   } else {
     try {
-      signedKeyPair = (await crypto.subtle.generateKey(
-        { name: 'Ed25519' },
-        true,
-        ['sign', 'verify'],
-      )) as CryptoKeyPair
+      signedKeyPair = (await crypto.subtle.generateKey({ name: 'Ed25519' }, true, [
+        'sign',
+        'verify',
+      ])) as CryptoKeyPair
     } catch (err) {
       throw new Error(
         `Ed25519 not supported in this browser. Use a recent Chrome/Firefox/Safari. (${(err as Error).message})`,

@@ -106,7 +106,9 @@ export async function checkOcspOnline(
     ;[pkijs, asn1js] = await Promise.all([import('pkijs'), import('asn1js')])
   } catch {
     // Should not happen (both are bundled deps), but never crash the card.
-    return unreachable(lang === 'es' ? 'no se pudo cargar el motor cripto' : 'crypto engine unavailable')
+    return unreachable(
+      lang === 'es' ? 'no se pudo cargar el motor cripto' : 'crypto engine unavailable',
+    )
   }
 
   // Build the OCSP request with a real SHA-256 CertID derived from the issuer.
@@ -160,27 +162,26 @@ export async function checkOcspOnline(
     }
 
     if (!resp.ok) {
-      return unreachable(
-        (lang === 'es' ? 'HTTP ' : 'HTTP ') + resp.status,
-      )
+      return unreachable((lang === 'es' ? 'HTTP ' : 'HTTP ') + resp.status)
     }
 
     const contentType = resp.headers.get('Content-Type') || ''
     if (contentType && !contentType.toLowerCase().includes('ocsp-response')) {
       // Some CORS proxies / captive portals return HTML with a 200. Treat as
       // unreachable rather than trying to parse garbage as an OCSP response.
-      return unreachable(
-        lang === 'es' ? 'respuesta no OCSP' : 'non-OCSP response',
-      )
+      return unreachable(lang === 'es' ? 'respuesta no OCSP' : 'non-OCSP response')
     }
 
     responseBytes = new Uint8Array(await resp.arrayBuffer())
   } catch (err) {
     // Fetch rejections are almost always CORS or network. This is the expected,
     // documented failure mode, NOT a crash.
-    const detail = err instanceof Error && err.name === 'AbortError'
-      ? lang === 'es' ? 'tiempo agotado' : 'timed out'
-      : undefined
+    const detail =
+      err instanceof Error && err.name === 'AbortError'
+        ? lang === 'es'
+          ? 'tiempo agotado'
+          : 'timed out'
+        : undefined
     return unreachable(detail)
   }
 

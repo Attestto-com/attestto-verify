@@ -101,10 +101,7 @@ function extractDict(text: string, start: number): string | null {
  * Extract indirect object references from a named array in a dictionary.
  * e.g. /OCSPs [ 10 0 R 11 0 R ] → [{objNum: 10, genNum: 0}, ...]
  */
-function extractRefArray(
-  dict: string,
-  key: string,
-): Array<{ objNum: number; genNum: number }> {
+function extractRefArray(dict: string, key: string): Array<{ objNum: number; genNum: number }> {
   // Match /Key [ ... ]
   const pattern = new RegExp(`\\/${key}\\s*\\[([^\\]]*)\\]`)
   const match = pattern.exec(dict)

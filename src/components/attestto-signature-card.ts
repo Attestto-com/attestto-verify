@@ -1103,22 +1103,22 @@ export class AttesttoSignatureCard extends LitElement {
             s.trustMarks?.length || ltv
               ? html`<div class="signals" part="signals">
                   ${(s.trustMarks ?? []).map(
-                  (m) =>
-                    html`<span class="tmark" style="--m:${MARK_COLOR[m.scheme]}"
-                      ><span class="tmark-ico">🛡</span>${m.label}</span
-                    >`,
-                )}
+                    (m) =>
+                      html`<span class="tmark" style="--m:${MARK_COLOR[m.scheme]}"
+                        ><span class="tmark-ico">🛡</span>${m.label}</span
+                      >`,
+                  )}
                   ${
-                  ltv
-                    ? html`<span
-                        class="tmark has-tip"
-                        part="ltv"
-                        data-tip=${ltv.detail}
-                        style="--m:${LTV_TONE_COLOR[ltv.tone]}"
-                        ><span class="tmark-ico">◷</span>${ltv.label}</span
-                      >`
-                    : ''
-                }
+                    ltv
+                      ? html`<span
+                          class="tmark has-tip"
+                          part="ltv"
+                          data-tip=${ltv.detail}
+                          style="--m:${LTV_TONE_COLOR[ltv.tone]}"
+                          ><span class="tmark-ico">◷</span>${ltv.label}</span
+                        >`
+                      : ''
+                  }
                 </div>`
               : ''
           }
@@ -1156,14 +1156,14 @@ export class AttesttoSignatureCard extends LitElement {
                   <span class="meta-label">${t('comp.verify.capabilities')}</span>
                   <div class="caps" part="capabilities">
                     ${s.capabilities.map(
-                    (c) =>
-                      html`<span
-                        class="cap has-tip"
-                        part="capability"
-                        data-tip=${capTooltip(c.label, c.kind, this._lang)}
-                        ><span class="cap-ico">${capIcon(c.label)}</span>${c.label}</span
-                      >`,
-                  )}
+                      (c) =>
+                        html`<span
+                          class="cap has-tip"
+                          part="capability"
+                          data-tip=${capTooltip(c.label, c.kind, this._lang)}
+                          ><span class="cap-ico">${capIcon(c.label)}</span>${c.label}</span
+                        >`,
+                    )}
                   </div>
                 </div>`
               : ''
@@ -1243,9 +1243,9 @@ export class AttesttoSignatureCard extends LitElement {
           cachedUntil
             ? html`<span class="online-rev-cached"
                 >${D(
-                `Revocation list cached in your browser until ${cachedUntil}. Further checks are instant and offline until then.`,
-                `Lista de revocación en caché en tu navegador hasta el ${cachedUntil}. Las verificaciones siguientes son instantáneas y sin conexion hasta entonces.`,
-              )}</span
+                  `Revocation list cached in your browser until ${cachedUntil}. Further checks are instant and offline until then.`,
+                  `Lista de revocación en caché en tu navegador hasta el ${cachedUntil}. Las verificaciones siguientes son instantáneas y sin conexion hasta entonces.`,
+                )}</span
               >`
             : ''
         }
@@ -1401,10 +1401,10 @@ export class AttesttoSignatureCard extends LitElement {
               <span class="rc-note"
                 >🔒
                 ${
-                es
-                  ? 'Escribe la identificación que ya conoces para confirmar. Nunca mostramos el dato completo.'
-                  : 'Type the ID you already know to confirm. We never display the full value.'
-              }</span
+                  es
+                    ? 'Escribe la identificación que ya conoces para confirmar. Nunca mostramos el dato completo.'
+                    : 'Type the ID you already know to confirm. We never display the full value.'
+                }</span
               >
               <div class="id-check-row">
                 <input
@@ -1412,8 +1412,8 @@ export class AttesttoSignatureCard extends LitElement {
                   .value=${this._idInput}
                   @input=${(e: Event) => (this._idInput = (e.target as HTMLInputElement).value)}
                   @keydown=${(e: KeyboardEvent) => {
-                  if (e.key === 'Enter') this.checkId(s.index, s.nationalId!.full)
-                }}
+                    if (e.key === 'Enter') this.checkId(s.index, s.nationalId!.full)
+                  }}
                   placeholder=${s.nationalId.masked}
                 />
                 <button class="rc-yes" @click=${() => this.checkId(s.index, s.nationalId!.full)}>

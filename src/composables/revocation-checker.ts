@@ -63,11 +63,11 @@ const log = logger.verify
 // ── Types ──────────────────────────────────────────────────────────
 
 export type RevocationStatus =
-  | 'good'               // OCSP says good, or cert serial not in CRL
-  | 'revoked'            // OCSP says revoked, or cert serial found in CRL
-  | 'unknown'            // OCSP says unknown
-  | 'no-data'            // No OCSP/CRL data available (no LTV)
-  | 'parse-error'        // Could not parse the embedded data
+  | 'good' // OCSP says good, or cert serial not in CRL
+  | 'revoked' // OCSP says revoked, or cert serial found in CRL
+  | 'unknown' // OCSP says unknown
+  | 'no-data' // No OCSP/CRL data available (no LTV)
+  | 'parse-error' // Could not parse the embedded data
 
 export interface RevocationResult {
   status: RevocationStatus
@@ -325,10 +325,7 @@ export function parseCrl(der: Uint8Array): ParsedCrl | null {
 
     // revokedCertificates — SEQUENCE OF SEQUENCE (optional)
     const revokedCertificates: CrlRevokedEntry[] = []
-    if (
-      idx < tbsCertList.children.length &&
-      tbsCertList.children[idx].tag === ASN1_TAG.SEQUENCE
-    ) {
+    if (idx < tbsCertList.children.length && tbsCertList.children[idx].tag === ASN1_TAG.SEQUENCE) {
       const revokedSeq = tbsCertList.children[idx]
       for (const entry of revokedSeq.children) {
         if (entry.tag === ASN1_TAG.SEQUENCE && entry.children.length >= 2) {
