@@ -66,10 +66,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Sistema Nacional de Certificación Digital — Firma Digital Costa Rica',
     oidArc: '2.16.188',
     policyOids: [
-      '2.16.188.1.1.1',     // Root: Jerarquía Nacional
-      '2.16.188.1.1.1.1',   // Persona Física (BCCR)
-      '2.16.188.1.1.1.2',   // Persona Jurídica
-      '2.16.188.1.1.1.3',   // Sellado de Tiempo
+      '2.16.188.1.1.1', // Root: Jerarquía Nacional
+      '2.16.188.1.1.1.1', // Persona Física (BCCR)
+      '2.16.188.1.1.1.2', // Persona Jurídica
+      '2.16.188.1.1.1.3', // Sellado de Tiempo
     ],
     rootCaNames: [
       'CA RAIZ NACIONAL - COSTA RICA',
@@ -97,7 +97,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     rootAuthority: 'CA RAIZ NACIONAL - COSTA RICA',
     officialLinks: [
       { label: 'BCCR — Firma Digital', url: 'https://www.bccr.fi.cr/firma-digital' },
-      { label: 'MICITT — DCFD (acreditación)', url: 'https://www.micitt.go.cr/servicios/firma-digital-certificada' },
+      {
+        label: 'MICITT — DCFD (acreditación)',
+        url: 'https://www.micitt.go.cr/servicios/firma-digital-certificada',
+      },
     ],
   },
 
@@ -108,8 +111,8 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Firma Electrónica Avanzada — Servicio de Administración Tributaria',
     oidArc: '2.16.484',
     policyOids: [
-      '2.16.484.101.10.8.1',  // SAT CPS policy (e.firma)
-      '2.16.484.101.10.8.2',  // SAT subordinate policy
+      '2.16.484.101.10.8.1', // SAT CPS policy (e.firma)
+      '2.16.484.101.10.8.2', // SAT subordinate policy
     ],
     rootCaNames: [
       'AC RAIZ SAT',
@@ -140,15 +143,12 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Certificación Digital — Certicámara S.A.',
     oidArc: '2.16.170',
     policyOids: [
-      '2.16.170.1.1',         // Root policy
-      '2.16.170.1.2',         // Subordinate policy
-      '2.16.170.10.1.11',     // Persona Natural
-      '2.16.170.10.1.12',     // Persona Jurídica
+      '2.16.170.1.1', // Root policy
+      '2.16.170.1.2', // Subordinate policy
+      '2.16.170.10.1.11', // Persona Natural
+      '2.16.170.10.1.12', // Persona Jurídica
     ],
-    rootCaNames: [
-      'AC RAIZ CERTICAMARA S.A.',
-      'AC RAIZ CERTICAMARA',
-    ],
+    rootCaNames: ['AC RAIZ CERTICAMARA S.A.', 'AC RAIZ CERTICAMARA'],
     intermediateCaPatterns: [
       'AC FIRMA DIGITAL CERTICAMARA',
       'AC PERSONAS CERTICAMARA',
@@ -182,12 +182,12 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Infraestrutura de Chaves Públicas Brasileira',
     oidArc: '2.16.76',
     policyOids: [
-      '2.16.76.1.1.0',      // AC Raiz CPS
-      '2.16.76.1.2.1',      // A1 (software signature)
-      '2.16.76.1.2.3',      // A3 (hardware signature)
-      '2.16.76.1.2.101',    // S1 (confidentiality)
-      '2.16.76.1.2.103',    // S3
-      '2.16.76.1.2.201',    // T3 (timestamp)
+      '2.16.76.1.1.0', // AC Raiz CPS
+      '2.16.76.1.2.1', // A1 (software signature)
+      '2.16.76.1.2.3', // A3 (hardware signature)
+      '2.16.76.1.2.101', // S1 (confidentiality)
+      '2.16.76.1.2.103', // S3
+      '2.16.76.1.2.201', // T3 (timestamp)
     ],
     rootCaNames: [
       'AUTORIDADE CERTIFICADORA RAIZ BRASILEIRA V1',
@@ -196,8 +196,13 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
       'AUTORIDADE CERTIFICADORA RAIZ BRASILEIRA V10',
     ],
     intermediateCaPatterns: [
-      'AC SERPRO', 'AC CERTISIGN', 'AC VALID', 'AC SOLUTI',
-      'AC SAFEWEB', 'AC CAIXA', 'AC FENACOR',
+      'AC SERPRO',
+      'AC CERTISIGN',
+      'AC VALID',
+      'AC SOLUTI',
+      'AC SAFEWEB',
+      'AC CAIXA',
+      'AC FENACOR',
       'AUTORIDADE CERTIFICADORA DA PRESIDENCIA',
     ],
     issuerOrgPatterns: ['ICP-BRASIL'],
@@ -215,7 +220,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     rootAuthority: 'ITI — Instituto Nacional de Tecnologia da Informação',
     officialLinks: [
       { label: 'ITI — ICP-Brasil', url: 'https://www.gov.br/iti/pt-br' },
-      { label: 'ITI — ICP-Brasil (AC-Raiz)', url: 'https://www.gov.br/iti/pt-br/assuntos/icp-brasil' },
+      {
+        label: 'ITI — ICP-Brasil (AC-Raiz)',
+        url: 'https://www.gov.br/iti/pt-br/assuntos/icp-brasil',
+      },
     ],
   },
 
@@ -226,14 +234,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Firma Electrónica Avanzada — Chile',
     oidArc: '2.16.152',
     policyOids: [
-      '2.16.152.1.1',   // E-Certchile root
-      '2.16.152.1.2',   // Subordinate
+      '2.16.152.1.1', // E-Certchile root
+      '2.16.152.1.2', // Subordinate
     ],
-    rootCaNames: [
-      'E-CERT ROOT CA',
-      'AC RAIZ E-CERTCHILE',
-      'CERTINET ROOT CA',
-    ],
+    rootCaNames: ['E-CERT ROOT CA', 'AC RAIZ E-CERTCHILE', 'CERTINET ROOT CA'],
     intermediateCaPatterns: ['E-CERTCHILE', 'E-CERT CHILE', 'CERTINET', 'FIRMA.CL'],
     issuerOrgPatterns: ['E-CERTCHILE', 'CERTINET', 'SUBSECRETARIA DE ECONOMIA'],
     idPrefixes: [], // RUT has no prefix — pattern: /^\d{7,8}-[\dkK]$/
@@ -249,7 +253,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
         label: 'ChileAtiende — Firma Electrónica Avanzada',
         url: 'https://www.chileatiende.gob.cl/fichas/21201-firma-electronica-avanzada',
       },
-      { label: 'Entidad Acreditadora — PSC', url: 'https://www.entidadacreditadora.gob.cl/entidades/' },
+      {
+        label: 'Entidad Acreditadora — PSC',
+        url: 'https://www.entidadacreditadora.gob.cl/entidades/',
+      },
     ],
   },
 
@@ -260,9 +267,9 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Infraestructura Oficial de Firma Electrónica — Perú',
     oidArc: '2.16.604',
     policyOids: [
-      '2.16.604.1.1',   // ECERNEP root
-      '2.16.604.1.2',   // RENIEC CA
-      '2.16.604.1.3',   // Private CA
+      '2.16.604.1.1', // ECERNEP root
+      '2.16.604.1.2', // RENIEC CA
+      '2.16.604.1.3', // Private CA
     ],
     rootCaNames: [
       'ECERNEP PERU CA ROOT 1',
@@ -271,8 +278,11 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
       'AC RAIZ ECERNEP PERU',
     ],
     intermediateCaPatterns: [
-      'RENIEC CLASS I', 'RENIEC CLASS II', 'RENIEC CLASS III',
-      'AC SUNAT', 'GLOBALSIGN PERU',
+      'RENIEC CLASS I',
+      'RENIEC CLASS II',
+      'RENIEC CLASS III',
+      'AC SUNAT',
+      'GLOBALSIGN PERU',
     ],
     issuerOrgPatterns: ['ECERNEP', 'RENIEC', 'INDECOPI'],
     idPrefixes: ['DNI-', 'RUC-'],
@@ -296,8 +306,8 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Infraestructura de Firma Digital — República Argentina',
     oidArc: '2.16.32',
     policyOids: [
-      '2.16.32.1.1',   // AC Raíz root
-      '2.16.32.1.3',   // AC ONTI
+      '2.16.32.1.1', // AC Raíz root
+      '2.16.32.1.3', // AC ONTI
     ],
     rootCaNames: [
       'AC RAIZ DE LA REPUBLICA ARGENTINA',
@@ -305,11 +315,15 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
       'AC RAIZ DE LA REPUBLICA ARGENTINA 2016',
     ],
     intermediateCaPatterns: [
-      'AC ONTI', 'AUTORIDAD CERTIFICANTE DE LA ADMINISTRACION PUBLICA',
-      'AC BANCO DE LA NACION', 'AC AFIP', 'AC GCBA',
+      'AC ONTI',
+      'AUTORIDAD CERTIFICANTE DE LA ADMINISTRACION PUBLICA',
+      'AC BANCO DE LA NACION',
+      'AC AFIP',
+      'AC GCBA',
     ],
     issuerOrgPatterns: [
-      'PRESIDENCIA DE LA NACION', 'JEFATURA DE GABINETE',
+      'PRESIDENCIA DE LA NACION',
+      'JEFATURA DE GABINETE',
       'OFICINA NACIONAL DE TECNOLOGIAS DE LA INFORMACION',
     ],
     idPrefixes: ['CUIL-', 'CUIT-'],
@@ -337,8 +351,8 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Firma Electrónica — Banco Central del Ecuador / ECIBCE',
     oidArc: '2.16.218',
     policyOids: [
-      '2.16.218.1.1',   // ECIBCE root
-      '2.16.218.1.2',   // Subordinate
+      '2.16.218.1.1', // ECIBCE root
+      '2.16.218.1.2', // Subordinate
     ],
     rootCaNames: [
       'ENTIDAD DE CERTIFICACION DE INFORMACION DEL BCE',
@@ -346,8 +360,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
       'SECURITY DATA CA ROOT',
     ],
     intermediateCaPatterns: [
-      'ECIBCE PERSONA NATURAL', 'ECIBCE PERSONA JURIDICA',
-      'SECURITY DATA', 'CONSEJO DE LA JUDICATURA',
+      'ECIBCE PERSONA NATURAL',
+      'ECIBCE PERSONA JURIDICA',
+      'SECURITY DATA',
+      'CONSEJO DE LA JUDICATURA',
     ],
     issuerOrgPatterns: ['BANCO CENTRAL DEL ECUADOR', 'BCE', 'SECURITY DATA'],
     idPrefixes: ['CI-', 'RUC-'],
@@ -361,7 +377,10 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     rootAuthority: 'MINTEL / Banco Central del Ecuador',
     officialLinks: [
       { label: 'ECIBCE — Firma Electrónica', url: 'https://www.eci.bce.ec/firma-electronica' },
-      { label: 'ARCOTEL — acreditación', url: 'https://www.arcotel.gob.ec/firma-electronica-acreditada/' },
+      {
+        label: 'ARCOTEL — acreditación',
+        url: 'https://www.arcotel.gob.ec/firma-electronica-acreditada/',
+      },
     ],
   },
 
@@ -372,18 +391,16 @@ export const PKI_REGISTRY: PkiRegistryEntry[] = [
     fullName: 'Firma Electrónica Avanzada — AGESIC Uruguay',
     oidArc: '2.16.858',
     policyOids: [
-      '2.16.858.1.1',   // ACRN root
-      '2.16.858.1.2',   // AGESIC subordinate
-      '2.16.858.1.3',   // PSCA
+      '2.16.858.1.1', // ACRN root
+      '2.16.858.1.2', // AGESIC subordinate
+      '2.16.858.1.3', // PSCA
     ],
     rootCaNames: [
       'AUTORIDAD CERTIFICADORA RAIZ NACIONAL',
       'ACRN URUGUAY',
       'AC RAIZ NACIONAL URUGUAY',
     ],
-    intermediateCaPatterns: [
-      'ACPA AGESIC', 'AC CORREO URUGUAYO', 'AC ABITAB', 'UCE CA',
-    ],
+    intermediateCaPatterns: ['ACPA AGESIC', 'AC CORREO URUGUAYO', 'AC ABITAB', 'UCE CA'],
     issuerOrgPatterns: ['AGESIC', 'UCE', 'UNIDAD DE CERTIFICACION ELECTRONICA'],
     idPrefixes: ['CI-', 'RUT-'],
     signerPatterns: [],

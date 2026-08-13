@@ -1,6 +1,13 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest'
-import { parseAsn1, decodeOid, decodeString, decodeInteger, findChild, findContext } from './asn1-parser.js'
+import {
+  parseAsn1,
+  decodeOid,
+  decodeString,
+  decodeInteger,
+  findChild,
+  findContext,
+} from './asn1-parser.js'
 
 describe('asn1-parser', () => {
   describe('parseAsn1 — basic structures', () => {

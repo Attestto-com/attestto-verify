@@ -163,15 +163,10 @@ export async function resolvePkiDid(
 
       // Find the matching generation entry for this key
       const keyId = vm.id?.split('#')[1] ? `#${vm.id.split('#')[1]}` : vm.id
-      const gen = generations.find(
-        (g: { keyId: string }) => g.keyId === keyId,
-      )
+      const gen = generations.find((g: { keyId: string }) => g.keyId === keyId)
 
       // The fingerprint comes from the JWK's x5t field or the generation entry
-      const fingerprint =
-        vm.publicKeyJwk.x5t ||
-        gen?.fingerprint ||
-        null
+      const fingerprint = vm.publicKeyJwk.x5t || gen?.fingerprint || null
 
       if (!fingerprint) {
         log.warn(`[pki-resolver] Key ${vm.id} has no fingerprint — skipping`)
@@ -205,9 +200,7 @@ export async function resolvePkiDid(
     // Extract endEntityHints (how to parse signer identity per cert type)
     const rawHints = pkiMeta?.endEntityHints
     const endEntityHints: Record<string, EndEntityHint> | null =
-      rawHints && typeof rawHints === 'object' && Object.keys(rawHints).length > 0
-        ? rawHints
-        : null
+      rawHints && typeof rawHints === 'object' && Object.keys(rawHints).length > 0 ? rawHints : null
 
     // Extract OCSP endpoints from DID Document service entries
     const services = didDocument.service || []
@@ -333,7 +326,9 @@ export async function resolveAndMatchChain(
     }
   }
 
-  log.warn(`[pki-resolver] No fingerprint match for ${pkiDid} against ${caCertDerHexes.length} CA cert(s)`)
+  log.warn(
+    `[pki-resolver] No fingerprint match for ${pkiDid} against ${caCertDerHexes.length} CA cert(s)`,
+  )
   return { matched: false, matchedCertIndex: -1, matchedKey: null, resolution }
 }
 

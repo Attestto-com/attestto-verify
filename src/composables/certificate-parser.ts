@@ -283,7 +283,11 @@ const EKU_OIDS: Record<string, string> = {
  * Extract the hex-encoded PKCS#7 blob from a PDF /Contents field.
  * Returns null if not found.
  */
-export function extractPkcs7Hex(pdfText: string, sigDictStart: number, sigDictEnd: number): string | null {
+export function extractPkcs7Hex(
+  pdfText: string,
+  sigDictStart: number,
+  sigDictEnd: number,
+): string | null {
   const dict = pdfText.substring(sigDictStart, sigDictEnd)
   const match = dict.match(/\/Contents\s*<([0-9a-fA-F\s]+)>/)
   if (!match) return null
@@ -417,7 +421,9 @@ export function parsePkcs7Certificates(derBytes: Uint8Array): {
               issuerCN: issuerFields.CN || issuerFields.O || '',
               serial,
             }
-            log.info(`[cert] SignerInfo identifies: issuer=${signerIdentifier.issuerCN}, serial=${serial.substring(0, 20)}...`)
+            log.info(
+              `[cert] SignerInfo identifies: issuer=${signerIdentifier.issuerCN}, serial=${serial.substring(0, 20)}...`,
+            )
           }
         }
       }
@@ -766,9 +772,7 @@ function buildChain(
 
   for (let i = 0; i < maxDepth; i++) {
     if (current.commonName === current.issuerCommonName) break // reached root
-    const issuer = certs.find(
-      (c) => c.commonName === current.issuerCommonName && c !== current,
-    )
+    const issuer = certs.find((c) => c.commonName === current.issuerCommonName && c !== current)
     if (!issuer) break
     chain.push(issuer)
     current = issuer
@@ -832,9 +836,7 @@ function mergeResolvedChain(
   const keyOf = (der: string, serial: string, cn: string): string =>
     der ? `der:${der.toLowerCase()}` : `sn:${serial.toUpperCase()}|cn:${cn.toUpperCase()}`
 
-  const seen = new Set(
-    embedded.map((c) => keyOf(c.rawDerHex, c.serialNumber, c.commonName)),
-  )
+  const seen = new Set(embedded.map((c) => keyOf(c.rawDerHex, c.serialNumber, c.commonName)))
 
   // The resolved path is signer → … → root. The embedded chain already covers
   // the signer (and any embedded intermediates), so we append only the
@@ -986,9 +988,7 @@ function extractSignerEmail(signer: CertificateInfo | null): string | null {
  *
  * This function is async because chain validation lazy-loads pkijs (~250KB).
  */
-export async function parseCertificateChain(
-  pkcs7Hex: string,
-): Promise<CertificateChainResult> {
+export async function parseCertificateChain(pkcs7Hex: string): Promise<CertificateChainResult> {
   const empty: CertificateChainResult = {
     certificates: [],
     signer: null,
@@ -1077,11 +1077,7 @@ export async function parseCertificateChain(
           .map((c) => c.rawDerHex)
 
         // Use resolver-backed validation (falls back to bundled internally)
-        const result = await validateChainWithResolver(
-          signer.rawDerHex,
-          intermediates,
-          pkiDid,
-        )
+        const result = await validateChainWithResolver(signer.rawDerHex, intermediates, pkiDid)
 
         endEntityHints = result.endEntityHints ?? null
         resolvedChain = result.resolvedChain ?? []
@@ -1169,9 +1165,9 @@ export async function parseCertificateChain(
 
     // The issuing CA is the cert directly above the signer in the chain.
     const issuerCert = signer
-      ? displayChain.find((c) => c !== signer && c.commonName === signer.issuerCommonName) ??
+      ? (displayChain.find((c) => c !== signer && c.commonName === signer.issuerCommonName) ??
         displayChain[1] ??
-        null
+        null)
       : null
 
     return {

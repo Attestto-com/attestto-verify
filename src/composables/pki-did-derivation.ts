@@ -99,7 +99,7 @@ const CERT_TYPE_SEGMENTS: Record<string, string> = {
   'e-CNPJ A1 (Pessoa Jurídica)': 'pessoa-juridica',
   'e-CNPJ A3 (Pessoa Jurídica)': 'pessoa-juridica',
   // Generic
-  'Timestamping': 'timestamping',
+  Timestamping: 'timestamping',
   // Uncomment when certs verified against real PDFs:
   // MX: 'e.firma': 'persona-fisica', 'CSD (Sello Digital)': 'sello-digital', 'FIEL (Firma Electrónica)': 'fiel'
   // AR: 'Firma Digital (Persona Humana)': 'persona-humana'
@@ -125,10 +125,7 @@ export interface PkiDidDerivation {
  * @param pki    The identified PKI hierarchy (from identifyPki)
  * @returns      The derived did:pki for the issuing CA, plus the full chain
  */
-export function derivePkiDids(
-  chain: CertificateInfo[],
-  pki: PkiIdentity | null,
-): PkiDidDerivation {
+export function derivePkiDids(chain: CertificateInfo[], pki: PkiIdentity | null): PkiDidDerivation {
   if (!pki || chain.length === 0) {
     return { issuingCaDid: null, chainDids: [], derivedVia: null }
   }
@@ -150,9 +147,7 @@ export function derivePkiDids(
   let derivedVia: PkiDidDerivation['derivedVia'] = null
 
   if (signer) {
-    const issuingCa = chain.find(
-      (c) => c.commonName === signer.issuerCommonName && c !== signer,
-    )
+    const issuingCa = chain.find((c) => c.commonName === signer.issuerCommonName && c !== signer)
     if (issuingCa) {
       const result = deriveSingleCaDid(issuingCa, country, pki)
       if (result) {
@@ -223,10 +218,7 @@ function deriveSingleCaDid(
  * Determine the certificate type path segment from the CA common name
  * or the PKI identity's certificateType.
  */
-function deriveCertTypeSegment(
-  caCn: string,
-  certificateType: string | null,
-): string | null {
+function deriveCertTypeSegment(caCn: string, certificateType: string | null): string | null {
   // Try direct CN pattern matching first
   const cnUpper = caCn.toUpperCase()
   if (cnUpper.includes('PERSONA FISICA') || cnUpper.includes('PERSONA FÍSICA')) {
@@ -272,7 +264,10 @@ function deriveHeuristic(
   let normalized = caName
     .toUpperCase()
     .replace(/^(CA|AC|AUTORIDADE CERTIFICADORA|AUTORIDAD CERTIFICANTE)\s+/i, '')
-    .replace(/\s*-\s*(COSTA RICA|BRASIL|BRAZIL|ARGENTINA|MEXICO|CHILE|COLOMBIA|PERU|ECUADOR|URUGUAY).*$/i, '')
+    .replace(
+      /\s*-\s*(COSTA RICA|BRASIL|BRAZIL|ARGENTINA|MEXICO|CHILE|COLOMBIA|PERU|ECUADOR|URUGUAY).*$/i,
+      '',
+    )
     .replace(/\s*V\d+\s*$/i, '')
     .replace(/\s*\(\d{4}\)\s*$/i, '')
     .trim()

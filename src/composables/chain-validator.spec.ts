@@ -159,11 +159,9 @@ describe('verifyDocumentIntegrity', () => {
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: true })
-    vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      function () {
-        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
-      },
-    )
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(function () {
+      return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+    })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBe(true)
@@ -185,11 +183,9 @@ describe('verifyDocumentIntegrity', () => {
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: false })
-    vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      function () {
-        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
-      },
-    )
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(function () {
+      return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+    })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBe(false)
@@ -203,11 +199,9 @@ describe('verifyDocumentIntegrity', () => {
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const verifyMock = vi.fn().mockResolvedValue(true)
-    vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      function () {
-        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
-      },
-    )
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(function () {
+      return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+    })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBe(true)
@@ -240,11 +234,9 @@ describe('verifyDocumentIntegrity', () => {
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const verifyMock = vi.fn().mockRejectedValue(new Error('verify exploded'))
-    vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      function () {
-        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
-      },
-    )
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(function () {
+      return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+    })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBeNull()
@@ -260,11 +252,9 @@ describe('verifyDocumentIntegrity', () => {
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: false })
-    vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      function () {
-        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
-      },
-    )
+    vi.mocked(pkijs.SignedData).mockImplementationOnce(function () {
+      return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+    })
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
     expect(r.integrityValid).toBe(false)
@@ -298,13 +288,11 @@ describe('validateChainWithResolver', () => {
       tbsView: c.tbsView ?? new Uint8Array([1, 2, 3]),
     }))
 
-    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementation(
-      function () {
-        return {
-          verify: vi.fn().mockResolvedValue({ ...engineResult, certificatePath: path }),
-        } as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>
-      },
-    )
+    vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementation(function () {
+      return {
+        verify: vi.fn().mockResolvedValue({ ...engineResult, certificatePath: path }),
+      } as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>
+    })
   }
 
   it('trusts via resolver when pkiDid is provided and a fingerprint matches', async () => {

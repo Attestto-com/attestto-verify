@@ -21,7 +21,8 @@ const translations: Record<Lang, Record<string, string>> = {
     // ── Verify page (index.html) ─────────────────────────
     'verify.title': 'Document Verification',
     'verify.subtitle': 'Verify integrity and signatures — your file never leaves your device.',
-    'verify.subtitle.shared': 'Someone shared a verified document — drop your copy to confirm it matches.',
+    'verify.subtitle.shared':
+      'Someone shared a verified document — drop your copy to confirm it matches.',
     'verify.audit.title': 'Technical Audit',
 
     // Verify footer
@@ -36,7 +37,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'verify.footer.parsed': 'Cert chain extracted',
     'verify.footer.verified': 'Crypto proof valid',
     'verify.footer.privacy': 'Privacy',
-    'verify.footer.privacyText': 'Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend. Anonymous usage analytics only with your consent.',
+    'verify.footer.privacyText':
+      'Your file never leaves your device. All verification runs 100% in the browser — no upload, no backend. Anonymous usage analytics only with your consent.',
     'verify.footer.viewSource': 'View source',
     'verify.footer.signatureTypes': 'Signature Types',
     'verify.footer.recognizedPki': 'Recognized PKI',
@@ -46,7 +48,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'verify.footer.openSource': 'Open source',
     'verify.footer.browsers': 'Browsers',
     'verify.footer.networkTransparency': 'Network Transparency',
-    'verify.footer.networkText': 'All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.',
+    'verify.footer.networkText':
+      'All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.',
     'verify.footer.verifySource': 'Verify in the source code',
     'verify.footer.license': 'Open source under Apache 2.0',
     'verify.footer.fileNeverLeaves': 'Your file never leaves your device.',
@@ -58,7 +61,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.nav.verifyDoc': 'Verify a document',
     'land.hero.title1': 'Verify any document.',
     'land.hero.title2': 'Nothing leaves your device.',
-    'land.hero.sub': 'Attestto checks the integrity, digital signatures and certificate chains of any signed PDF, entirely inside your browser. No upload, no server, no account.',
+    'land.hero.sub':
+      'Attestto checks the integrity, digital signatures and certificate chains of any signed PDF, entirely inside your browser. No upload, no server, no account.',
     'land.hero.cta': 'Verify a document',
     'land.hero.seeHow': 'See how it works',
     'land.preview.label': 'Online verifier',
@@ -74,16 +78,21 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.stats.countries': 'National PKIs supported',
     'land.checked.label': 'What gets checked',
     'land.checked.1.title': 'Integrity',
-    'land.checked.1.desc': 'Every byte is hashed with SHA-256 and compared against exactly what the signature covers, so any edit made after signing shows up immediately.',
+    'land.checked.1.desc':
+      'Every byte is hashed with SHA-256 and compared against exactly what the signature covers, so any edit made after signing shows up immediately.',
     'land.checked.2.title': 'Signature validity',
-    'land.checked.2.desc': 'PAdES, CAdES and raw PKCS#7 signatures are parsed and checked against the document\'s own byte ranges, not just detected, but proven valid.',
+    'land.checked.2.desc':
+      "PAdES, CAdES and raw PKCS#7 signatures are parsed and checked against the document's own byte ranges, not just detected, but proven valid.",
     'land.checked.3.title': 'Certificate chain',
-    'land.checked.3.desc': 'Certificates are walked back to a trusted root, including Costa Rica\'s CR Firma Digital PKI, so you know exactly who signed and who vouches for them.',
+    'land.checked.3.desc':
+      "Certificates are walked back to a trusted root, including Costa Rica's CR Firma Digital PKI, so you know exactly who signed and who vouches for them.",
     'land.checked.4.title': 'Security scan',
-    'land.checked.4.desc': 'Embedded scripts, auto-actions and remote objects are flagged before the file is ever opened in a reader.',
+    'land.checked.4.desc':
+      'Embedded scripts, auto-actions and remote objects are flagged before the file is ever opened in a reader.',
     'land.privacy.label': 'Privacy by construction',
     'land.privacy.title': 'Your file never leaves your device',
-    'land.privacy.body': 'Verification runs in the tab that\'s already open, there\'s no upload, no server round-trip, and nothing to configure. Close the tab and the file is gone. The code is open source, so you don\'t have to take our word for it.',
+    'land.privacy.body':
+      "Verification runs in the tab that's already open, there's no upload, no server round-trip, and nothing to configure. Close the tab and the file is gone. The code is open source, so you don't have to take our word for it.",
     'land.privacy.viewSource': 'View source',
     'land.value.statement': 'Check chain of custody in the browser, in seconds.',
     'land.standards.label': 'Supported standards',
@@ -98,10 +107,12 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.cap.openSource': 'Open source',
     'land.cap.forensic': 'Forensic audit',
     'land.finalCta.title': 'Take two seconds to know for sure',
-    'land.finalCta.body': 'Drop in a signed document and see exactly what it proves, no account, no upload, nothing installed.',
+    'land.finalCta.body':
+      'Drop in a signed document and see exactly what it proves, no account, no upload, nothing installed.',
     'land.finalCta.verify': 'Verify a document',
     'land.finalCta.viewSource': 'View source',
-    'land.footer.transparency': 'All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools serve only the application code, never your files.',
+    'land.footer.transparency':
+      'All verification runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools serve only the application code, never your files.',
     'land.footer.pkiTitle': 'Recognized PKI authorities',
     'land.footer.license': 'Open source under Apache 2.0',
 
@@ -143,7 +154,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // ── Sign page (sign/index.html) ──────────────────────
     'sign.title': 'Sign a Document',
-    'sign.subtitle': 'Sign with your DID wallet or browser key — your file never leaves your device.',
+    'sign.subtitle':
+      'Sign with your DID wallet or browser key — your file never leaves your device.',
     'sign.howItWorks': 'How it works',
     'sign.step1.title': 'Connect',
     'sign.step1.desc': 'DID wallet auto-detected, or generate a browser key.',
@@ -163,13 +175,15 @@ const translations: Record<Lang, Record<string, string>> = {
     'sign.method.verifyAfter': 'Verify after signing',
     'sign.method.verifyAt': 'Verify at',
     'sign.footer.networkTransparency': 'Network Transparency',
-    'sign.footer.networkText': 'All signing runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.',
+    'sign.footer.networkText':
+      'All signing runs 100% in your browser. No document data is ever transmitted to any server. Network requests visible in DevTools (e.g. Cloudflare CDN, GitHub Pages) serve only the application code — never your files.',
     'sign.footer.license': 'Open source under Apache 2.0',
     'sign.footer.fileNeverLeaves': 'Your file never leaves your device.',
 
     // ── attestto-verify component ────────────────────────
     'comp.verify.hashCopied': 'Hash copied to clipboard',
-    'comp.verify.loading.hint': 'All processing happens locally — your file never leaves this device',
+    'comp.verify.loading.hint':
+      'All processing happens locally — your file never leaves this device',
     'comp.verify.dropFile': 'Drop file here',
     'comp.verify.dropShared': 'Someone shared a verified document — drop your copy to confirm',
     'comp.verify.dropVerify': 'Drop a PDF to verify',
@@ -194,17 +208,21 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.techDetails': 'Technical details',
     'comp.verify.verifyOfficial': 'Verify on the official verifier',
     'comp.verify.trustPermissions': 'Trust Permissions',
-    'comp.verify.trustPermissions.tooltip': 'Capabilities declared in the X.509 certificate by the issuing Certificate Authority. These define what operations this certificate is authorized to perform.',
+    'comp.verify.trustPermissions.tooltip':
+      'Capabilities declared in the X.509 certificate by the issuing Certificate Authority. These define what operations this certificate is authorized to perform.',
     'comp.verify.certChain': 'Certificate Chain',
-    'comp.verify.certChain.tooltip': 'The chain of trust from the signer\'s certificate up to a root Certificate Authority. Each level vouches for the one below it.',
+    'comp.verify.certChain.tooltip':
+      "The chain of trust from the signer's certificate up to a root Certificate Authority. Each level vouches for the one below it.",
 
     // Key Usage tooltips
     'comp.verify.ku.digitalSignature': 'Can create digital signatures on documents and data',
     'comp.verify.ku.nonRepudiation': 'Signatures cannot be denied by the signer — legally binding',
     'comp.verify.ku.keyEncipherment': 'Can encrypt symmetric keys for secure key exchange',
     'comp.verify.ku.dataEncipherment': 'Can encrypt data directly (not just keys)',
-    'comp.verify.ku.keyAgreement': 'Can participate in key agreement protocols (e.g. Diffie-Hellman)',
-    'comp.verify.ku.certificateSigning': 'Can sign other certificates — this is a Certificate Authority',
+    'comp.verify.ku.keyAgreement':
+      'Can participate in key agreement protocols (e.g. Diffie-Hellman)',
+    'comp.verify.ku.certificateSigning':
+      'Can sign other certificates — this is a Certificate Authority',
     'comp.verify.ku.crlSigning': 'Can sign Certificate Revocation Lists',
     'comp.verify.ku.encipherOnly': 'Key agreement: can only encrypt',
     'comp.verify.ku.decipherOnly': 'Key agreement: can only decrypt',
@@ -220,11 +238,16 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.eku.smartCardLogin': 'Can authenticate via smart card',
 
     // Signature format tooltips
-    'comp.verify.sigFormat.tooltip.ETSI.CAdES.detached': 'CAdES: CMS Advanced Electronic Signature — EU-standard detached signature with certificate chain embedded',
-    'comp.verify.sigFormat.tooltip.adbe.pkcs7.detached': 'PKCS#7: Industry-standard detached digital signature',
-    'comp.verify.sigFormat.tooltip.adbe.pkcs7.sha1': 'PKCS#7 with SHA-1 hash — legacy format, SHA-1 is deprecated',
-    'comp.verify.sigFormat.tooltip.adbe.x509.rsa_sha1': 'Raw X.509 + RSA-SHA1 — very old format, rarely used today',
-    'comp.verify.sigFormat.tooltip.attestto.self-attested.v1': 'Attestto self-attested signature — Ed25519 key proves vault ownership',
+    'comp.verify.sigFormat.tooltip.ETSI.CAdES.detached':
+      'CAdES: CMS Advanced Electronic Signature — EU-standard detached signature with certificate chain embedded',
+    'comp.verify.sigFormat.tooltip.adbe.pkcs7.detached':
+      'PKCS#7: Industry-standard detached digital signature',
+    'comp.verify.sigFormat.tooltip.adbe.pkcs7.sha1':
+      'PKCS#7 with SHA-1 hash — legacy format, SHA-1 is deprecated',
+    'comp.verify.sigFormat.tooltip.adbe.x509.rsa_sha1':
+      'Raw X.509 + RSA-SHA1 — very old format, rarely used today',
+    'comp.verify.sigFormat.tooltip.attestto.self-attested.v1':
+      'Attestto self-attested signature — Ed25519 key proves vault ownership',
     'comp.verify.reason': 'Reason',
     'comp.verify.location': 'Location',
     'comp.verify.contact': 'Contact',
@@ -239,7 +262,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.docMatches': 'Document matches',
     'comp.verify.docNoMatch': 'Document does not match',
     'comp.verify.matchDetail': 'Your copy is identical to the one that was verified.',
-    'comp.verify.noMatchDetail': 'The hash of your file differs from the shared verification. This may be a different version or a modified copy.',
+    'comp.verify.noMatchDetail':
+      'The hash of your file differs from the shared verification. This may be a different version or a modified copy.',
     'comp.verify.signYourOwn': 'Sign your own documents',
     'comp.verify.readingFile': 'Reading file...',
     'comp.verify.computingHash': 'Computing SHA-256 hash...',
@@ -251,7 +275,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.nationalId': 'National ID',
     'comp.verify.protectIdentity': 'Protect your own identity',
     'comp.verify.getAttesttoId': 'Get Attestto ID',
-    'comp.verify.proveRelationship': 'To view the signer\'s identity, prove your relationship:',
+    'comp.verify.proveRelationship': "To view the signer's identity, prove your relationship:",
     'comp.verify.iAmSigner': 'I am the signer',
     'comp.verify.verifyEmail': 'Enter your email to verify',
     'comp.verify.iKnowSigner': 'I know the signer',
@@ -260,7 +284,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.enterEmailPrompt': 'Enter the email address associated with this signature:',
     'comp.verify.verify': 'Verify',
     'comp.verify.back': 'Back',
-    'comp.verify.enterIdPrompt': 'Enter the full national ID to confirm you already have this information:',
+    'comp.verify.enterIdPrompt':
+      'Enter the full national ID to confirm you already have this information:',
     'comp.verify.fullNationalId': 'Full national ID',
     'comp.verify.confirm': 'Confirm',
     'comp.verify.reveal': 'Reveal',
@@ -280,18 +305,23 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.badge.none': 'None',
 
     // Level hints
-    'comp.verify.hint.detected': 'Signature structure found — cryptographic verification pending (v2)',
-    'comp.verify.hint.parsed': 'Certificate chain extracted — cryptographic verification pending (v2)',
+    'comp.verify.hint.detected':
+      'Signature structure found — cryptographic verification pending (v2)',
+    'comp.verify.hint.parsed':
+      'Certificate chain extracted — cryptographic verification pending (v2)',
     'comp.verify.hint.signed': 'Cryptographically valid — signature math verified',
-    'comp.verify.hint.verified': 'Cryptographically valid — signature math verified and document content intact',
+    'comp.verify.hint.verified':
+      'Cryptographically valid — signature math verified and document content intact',
     'comp.verify.hint.tampered': 'Document content has been modified after signing — DO NOT TRUST',
-    'comp.verify.hint.unknown': 'Integrity check could not be completed — neither valid nor tampered',
+    'comp.verify.hint.unknown':
+      'Integrity check could not be completed — neither valid nor tampered',
     'comp.verify.hint.trusted': 'Chain reaches a recognized Certificate Authority',
     'comp.verify.hint.qualified': 'Qualified corporate identity — GLEIF vLEI verified',
     // ATT-361 — Attestto self-attested signatures
     'comp.verify.attestto.title': 'Attestto self-attested signature',
     'comp.verify.attestto.verified': 'Cryptographically verified.',
-    'comp.verify.attestto.verifiedBody': "The signer's ed25519 key proved possession of their Attestto vault, and the signed payload is byte-identical to the document hash. This is a Nivel B self-attested credential — trust is anchored in the signer's verified KYC, not in a third-party Certificate Authority.",
+    'comp.verify.attestto.verifiedBody':
+      "The signer's ed25519 key proved possession of their Attestto vault, and the signed payload is byte-identical to the document hash. This is a Nivel B self-attested credential — trust is anchored in the signer's verified KYC, not in a third-party Certificate Authority.",
     'comp.verify.attestto.kycSource': 'KYC source',
     'comp.verify.attestto.padronCR': 'Padrón Electoral · Tribunal Supremo de Elecciones',
     'comp.verify.attestto.proofType': 'Proof type',
@@ -301,11 +331,14 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Verification banners (ATT-286)
     'comp.verify.cryptoVerified.title': 'Cryptographically verified.',
-    'comp.verify.cryptoVerified.body': 'The certificate chain has been validated end-to-end against a trust anchor resolved via resolver.attestto.com (did:pki), AND the document content matches the signed hash exactly. The signer\'s identity is cryptographically proven and the document is intact.',
+    'comp.verify.cryptoVerified.body':
+      "The certificate chain has been validated end-to-end against a trust anchor resolved via resolver.attestto.com (did:pki), AND the document content matches the signed hash exactly. The signer's identity is cryptographically proven and the document is intact.",
     'comp.verify.integrityUnknown.title': 'Integrity check could not be completed.',
-    'comp.verify.integrityUnknown.body': 'The verifier was unable to run the cryptographic integrity check on this signature (loader, parser or runtime error). This is not a tamper signal — the document state is unknown. Please retry, hard-reload, or report the issue with the reason below.',
+    'comp.verify.integrityUnknown.body':
+      'The verifier was unable to run the cryptographic integrity check on this signature (loader, parser or runtime error). This is not a tamper signal — the document state is unknown. Please retry, hard-reload, or report the issue with the reason below.',
     'comp.verify.structureParsed.title': 'Structure parsed only.',
-    'comp.verify.structureParsed.body': 'The certificate chain has not been cryptographically verified.',
+    'comp.verify.structureParsed.body':
+      'The certificate chain has not been cryptographically verified.',
     'comp.verify.copyPkcs7': 'Copy PKCS#7',
 
     // Summary banner (ATT-203)
@@ -354,7 +387,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.sign.exportJson': 'Export Credential (.json)',
     'comp.sign.signAnother': 'Sign another document',
     'comp.sign.cancelBtn': 'Cancel',
-    'comp.sign.walletTimeout': 'Wallet did not respond in time. Click "Sign" to retry, or try "Sign with browser key" below.',
+    'comp.sign.walletTimeout':
+      'Wallet did not respond in time. Click "Sign" to retry, or try "Sign with browser key" below.',
     'comp.sign.signingFailed': 'Signing failed',
     'comp.sign.useBrowserKeyInstead': 'Use browser key instead',
     'comp.sign.modalTitle': 'Document Signed & Downloaded',
@@ -370,7 +404,8 @@ const translations: Record<Lang, Record<string, string>> = {
     // ── Verify page (index.html) ─────────────────────────
     'verify.title': 'Verificación de Documentos',
     'verify.subtitle': 'Verifica la integridad y firmas — tu archivo nunca sale de tu dispositivo.',
-    'verify.subtitle.shared': 'Alguien compartió un documento verificado — sube tu copia para confirmar que coincide.',
+    'verify.subtitle.shared':
+      'Alguien compartió un documento verificado — sube tu copia para confirmar que coincide.',
     'verify.audit.title': 'Auditoría Técnica',
 
     // Verify footer
@@ -385,7 +420,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'verify.footer.parsed': 'Cadena de certificados extraída',
     'verify.footer.verified': 'Prueba criptográfica válida',
     'verify.footer.privacy': 'Privacidad',
-    'verify.footer.privacyText': 'Tu archivo nunca sale de tu dispositivo. Toda la verificación se ejecuta 100% en el navegador — sin subidas, sin backend. Analíticas de uso anónimas solo con tu consentimiento.',
+    'verify.footer.privacyText':
+      'Tu archivo nunca sale de tu dispositivo. Toda la verificación se ejecuta 100% en el navegador — sin subidas, sin backend. Analíticas de uso anónimas solo con tu consentimiento.',
     'verify.footer.viewSource': 'Ver código fuente',
     'verify.footer.signatureTypes': 'Tipos de Firma',
     'verify.footer.recognizedPki': 'PKI Reconocida',
@@ -395,7 +431,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'verify.footer.openSource': 'Código abierto',
     'verify.footer.browsers': 'Navegadores',
     'verify.footer.networkTransparency': 'Transparencia de Red',
-    'verify.footer.networkText': 'Toda la verificación se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools (ej. Cloudflare CDN, GitHub Pages) solo sirven el código de la aplicación — nunca tus archivos.',
+    'verify.footer.networkText':
+      'Toda la verificación se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools (ej. Cloudflare CDN, GitHub Pages) solo sirven el código de la aplicación — nunca tus archivos.',
     'verify.footer.verifySource': 'Verificar en el código fuente',
     'verify.footer.license': 'Código abierto bajo Apache 2.0',
     'verify.footer.fileNeverLeaves': 'Tu archivo nunca sale de tu dispositivo.',
@@ -407,7 +444,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.nav.verifyDoc': 'Verificar un documento',
     'land.hero.title1': 'Verifica cualquier documento.',
     'land.hero.title2': 'Nada sale de tu dispositivo.',
-    'land.hero.sub': 'Attestto comprueba la integridad, las firmas digitales y las cadenas de certificados de cualquier PDF firmado, completamente dentro de tu navegador. Sin subidas, sin servidor, sin cuenta.',
+    'land.hero.sub':
+      'Attestto comprueba la integridad, las firmas digitales y las cadenas de certificados de cualquier PDF firmado, completamente dentro de tu navegador. Sin subidas, sin servidor, sin cuenta.',
     'land.hero.cta': 'Verificar un documento',
     'land.hero.seeHow': 'Ver cómo funciona',
     'land.preview.label': 'Verificador en Línea',
@@ -423,16 +461,21 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.stats.countries': 'PKIs nacionales compatibles',
     'land.checked.label': 'Qué se comprueba',
     'land.checked.1.title': 'Integridad',
-    'land.checked.1.desc': 'Cada byte se somete a hash con SHA-256 y se compara exactamente con lo que cubre la firma, así cualquier edición hecha después de firmar aparece de inmediato.',
+    'land.checked.1.desc':
+      'Cada byte se somete a hash con SHA-256 y se compara exactamente con lo que cubre la firma, así cualquier edición hecha después de firmar aparece de inmediato.',
     'land.checked.2.title': 'Validez de la firma',
-    'land.checked.2.desc': 'Las firmas PAdES, CAdES y PKCS#7 se analizan y comprueban contra los propios rangos de bytes del documento, no solo detectadas, sino probadas como válidas.',
+    'land.checked.2.desc':
+      'Las firmas PAdES, CAdES y PKCS#7 se analizan y comprueban contra los propios rangos de bytes del documento, no solo detectadas, sino probadas como válidas.',
     'land.checked.3.title': 'Cadena de certificados',
-    'land.checked.3.desc': 'Los certificados se rastrean hasta una raíz de confianza, incluyendo la PKI de CR Firma Digital de Costa Rica, así sabes exactamente quién firmó y quién lo avala.',
+    'land.checked.3.desc':
+      'Los certificados se rastrean hasta una raíz de confianza, incluyendo la PKI de CR Firma Digital de Costa Rica, así sabes exactamente quién firmó y quién lo avala.',
     'land.checked.4.title': 'Escaneo de seguridad',
-    'land.checked.4.desc': 'Los scripts embebidos, las acciones automáticas y los objetos remotos se marcan antes de que el archivo se abra siquiera en un lector.',
+    'land.checked.4.desc':
+      'Los scripts embebidos, las acciones automáticas y los objetos remotos se marcan antes de que el archivo se abra siquiera en un lector.',
     'land.privacy.label': 'Privacidad por construcción',
     'land.privacy.title': 'Tu archivo nunca sale de tu dispositivo',
-    'land.privacy.body': 'La verificación se ejecuta en la pestaña que ya tienes abierta, no hay subida, no hay ida y vuelta al servidor, y nada que configurar. Cierra la pestaña y el archivo desaparece. El código es abierto, así que no tienes que creernos solo de palabra.',
+    'land.privacy.body':
+      'La verificación se ejecuta en la pestaña que ya tienes abierta, no hay subida, no hay ida y vuelta al servidor, y nada que configurar. Cierra la pestaña y el archivo desaparece. El código es abierto, así que no tienes que creernos solo de palabra.',
     'land.privacy.viewSource': 'Ver código fuente',
     'land.value.statement': 'Comprueba la cadena de custodia en el navegador, en segundos.',
     'land.standards.label': 'Estándares compatibles',
@@ -447,10 +490,12 @@ const translations: Record<Lang, Record<string, string>> = {
     'land.cap.openSource': 'Código abierto',
     'land.cap.forensic': 'Auditoría forense',
     'land.finalCta.title': 'Tómate dos segundos para saberlo con certeza',
-    'land.finalCta.body': 'Suelta un documento firmado y ve exactamente qué prueba, sin cuenta, sin subida, sin instalar nada.',
+    'land.finalCta.body':
+      'Suelta un documento firmado y ve exactamente qué prueba, sin cuenta, sin subida, sin instalar nada.',
     'land.finalCta.verify': 'Verificar un documento',
     'land.finalCta.viewSource': 'Ver código fuente',
-    'land.footer.transparency': 'Toda la verificación se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools solo sirven el código de la aplicación, nunca tus archivos.',
+    'land.footer.transparency':
+      'Toda la verificación se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools solo sirven el código de la aplicación, nunca tus archivos.',
     'land.footer.pkiTitle': 'Autoridades PKI reconocidas',
     'land.footer.license': 'Código abierto bajo Apache 2.0',
 
@@ -492,7 +537,8 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // ── Sign page (sign/index.html) ──────────────────────
     'sign.title': 'Firmar un Documento',
-    'sign.subtitle': 'Firma con tu billetera DID o clave del navegador — tu archivo nunca sale de tu dispositivo.',
+    'sign.subtitle':
+      'Firma con tu billetera DID o clave del navegador — tu archivo nunca sale de tu dispositivo.',
     'sign.howItWorks': 'Cómo funciona',
     'sign.step1.title': 'Conectar',
     'sign.step1.desc': 'Billetera DID detectada automáticamente, o genera una clave del navegador.',
@@ -508,21 +554,26 @@ const translations: Record<Lang, Record<string, string>> = {
     'sign.method.browserKeyDesc': 'did:key autoemitido en tu navegador. Funciona de inmediato.',
     'sign.method.firmaDigital': 'Firma Digital',
     'sign.method.comingSoon': 'Próximamente',
-    'sign.method.firmaDigitalDesc': 'Tarjeta inteligente Firma Digital de Costa Rica. Respaldada por PKI.',
+    'sign.method.firmaDigitalDesc':
+      'Tarjeta inteligente Firma Digital de Costa Rica. Respaldada por PKI.',
     'sign.method.verifyAfter': 'Verificar después de firmar',
     'sign.method.verifyAt': 'Verificar en',
     'sign.footer.networkTransparency': 'Transparencia de Red',
-    'sign.footer.networkText': 'Toda la firma se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools (ej. Cloudflare CDN, GitHub Pages) solo sirven el código de la aplicación — nunca tus archivos.',
+    'sign.footer.networkText':
+      'Toda la firma se ejecuta 100% en tu navegador. Ningún dato del documento se transmite a ningún servidor. Las solicitudes de red visibles en DevTools (ej. Cloudflare CDN, GitHub Pages) solo sirven el código de la aplicación — nunca tus archivos.',
     'sign.footer.license': 'Código abierto bajo Apache 2.0',
     'sign.footer.fileNeverLeaves': 'Tu archivo nunca sale de tu dispositivo.',
 
     // ── attestto-verify component ────────────────────────
     'comp.verify.hashCopied': 'Hash copiado al portapapeles',
-    'comp.verify.loading.hint': 'Todo el procesamiento ocurre localmente — tu archivo nunca sale de este dispositivo',
+    'comp.verify.loading.hint':
+      'Todo el procesamiento ocurre localmente — tu archivo nunca sale de este dispositivo',
     'comp.verify.dropFile': 'Suelta el archivo aquí',
-    'comp.verify.dropShared': 'Alguien compartió un documento verificado — sube tu copia para confirmar',
+    'comp.verify.dropShared':
+      'Alguien compartió un documento verificado — sube tu copia para confirmar',
     'comp.verify.dropVerify': 'Sube un PDF para verificar',
-    'comp.verify.dropHintShared': 'Compararemos el hash de tu archivo con la verificación compartida',
+    'comp.verify.dropHintShared':
+      'Compararemos el hash de tu archivo con la verificación compartida',
     'comp.verify.dropHint': 'Solo PDF firmado — nunca sale de tu dispositivo',
     'comp.verify.pdfOnly': 'Solo se admiten archivos PDF. Sube un PDF.',
     'comp.verify.metadata': 'Metadatos del Documento',
@@ -543,17 +594,22 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.techDetails': 'Detalles técnicos',
     'comp.verify.verifyOfficial': 'Verificar en el verificador oficial',
     'comp.verify.trustPermissions': 'Permisos de Confianza',
-    'comp.verify.trustPermissions.tooltip': 'Capacidades declaradas en el certificado X.509 por la Autoridad Certificadora. Definen qué operaciones puede realizar este certificado.',
+    'comp.verify.trustPermissions.tooltip':
+      'Capacidades declaradas en el certificado X.509 por la Autoridad Certificadora. Definen qué operaciones puede realizar este certificado.',
     'comp.verify.certChain': 'Cadena de Certificados',
-    'comp.verify.certChain.tooltip': 'La cadena de confianza desde el certificado del firmante hasta la Autoridad Certificadora raíz. Cada nivel avala al inferior.',
+    'comp.verify.certChain.tooltip':
+      'La cadena de confianza desde el certificado del firmante hasta la Autoridad Certificadora raíz. Cada nivel avala al inferior.',
 
     // Key Usage tooltips
     'comp.verify.ku.digitalSignature': 'Puede crear firmas digitales en documentos y datos',
-    'comp.verify.ku.nonRepudiation': 'Las firmas no pueden ser negadas por el firmante — vinculantes legalmente',
+    'comp.verify.ku.nonRepudiation':
+      'Las firmas no pueden ser negadas por el firmante — vinculantes legalmente',
     'comp.verify.ku.keyEncipherment': 'Puede cifrar claves simétricas para intercambio seguro',
     'comp.verify.ku.dataEncipherment': 'Puede cifrar datos directamente (no solo claves)',
-    'comp.verify.ku.keyAgreement': 'Puede participar en protocolos de acuerdo de claves (ej. Diffie-Hellman)',
-    'comp.verify.ku.certificateSigning': 'Puede firmar otros certificados — esta es una Autoridad Certificadora',
+    'comp.verify.ku.keyAgreement':
+      'Puede participar en protocolos de acuerdo de claves (ej. Diffie-Hellman)',
+    'comp.verify.ku.certificateSigning':
+      'Puede firmar otros certificados — esta es una Autoridad Certificadora',
     'comp.verify.ku.crlSigning': 'Puede firmar Listas de Revocación de Certificados',
     'comp.verify.ku.encipherOnly': 'Acuerdo de claves: solo puede cifrar',
     'comp.verify.ku.decipherOnly': 'Acuerdo de claves: solo puede descifrar',
@@ -569,11 +625,16 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.eku.smartCardLogin': 'Puede autenticar mediante tarjeta inteligente',
 
     // Signature format tooltips
-    'comp.verify.sigFormat.tooltip.ETSI.CAdES.detached': 'CAdES: Firma Electrónica Avanzada CMS — estándar europeo con cadena de certificados embebida',
-    'comp.verify.sigFormat.tooltip.adbe.pkcs7.detached': 'PKCS#7: Firma digital separada estándar de la industria',
-    'comp.verify.sigFormat.tooltip.adbe.pkcs7.sha1': 'PKCS#7 con hash SHA-1 — formato legado, SHA-1 está deprecado',
-    'comp.verify.sigFormat.tooltip.adbe.x509.rsa_sha1': 'X.509 + RSA-SHA1 — formato muy antiguo, raramente usado hoy',
-    'comp.verify.sigFormat.tooltip.attestto.self-attested.v1': 'Firma auto-atestada Attestto — clave Ed25519 prueba propiedad de la bóveda',
+    'comp.verify.sigFormat.tooltip.ETSI.CAdES.detached':
+      'CAdES: Firma Electrónica Avanzada CMS — estándar europeo con cadena de certificados embebida',
+    'comp.verify.sigFormat.tooltip.adbe.pkcs7.detached':
+      'PKCS#7: Firma digital separada estándar de la industria',
+    'comp.verify.sigFormat.tooltip.adbe.pkcs7.sha1':
+      'PKCS#7 con hash SHA-1 — formato legado, SHA-1 está deprecado',
+    'comp.verify.sigFormat.tooltip.adbe.x509.rsa_sha1':
+      'X.509 + RSA-SHA1 — formato muy antiguo, raramente usado hoy',
+    'comp.verify.sigFormat.tooltip.attestto.self-attested.v1':
+      'Firma auto-atestada Attestto — clave Ed25519 prueba propiedad de la bóveda',
     'comp.verify.reason': 'Razón',
     'comp.verify.location': 'Ubicación',
     'comp.verify.contact': 'Contacto',
@@ -584,11 +645,13 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.shareLinkCopied': '¡Enlace copiado!',
     'comp.verify.shareLink': 'Compartir enlace de verificación',
     'comp.verify.verifyAnother': 'Verificar otro documento',
-    'comp.verify.shareHint': 'Comparte el enlace para que otros verifiquen que tienen el mismo documento',
+    'comp.verify.shareHint':
+      'Comparte el enlace para que otros verifiquen que tienen el mismo documento',
     'comp.verify.docMatches': 'El documento coincide',
     'comp.verify.docNoMatch': 'El documento no coincide',
     'comp.verify.matchDetail': 'Tu copia es idéntica a la que fue verificada.',
-    'comp.verify.noMatchDetail': 'El hash de tu archivo difiere de la verificación compartida. Puede ser una versión diferente o una copia modificada.',
+    'comp.verify.noMatchDetail':
+      'El hash de tu archivo difiere de la verificación compartida. Puede ser una versión diferente o una copia modificada.',
     'comp.verify.signYourOwn': 'Firma tus propios documentos',
     'comp.verify.readingFile': 'Leyendo archivo...',
     'comp.verify.computingHash': 'Calculando hash SHA-256...',
@@ -609,14 +672,16 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.enterEmailPrompt': 'Ingresa la dirección de correo asociada a esta firma:',
     'comp.verify.verify': 'Verificar',
     'comp.verify.back': 'Volver',
-    'comp.verify.enterIdPrompt': 'Ingresa la identificación nacional completa para confirmar que ya tienes esta información:',
+    'comp.verify.enterIdPrompt':
+      'Ingresa la identificación nacional completa para confirmar que ya tienes esta información:',
     'comp.verify.fullNationalId': 'Identificación nacional completa',
     'comp.verify.confirm': 'Confirmar',
     'comp.verify.reveal': 'Revelar',
     'comp.verify.enterEmail': 'Por favor ingresa una dirección de correo',
     'comp.verify.emailNoMatch': 'El correo no coincide con el certificado del firmante',
     'comp.verify.enterId': 'Por favor ingresa la identificación nacional completa',
-    'comp.verify.idNoMatch': 'La identificación nacional no coincide — verifica el formato (ej. CPF-0123456789)',
+    'comp.verify.idNoMatch':
+      'La identificación nacional no coincide — verifica el formato (ej. CPF-0123456789)',
     'comp.verify.filename': 'Nombre del archivo',
 
     // Badge labels
@@ -629,18 +694,24 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.verify.badge.none': 'Ninguna',
 
     // Level hints
-    'comp.verify.hint.detected': 'Estructura de firma encontrada — verificación criptográfica pendiente (v2)',
-    'comp.verify.hint.parsed': 'Cadena de certificados extraída — verificación criptográfica pendiente (v2)',
+    'comp.verify.hint.detected':
+      'Estructura de firma encontrada — verificación criptográfica pendiente (v2)',
+    'comp.verify.hint.parsed':
+      'Cadena de certificados extraída — verificación criptográfica pendiente (v2)',
     'comp.verify.hint.signed': 'Criptográficamente válida — matemáticas de firma verificadas',
-    'comp.verify.hint.verified': 'Criptográficamente válida — firma verificada y contenido del documento íntegro',
-    'comp.verify.hint.tampered': 'El contenido del documento fue modificado después de firmarse — NO CONFIAR',
-    'comp.verify.hint.unknown': 'No se pudo completar la verificación de integridad — ni válida ni manipulada',
+    'comp.verify.hint.verified':
+      'Criptográficamente válida — firma verificada y contenido del documento íntegro',
+    'comp.verify.hint.tampered':
+      'El contenido del documento fue modificado después de firmarse — NO CONFIAR',
+    'comp.verify.hint.unknown':
+      'No se pudo completar la verificación de integridad — ni válida ni manipulada',
     'comp.verify.hint.trusted': 'La cadena alcanza una Autoridad de Certificación reconocida',
     'comp.verify.hint.qualified': 'Identidad corporativa cualificada — vLEI de GLEIF verificada',
     // ATT-361 — Firmas Attestto auto-atestadas
     'comp.verify.attestto.title': 'Firma Attestto auto-atestada',
     'comp.verify.attestto.verified': 'Criptográficamente verificada.',
-    'comp.verify.attestto.verifiedBody': 'La clave ed25519 del firmante demostró posesión de su bóveda Attestto, y el contenido firmado coincide byte a byte con el hash del documento. Esta es una credencial Nivel B auto-atestada — la confianza se ancla en el KYC verificado del firmante, no en una Autoridad de Certificación de terceros.',
+    'comp.verify.attestto.verifiedBody':
+      'La clave ed25519 del firmante demostró posesión de su bóveda Attestto, y el contenido firmado coincide byte a byte con el hash del documento. Esta es una credencial Nivel B auto-atestada — la confianza se ancla en el KYC verificado del firmante, no en una Autoridad de Certificación de terceros.',
     'comp.verify.attestto.kycSource': 'Fuente KYC',
     'comp.verify.attestto.padronCR': 'Padrón Electoral · Tribunal Supremo de Elecciones',
     'comp.verify.attestto.proofType': 'Tipo de prueba',
@@ -650,11 +721,14 @@ const translations: Record<Lang, Record<string, string>> = {
 
     // Verification banners (ATT-286)
     'comp.verify.cryptoVerified.title': 'Verificado criptográficamente.',
-    'comp.verify.cryptoVerified.body': 'La cadena de certificados fue validada de extremo a extremo contra una raíz de confianza resuelta vía resolver.attestto.com (did:pki), Y el contenido del documento coincide exactamente con el hash firmado. La identidad del firmante está criptográficamente probada y el documento está íntegro.',
+    'comp.verify.cryptoVerified.body':
+      'La cadena de certificados fue validada de extremo a extremo contra una raíz de confianza resuelta vía resolver.attestto.com (did:pki), Y el contenido del documento coincide exactamente con el hash firmado. La identidad del firmante está criptográficamente probada y el documento está íntegro.',
     'comp.verify.integrityUnknown.title': 'No se pudo completar la verificación de integridad.',
-    'comp.verify.integrityUnknown.body': 'El verificador no pudo ejecutar la comprobación criptográfica de integridad en esta firma (error de carga, parser o ejecución). Esto no es una señal de alteración — el estado del documento es desconocido. Intente de nuevo, recargue la página o reporte el problema con la razón indicada.',
+    'comp.verify.integrityUnknown.body':
+      'El verificador no pudo ejecutar la comprobación criptográfica de integridad en esta firma (error de carga, parser o ejecución). Esto no es una señal de alteración — el estado del documento es desconocido. Intente de nuevo, recargue la página o reporte el problema con la razón indicada.',
     'comp.verify.structureParsed.title': 'Solo estructura analizada.',
-    'comp.verify.structureParsed.body': 'La cadena de certificados no ha sido verificada criptográficamente.',
+    'comp.verify.structureParsed.body':
+      'La cadena de certificados no ha sido verificada criptográficamente.',
     'comp.verify.copyPkcs7': 'Copiar PKCS#7',
 
     // Summary banner (ATT-203)
@@ -689,7 +763,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.sign.signStep': '2. Firmar',
     'comp.sign.downloadStep': '3. Descargar',
     'comp.sign.signing': 'Firmando...',
-    'comp.sign.signingHint': 'Toda la firma ocurre localmente — tu archivo nunca sale de este dispositivo',
+    'comp.sign.signingHint':
+      'Toda la firma ocurre localmente — tu archivo nunca sale de este dispositivo',
     'comp.sign.computingHash': 'Calculando hash...',
     'comp.sign.waitingWallet': 'Esperando aprobación de la billetera...',
     'comp.sign.signingBrowserKey': 'Firmando con clave del navegador...',
@@ -703,7 +778,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'comp.sign.exportJson': 'Exportar Credencial (.json)',
     'comp.sign.signAnother': 'Firmar otro documento',
     'comp.sign.cancelBtn': 'Cancelar',
-    'comp.sign.walletTimeout': 'La billetera no respondió a tiempo. Haz clic en "Firmar" para reintentar, o prueba "Firmar con clave del navegador" abajo.',
+    'comp.sign.walletTimeout':
+      'La billetera no respondió a tiempo. Haz clic en "Firmar" para reintentar, o prueba "Firmar con clave del navegador" abajo.',
     'comp.sign.signingFailed': 'La firma falló',
     'comp.sign.useBrowserKeyInstead': 'Usar clave del navegador en su lugar',
     'comp.sign.modalTitle': 'Documento Firmado y Descargado',

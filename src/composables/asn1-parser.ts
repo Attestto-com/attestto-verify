@@ -78,7 +78,7 @@ export function parseAsn1(data: Uint8Array, offset = 0): Asn1Node {
     while (pos < endPos) {
       const child = parseAsn1(data, pos)
       children.push(child)
-      const childTotalSize = (child.contentOffset - pos) + child.contentLength
+      const childTotalSize = child.contentOffset - pos + child.contentLength
       if (childTotalSize <= 0) break // safety: prevent infinite loop
       pos += childTotalSize
     }

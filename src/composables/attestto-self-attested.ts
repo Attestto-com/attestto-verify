@@ -334,9 +334,7 @@ function shapeAsSignatureInfo(
   integrityVerified: boolean | null,
   integrityError: string | null,
 ): PdfSignatureInfo {
-  const levelLabel = sig.mock
-    ? 'Attestto · Nivel A+ DEMO'
-    : 'Attestto · Nivel B (auto-atestada)'
+  const levelLabel = sig.mock ? 'Attestto · Nivel A+ DEMO' : 'Attestto · Nivel B (auto-atestada)'
 
   return {
     name: sig.issuerName ?? sig.issuerHandle ?? sig.issuer,
@@ -386,9 +384,7 @@ export async function extractAttesttoSelfAttestedSignatures(
   const payloads = findKeywordPayloads(pdfBytes)
   if (payloads.length === 0) return []
 
-  log.info(
-    `[attestto-self-attested] found ${payloads.length} Attestto keyword payload(s)`,
-  )
+  log.info(`[attestto-self-attested] found ${payloads.length} Attestto keyword payload(s)`)
 
   const out: PdfSignatureInfo[] = []
   for (const b64 of payloads) {
@@ -397,10 +393,7 @@ export async function extractAttesttoSelfAttestedSignatures(
       const json = new TextDecoder('utf-8').decode(base64ToBytes(b64))
       parsed = JSON.parse(json) as AttesttoPdfSignature
     } catch (err) {
-      log.warn(
-        '[attestto-self-attested] payload decode failed:',
-        (err as Error).message,
-      )
+      log.warn('[attestto-self-attested] payload decode failed:', (err as Error).message)
       // Keep a "detected but unparseable" stub so the user sees there
       // was an Attestto attempt that didn't decode cleanly.
       out.push({
@@ -491,9 +484,7 @@ export async function extractAttesttoSelfAttestedSignatures(
         ),
       )
     } else if (verifyResult === true) {
-      log.info(
-        `[attestto-self-attested] ✓ verified: ${parsed.issuerName ?? parsed.issuer}`,
-      )
+      log.info(`[attestto-self-attested] ✓ verified: ${parsed.issuerName ?? parsed.issuer}`)
       out.push(shapeAsSignatureInfo(parsed, 'verified', true, null))
     } else {
       log.warn(

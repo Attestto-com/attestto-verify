@@ -2,10 +2,7 @@ import { LitElement, html, css } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { sharedStyles } from '../styles/shared.js'
 import { discoverWallets, pickWallet, type WalletAnnouncement } from '@attestto/id-wallet-adapter'
-import {
-  getBrowserKeyPair,
-  exportCredentialAsJson,
-} from '../composables/document-signer.js'
+import { getBrowserKeyPair, exportCredentialAsJson } from '../composables/document-signer.js'
 import { loadPdfJs, formatPdfDate } from '../composables/pdf-verifier.js'
 import {
   signPdfSelfAttested,
@@ -252,7 +249,10 @@ export class AttesttoSign extends LitElement {
         text-align: center;
       }
 
-      .modal-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+      .modal-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
 
       .modal-title {
         font-size: 1.1rem;
@@ -298,7 +298,9 @@ export class AttesttoSign extends LitElement {
         padding: 0.5rem;
       }
 
-      .modal-dismiss:hover { color: var(--attestto-text, #e2e8f0); }
+      .modal-dismiss:hover {
+        color: var(--attestto-text, #e2e8f0);
+      }
 
       .download-link {
         display: block;
@@ -335,11 +337,17 @@ export class AttesttoSign extends LitElement {
         animation: signing-bounce 1.4s ease-in-out infinite;
       }
 
-      .signing-bean:nth-child(2) { animation-delay: 0.16s; }
-      .signing-bean:nth-child(3) { animation-delay: 0.32s; }
+      .signing-bean:nth-child(2) {
+        animation-delay: 0.16s;
+      }
+      .signing-bean:nth-child(3) {
+        animation-delay: 0.32s;
+      }
 
       @keyframes signing-bounce {
-        0%, 80%, 100% {
+        0%,
+        80%,
+        100% {
           transform: scale(0.6);
           opacity: 0.4;
         }
@@ -424,9 +432,13 @@ export class AttesttoSign extends LitElement {
           />
           <div class="wallet-card-info">
             <div class="wallet-card-name">${this.selectedWallet.name}</div>
-            <div class="wallet-card-meta">${t('comp.sign.by')} ${this.selectedWallet.maintainer.name}</div>
+            <div class="wallet-card-meta">
+              ${t('comp.sign.by')} ${this.selectedWallet.maintainer.name}
+            </div>
           </div>
-          <button class="wallet-card-disconnect" @click=${this.disconnect}>${t('comp.sign.change')}</button>
+          <button class="wallet-card-disconnect" @click=${this.disconnect}>
+            ${t('comp.sign.change')}
+          </button>
         </div>
       `
     }
@@ -451,7 +463,9 @@ export class AttesttoSign extends LitElement {
             <div class="wallet-card-name">${t('comp.sign.browserKey')}</div>
             <div class="wallet-card-meta">${t('comp.sign.selfIssued')} &middot; did:key</div>
           </div>
-          <button class="wallet-card-disconnect" @click=${this.disconnect}>${t('comp.sign.change')}</button>
+          <button class="wallet-card-disconnect" @click=${this.disconnect}>
+            ${t('comp.sign.change')}
+          </button>
         </div>
       `
     }
@@ -488,11 +502,13 @@ export class AttesttoSign extends LitElement {
       >
         <div class="drop-zone-icon">${this.selectedWallet || this.useBrowserKey ? '✍️' : '📄'}</div>
         <div style="font-size: 1rem; color: var(--attestto-text-muted, #64748b)">
-          ${this.selectedWallet
-            ? t('comp.sign.dropDid')
-            : this.useBrowserKey
-              ? t('comp.sign.dropBrowserKey')
-              : t('comp.sign.dropSign')}
+          ${
+            this.selectedWallet
+              ? t('comp.sign.dropDid')
+              : this.useBrowserKey
+                ? t('comp.sign.dropBrowserKey')
+                : t('comp.sign.dropSign')
+          }
         </div>
         <div
           style="font-size: 0.8rem; color: var(--attestto-text-muted, #94a3b8); margin-top: 0.5rem"
@@ -508,13 +524,13 @@ export class AttesttoSign extends LitElement {
     return html`
       <div class="sign-card">
         <div class="step-indicator">
-          <span class="step ${this.file ? 'step-done' : 'step-active'}">${t('comp.sign.selectPdf')}</span>
+          <span class="step ${this.file ? 'step-done' : 'step-active'}"
+            >${t('comp.sign.selectPdf')}</span
+          >
           <span
-            class="step ${this.signed
-              ? 'step-done'
-              : this.file && !this.signed
-                ? 'step-active'
-                : ''}"
+            class="step ${
+              this.signed ? 'step-done' : this.file && !this.signed ? 'step-active' : ''
+            }"
             >${t('comp.sign.signStep')}</span
           >
           <span class="step ${this.signed ? 'step-done' : ''}">${t('comp.sign.downloadStep')}</span>
@@ -529,87 +545,110 @@ export class AttesttoSign extends LitElement {
           </span>
         </div>
 
-        ${this.pdfMeta ? html`
-          <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.75rem; font-size: 0.82rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--attestto-bg-code, #f1f5f9); border-radius: 8px;">
-            ${this.pdfMeta.title ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.title')}</span><span>${this.pdfMeta.title}</span>` : ''}
-            ${this.pdfMeta.author ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.author')}</span><span>${this.pdfMeta.author}</span>` : ''}
-            ${this.pdfMeta.pages ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('audit.pages')}</span><span>${this.pdfMeta.pages}</span>` : ''}
-            ${this.pdfMeta.creator ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.creator')}</span><span>${this.pdfMeta.creator}</span>` : ''}
-            ${this.pdfMeta.creationDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.created')}</span><span>${this.pdfMeta.creationDate}</span>` : ''}
-            ${this.pdfMeta.modDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.modified')}</span><span>${this.pdfMeta.modDate}</span>` : ''}
-          </div>
-        ` : ''}
-
-        ${this.error
-          ? html`<div
-              style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-bottom: 1rem"
-            >
-              ${this.error}
-              ${this.selectedWallet && !this.useBrowserKey
-                ? html`<br /><button
-                    style="background: none; border: none; color: var(--attestto-primary, #594fd3); cursor: pointer; font-size: 0.82rem; text-decoration: underline; padding: 0.25rem 0 0;"
-                    @click=${this.enableBrowserKey}
-                  >${t('comp.sign.useBrowserKeyInstead')}</button>`
-                : ''}
-            </div>`
-          : ''}
-        ${!this.signed
-          ? this.signing
+        ${
+          this.pdfMeta
             ? html`
-                <div class="signing-status">
-                  <div class="signing-beans">
-                    <span class="signing-bean"></span>
-                    <span class="signing-bean"></span>
-                    <span class="signing-bean"></span>
-                  </div>
-                  <div class="signing-step">${this.signingStatus ? t(this.signingStatus) : t('comp.sign.signing')}</div>
-                  <div class="signing-hint">${t('comp.sign.signingHint')}</div>
+                <div
+                  style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.75rem; font-size: 0.82rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--attestto-bg-code, #f1f5f9); border-radius: 8px;"
+                >
+                  ${this.pdfMeta.title ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.title')}</span><span>${this.pdfMeta.title}</span>` : ''}
+                  ${this.pdfMeta.author ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.author')}</span><span>${this.pdfMeta.author}</span>` : ''}
+                  ${this.pdfMeta.pages ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('audit.pages')}</span><span>${this.pdfMeta.pages}</span>` : ''}
+                  ${this.pdfMeta.creator ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.creator')}</span><span>${this.pdfMeta.creator}</span>` : ''}
+                  ${this.pdfMeta.creationDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.created')}</span><span>${this.pdfMeta.creationDate}</span>` : ''}
+                  ${this.pdfMeta.modDate ? html`<span style="color: var(--attestto-text-muted, #64748b); font-weight: 500;">${t('comp.verify.modified')}</span><span>${this.pdfMeta.modDate}</span>` : ''}
                 </div>
               `
+            : ''
+        }
+        ${
+          this.error
+            ? html`<div
+                style="color: var(--attestto-warning, #d97706); font-size: 0.85rem; margin-bottom: 1rem"
+              >
+                ${this.error}
+                ${
+                  this.selectedWallet && !this.useBrowserKey
+                    ? html`<br /><button
+                          style="background: none; border: none; color: var(--attestto-primary, #594fd3); cursor: pointer; font-size: 0.82rem; text-decoration: underline; padding: 0.25rem 0 0;"
+                          @click=${this.enableBrowserKey}
+                        >
+                          ${t('comp.sign.useBrowserKeyInstead')}
+                        </button>`
+                    : ''
+                }
+              </div>`
+            : ''
+        }
+        ${
+          !this.signed
+            ? this.signing
+              ? html`
+                  <div class="signing-status">
+                    <div class="signing-beans">
+                      <span class="signing-bean"></span>
+                      <span class="signing-bean"></span>
+                      <span class="signing-bean"></span>
+                    </div>
+                    <div class="signing-step">
+                      ${this.signingStatus ? t(this.signingStatus) : t('comp.sign.signing')}
+                    </div>
+                    <div class="signing-hint">${t('comp.sign.signingHint')}</div>
+                  </div>
+                `
+              : html`
+                  <button
+                    class="sign-btn"
+                    ?disabled=${!this.selectedWallet && !this.useBrowserKey}
+                    @click=${this.sign}
+                  >
+                    ${
+                      this.selectedWallet
+                        ? `${t('comp.sign.signWith')} ${this.selectedWallet.name}`
+                        : this.useBrowserKey
+                          ? t('comp.sign.signWithBrowserKey')
+                          : t('comp.sign.connectFirst')
+                    }
+                  </button>
+                `
             : html`
+                <div class="download-link" style="cursor: default; margin-bottom: 0.75rem;">
+                  ${
+                    this.useBrowserKey
+                      ? t('comp.sign.signedBrowserKey')
+                      : t('comp.sign.signedWallet')
+                  }
+                </div>
+                ${
+                  this.downloaded
+                    ? html`
+                        <button
+                          class="sign-btn"
+                          @click=${() => {
+                            window.location.href = '/'
+                          }}
+                        >
+                          ${t('comp.sign.verifyDoc')}
+                        </button>
+                      `
+                    : html`
+                        <button
+                          class="sign-btn"
+                          style="background: #e2e8f0; color: #0f172a;"
+                          @click=${this.downloadSignedPdf}
+                        >
+                          ${t('comp.sign.downloadPdf')}
+                        </button>
+                      `
+                }
                 <button
-                  class="sign-btn"
-                  ?disabled=${!this.selectedWallet && !this.useBrowserKey}
-                  @click=${this.sign}
+                  style="display: block; width: 100%; margin-top: 0.5rem; padding: 0.5rem; background: none; border: 1px solid var(--attestto-border, #334155); border-radius: 8px; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.82rem;"
+                  @click=${this.handleExport}
                 >
-                  ${this.selectedWallet
-                    ? `${t('comp.sign.signWith')} ${this.selectedWallet.name}`
-                    : this.useBrowserKey
-                      ? t('comp.sign.signWithBrowserKey')
-                      : t('comp.sign.connectFirst')}
+                  ${t('comp.sign.exportJson')}
                 </button>
               `
-          : html`
-              <div class="download-link" style="cursor: default; margin-bottom: 0.75rem;">
-                ${this.useBrowserKey
-                  ? t('comp.sign.signedBrowserKey')
-                  : t('comp.sign.signedWallet')}
-              </div>
-              ${this.downloaded
-                ? html`
-                    <button
-                      class="sign-btn"
-                      @click=${() => { window.location.href = '/' }}
-                    >
-                      ${t('comp.sign.verifyDoc')}
-                    </button>
-                  `
-                : html`
-                    <button
-                      class="sign-btn"
-                      style="background: #e2e8f0; color: #0f172a;"
-                      @click=${this.downloadSignedPdf}
-                    >
-                      ${t('comp.sign.downloadPdf')}
-                    </button>
-                  `}
-              <button
-                style="display: block; width: 100%; margin-top: 0.5rem; padding: 0.5rem; background: none; border: 1px solid var(--attestto-border, #334155); border-radius: 8px; color: var(--attestto-text-muted, #94a3b8); cursor: pointer; font-size: 0.82rem;"
-                @click=${this.handleExport}
-              >
-                ${t('comp.sign.exportJson')}
-              </button>
-            `}
+        }
 
         <div style="text-align: center; margin-top: 0.75rem">
           <button
@@ -812,15 +851,30 @@ export class AttesttoSign extends LitElement {
 
   private renderDownloadModal() {
     return html`
-      <div class="modal-overlay" @click=${(e: Event) => { if (e.target === e.currentTarget) this.showDownloadModal = false }}>
+      <div
+        class="modal-overlay"
+        @click=${(e: Event) => {
+          if (e.target === e.currentTarget) this.showDownloadModal = false
+        }}
+      >
         <div class="modal-card">
           <div class="modal-icon">✅</div>
           <div class="modal-title">${t('comp.sign.modalTitle')}</div>
           <div class="modal-filename">${this.downloadFileName}</div>
-          <button class="modal-verify-btn" @click=${() => { window.location.href = '/' }}>
+          <button
+            class="modal-verify-btn"
+            @click=${() => {
+              window.location.href = '/'
+            }}
+          >
             ${t('comp.sign.modalVerify')}
           </button>
-          <button class="modal-dismiss" @click=${() => { this.showDownloadModal = false }}>
+          <button
+            class="modal-dismiss"
+            @click=${() => {
+              this.showDownloadModal = false
+            }}
+          >
             ${t('comp.sign.modalContinue')}
           </button>
         </div>

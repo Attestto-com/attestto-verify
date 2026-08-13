@@ -40,12 +40,12 @@ export async function injectAttestationPage(
   let y = height - margin
 
   // Colors — white background, dark text, purple brand
-  const brand = rgb(0.349, 0.31, 0.827)    // #594FD3
-  const textDark = rgb(0.06, 0.09, 0.16)   // #0f172a
-  const textMuted = rgb(0.39, 0.45, 0.53)  // #64748b
+  const brand = rgb(0.349, 0.31, 0.827) // #594FD3
+  const textDark = rgb(0.06, 0.09, 0.16) // #0f172a
+  const textMuted = rgb(0.39, 0.45, 0.53) // #64748b
   const borderLight = rgb(0.88, 0.91, 0.94) // #e2e8f0
   const greenDark = rgb(0.086, 0.639, 0.247) // #16a34a
-  const greenBg = rgb(0.86, 0.99, 0.91)    // #dcfce7
+  const greenBg = rgb(0.86, 0.99, 0.91) // #dcfce7
 
   // ── Header bar (purple) ──
   page.drawRectangle({
@@ -167,13 +167,16 @@ export async function injectAttestationPage(
   })
   y -= 16
 
-  page.drawText('This attestation was generated 100% client-side. No document data was transmitted.', {
-    x: margin,
-    y,
-    size: 7.5,
-    font: helvetica,
-    color: textMuted,
-  })
+  page.drawText(
+    'This attestation was generated 100% client-side. No document data was transmitted.',
+    {
+      x: margin,
+      y,
+      size: 7.5,
+      font: helvetica,
+      color: textMuted,
+    },
+  )
   y -= 12
 
   page.drawText('verify.attestto.com — Open source under Apache 2.0', {

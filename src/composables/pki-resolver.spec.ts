@@ -151,7 +151,10 @@ describe('resolvePkiDid', () => {
   })
 
   it('returns null on timeout', async () => {
-    const timeoutError = new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    const timeoutError = new DOMException(
+      'The operation was aborted due to timeout',
+      'TimeoutError',
+    )
     const fetchFn = vi.fn().mockRejectedValue(timeoutError)
     const result = await resolvePkiDid('did:pki:cr:sinpe:persona-fisica', {
       fetchFn,
@@ -348,9 +351,7 @@ describe('OCSP endpoint extraction', () => {
     const response = {
       didDocument: {
         ...MOCK_SINPE_PF_RESPONSE.didDocument,
-        service: [
-          { id: '#ocsp', type: 'OCSPResponder', serviceEndpoint: '' },
-        ],
+        service: [{ id: '#ocsp', type: 'OCSPResponder', serviceEndpoint: '' }],
       },
     }
     const fetchFn = mockFetch(response)
@@ -426,11 +427,9 @@ describe('resolveAndMatchChain', () => {
 
     // Actually, for this test, let's verify the structure works even when
     // fingerprints don't match (since we can't control SHA-256 output)
-    const result = await resolveAndMatchChain(
-      'did:pki:cr:sinpe:persona-fisica',
-      ['aabb', 'ccdd'],
-      { fetchFn },
-    )
+    const result = await resolveAndMatchChain('did:pki:cr:sinpe:persona-fisica', ['aabb', 'ccdd'], {
+      fetchFn,
+    })
 
     // The fingerprints of 'aabb' and 'ccdd' won't match the mock response
     expect(result.resolution).not.toBeNull()
@@ -443,11 +442,9 @@ describe('resolveAndMatchChain', () => {
   it('returns null resolution when resolver fails', async () => {
     const fetchFn = vi.fn().mockRejectedValue(new Error('network'))
 
-    const result = await resolveAndMatchChain(
-      'did:pki:cr:sinpe:persona-fisica',
-      ['aabb'],
-      { fetchFn },
-    )
+    const result = await resolveAndMatchChain('did:pki:cr:sinpe:persona-fisica', ['aabb'], {
+      fetchFn,
+    })
 
     expect(result.matched).toBe(false)
     expect(result.resolution).toBeNull()
@@ -465,11 +462,7 @@ describe('resolveAndMatchChain', () => {
       },
     })
 
-    const result = await resolveAndMatchChain(
-      'did:pki:test',
-      ['aabb'],
-      { fetchFn },
-    )
+    const result = await resolveAndMatchChain('did:pki:test', ['aabb'], { fetchFn })
 
     expect(result.matched).toBe(false)
   })

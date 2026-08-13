@@ -42,9 +42,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
   it('detects an Attestto keyword token in raw bytes', async () => {
     // Manufactured token — base64 of an obviously broken JSON. We
     // expect detection (returns 1 row) but not crypto verification.
-    const fakePdf = new TextEncoder().encode(
-      '%PDF-1.7\n/Keywords (attestto-sig-v1:bm90anNvbg==)\n',
-    )
+    const fakePdf = new TextEncoder().encode('%PDF-1.7\n/Keywords (attestto-sig-v1:bm90anNvbg==)\n')
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].level).toBe('detected')
@@ -66,12 +64,17 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       level: 'self-attested',
       mock: false,
       mode: 'final',
-      proof: { type: 'Other', created: '', verificationMethod: '', proofPurpose: 'assertionMethod', proofValue: '', publicKey: '' },
+      proof: {
+        type: 'Other',
+        created: '',
+        verificationMethod: '',
+        proofPurpose: 'assertionMethod',
+        proofValue: '',
+        publicKey: '',
+      },
     }
     const b64 = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].level).toBe('detected')
@@ -99,9 +102,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       },
     }
     const b64 = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].level).toBe('detected')
@@ -129,9 +130,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       },
     }
     const b64 = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].level).toBe('detected')
@@ -160,9 +159,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       },
     }
     const b64 = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     // SECURITY: an all-zero public key is a small-order curve point. Web
@@ -202,10 +199,10 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
   it('accepts a real large-order Ed25519 public key', async () => {
     // A genuine generated key must NOT be caught by the small-order filter,
     // otherwise the fix would break every legitimate signature.
-    const { publicKey } = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, [
+    const { publicKey } = (await crypto.subtle.generateKey({ name: 'Ed25519' }, true, [
       'sign',
       'verify',
-    ]) as CryptoKeyPair
+    ])) as CryptoKeyPair
     const raw = new Uint8Array(await crypto.subtle.exportKey('raw', publicKey))
     expect(raw.length).toBe(32)
     expect(isSmallOrderEd25519Key(raw)).toBe(false)
@@ -261,9 +258,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
       },
     }
     const b64 = Buffer.from(JSON.stringify(payload)).toString('base64')
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${b64})\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].level).toBe('verified')
@@ -272,9 +267,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
     // Flip one byte of the signed content — must become tampered.
     const tamperedPayload = { ...payload, documentHash: 'abd' }
     const tb64 = Buffer.from(JSON.stringify(tamperedPayload)).toString('base64')
-    const tamperedPdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords (attestto-sig-v1:${tb64})\n`,
-    )
+    const tamperedPdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords (attestto-sig-v1:${tb64})\n`)
     const tamperedSigs = await extractAttesttoSelfAttestedSignatures(tamperedPdf)
     expect(tamperedSigs[0].level).toBe('tampered')
   })
@@ -286,9 +279,7 @@ describe('extractAttesttoSelfAttestedSignatures', () => {
     for (const c of token) {
       hex += '00' + c.charCodeAt(0).toString(16).padStart(2, '0')
     }
-    const fakePdf = new TextEncoder().encode(
-      `%PDF-1.7\n/Keywords <${hex}>\n`,
-    )
+    const fakePdf = new TextEncoder().encode(`%PDF-1.7\n/Keywords <${hex}>\n`)
     const sigs = await extractAttesttoSelfAttestedSignatures(fakePdf)
     expect(sigs).toHaveLength(1)
     expect(sigs[0].subFilter).toBe('attestto.self-attested.v1')

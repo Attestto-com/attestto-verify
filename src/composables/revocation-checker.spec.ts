@@ -193,10 +193,13 @@ function buildOcspResponse(
   // OCSPResponse
   return seq(
     enumerated(0), // successful
-    contextExplicit(0, seq(
-      oid('1.3.6.1.5.5.7.48.1.1'), // id-pkix-ocsp-basic
-      octetString(basicOcspResponse),
-    )),
+    contextExplicit(
+      0,
+      seq(
+        oid('1.3.6.1.5.5.7.48.1.1'), // id-pkix-ocsp-basic
+        octetString(basicOcspResponse),
+      ),
+    ),
   )
 }
 
@@ -242,7 +245,12 @@ describe('OCSP response parsing (ATT-313)', () => {
   })
 
   it('parses a revoked OCSP response with revocation time', () => {
-    const ocsp = buildOcspResponse('deadbeef', 'revoked', '2026-01-15T12:00:00Z', '2026-01-10T08:30:00Z')
+    const ocsp = buildOcspResponse(
+      'deadbeef',
+      'revoked',
+      '2026-01-15T12:00:00Z',
+      '2026-01-10T08:30:00Z',
+    )
     const parsed = parseOcspResponse(ocsp)
 
     expect(parsed).not.toBeNull()
@@ -319,7 +327,12 @@ describe('checkRevocation — high-level orchestrator (ATT-313)', () => {
   })
 
   it('returns revoked from OCSP when cert is revoked', () => {
-    const ocsp = buildOcspResponse('0a1b2c', 'revoked', '2026-01-15T12:00:00Z', '2026-01-10T08:30:00Z')
+    const ocsp = buildOcspResponse(
+      '0a1b2c',
+      'revoked',
+      '2026-01-15T12:00:00Z',
+      '2026-01-10T08:30:00Z',
+    )
     const result = checkRevocation('0a1b2c', [ocsp], [])
     expect(result.status).toBe('revoked')
     expect(result.source).toBe('ocsp')
@@ -335,9 +348,7 @@ describe('checkRevocation — high-level orchestrator (ATT-313)', () => {
   })
 
   it('detects revocation via CRL', () => {
-    const crl = buildCrl([
-      { serial: '0a1b2c', date: '2026-01-10T00:00:00Z' },
-    ])
+    const crl = buildCrl([{ serial: '0a1b2c', date: '2026-01-10T00:00:00Z' }])
     const result = checkRevocation('0a1b2c', [], [crl])
     expect(result.status).toBe('revoked')
     expect(result.source).toBe('crl')
@@ -366,9 +377,7 @@ describe('DSS parser (ATT-313)', () => {
   })
 
   it('returns found=true with empty arrays when /DSS has no refs', () => {
-    const pdf = new TextEncoder().encode(
-      '%PDF-1.7\n/DSS << /OCSPs [ ] /CRLs [ ] >>\n%%EOF',
-    )
+    const pdf = new TextEncoder().encode('%PDF-1.7\n/DSS << /OCSPs [ ] /CRLs [ ] >>\n%%EOF')
     const result = extractDss(pdf)
     expect(result.found).toBe(true)
     expect(result.ocspResponses).toHaveLength(0)
@@ -378,17 +387,18 @@ describe('DSS parser (ATT-313)', () => {
   it('extracts stream objects referenced by /DSS /OCSPs', () => {
     // Build a minimal PDF with a DSS pointing to an object with a stream
     const streamContent = new Uint8Array([0x30, 0x03, 0x0a, 0x01, 0x00]) // SEQUENCE { ENUM 0 }
-    const _streamHex = Array.from(streamContent).map(b => String.fromCharCode(b)).join('')
+    const _streamHex = Array.from(streamContent)
+      .map((b) => String.fromCharCode(b))
+      .join('')
 
     const pdf = new TextEncoder().encode(
-      `%PDF-1.7\n` +
-      `1 0 obj\n<< /Length ${streamContent.length} >>\nstream\n`,
+      `%PDF-1.7\n` + `1 0 obj\n<< /Length ${streamContent.length} >>\nstream\n`,
     )
 
     // Build binary: pdf text + raw stream bytes + endstream + rest
     const endPart = new TextEncoder().encode(
       `\nendstream\nendobj\n` +
-      `2 0 obj\n<< /Type /Catalog /DSS << /OCSPs [ 1 0 R ] /CRLs [ ] >> >>\nendobj\n%%EOF`,
+        `2 0 obj\n<< /Type /Catalog /DSS << /OCSPs [ 1 0 R ] /CRLs [ ] >> >>\nendobj\n%%EOF`,
     )
 
     const fullPdf = concat(pdf, streamContent, endPart)
@@ -411,7 +421,12 @@ describe('liveOcspCheck', () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = () => Promise.reject(new Error('network down'))
     try {
-      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      const result = await liveOcspCheck(
+        'http://ocsp.example.com',
+        fakeNameHash,
+        fakeKeyHash,
+        fakeSerial,
+      )
       expect(result).toBeNull()
     } finally {
       globalThis.fetch = originalFetch
@@ -422,7 +437,12 @@ describe('liveOcspCheck', () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = () => Promise.resolve(new Response(null, { status: 503 }))
     try {
-      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      const result = await liveOcspCheck(
+        'http://ocsp.example.com',
+        fakeNameHash,
+        fakeKeyHash,
+        fakeSerial,
+      )
       expect(result).toBeNull()
     } finally {
       globalThis.fetch = originalFetch
@@ -431,11 +451,18 @@ describe('liveOcspCheck', () => {
 
   it('returns null on timeout', async () => {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = () => new Promise((_, reject) => {
-      setTimeout(() => reject(new DOMException('aborted', 'AbortError')), 10)
-    })
+    globalThis.fetch = () =>
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new DOMException('aborted', 'AbortError')), 10)
+      })
     try {
-      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial, 5)
+      const result = await liveOcspCheck(
+        'http://ocsp.example.com',
+        fakeNameHash,
+        fakeKeyHash,
+        fakeSerial,
+        5,
+      )
       expect(result).toBeNull()
     } finally {
       globalThis.fetch = originalFetch
@@ -444,12 +471,20 @@ describe('liveOcspCheck', () => {
 
   it('returns null on unparseable OCSP response', async () => {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = () => Promise.resolve(new Response(new Uint8Array([0x00, 0x01, 0x02]).buffer, {
-      status: 200,
-      headers: { 'Content-Type': 'application/ocsp-response' },
-    }))
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(new Uint8Array([0x00, 0x01, 0x02]).buffer, {
+          status: 200,
+          headers: { 'Content-Type': 'application/ocsp-response' },
+        }),
+      )
     try {
-      const result = await liveOcspCheck('http://ocsp.example.com', fakeNameHash, fakeKeyHash, fakeSerial)
+      const result = await liveOcspCheck(
+        'http://ocsp.example.com',
+        fakeNameHash,
+        fakeKeyHash,
+        fakeSerial,
+      )
       expect(result).toBeNull()
     } finally {
       globalThis.fetch = originalFetch
