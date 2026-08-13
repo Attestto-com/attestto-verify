@@ -81,5 +81,20 @@ knowing: a PDF that embeds only the signer leaf has no candidate anchor at all, 
 - Trust anchors come from did:pki resolution ONLY — never bundle national PKI certs in the FE
 - Coverage may go up, never down: `pnpm coverage:check` runs pre-push and in CI against
   `coverage-baseline.json`. Raise the baseline with `pnpm coverage:update`; never hand-edit it
+- **A fix is not done when the suite is green. It is done when you have watched the test
+  FAIL without the fix and pass with it.** Break it on purpose, require red, restore,
+  require green — then say so plainly ("reverting X turns Y red"), or state that the fix
+  is unverified. A green check is not evidence. See `docs/HANDOFF-2026-08-12.md` for the
+  six controls in this repo that were green and did nothing
+- **Coverage measures execution, not checking.** Removing all 25 assertions from
+  `asn1-parser.spec.ts` leaves coverage byte-identical with every test still passing.
+  Use it as a lower bound, never as evidence of correctness
+- Run CI locally before pushing, in CI's order, under the Node version in `.nvmrc` (22):
+  changelog gate, `pnpm install --frozen-lockfile`, `pnpm gate-self-test`, `pnpm run lint`,
+  `pnpm test`, `COVERAGE_BASE_REF=origin/main pnpm run coverage:check`, `pnpm run build`,
+  the `pnpm pack` tarball check, and `git merge-tree` against `origin/main`
+- Any new quality gate must be registered in `package.json` under `gateSelfTest` with a
+  seed that violates it. An unregistered gate is the decorative control that file exists
+  to prevent
 - Do not run `pnpm dev` — user owns the dev server
 - CSS uses `::part()` for external styling — don't break part names
