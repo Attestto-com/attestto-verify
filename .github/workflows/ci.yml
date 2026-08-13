@@ -24,6 +24,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The GitHub default is 6 hours. This job's slowest step is gate-self-test,
+    # which runs every gate twice (seeded, then clean), and the whole run is
+    # single-digit minutes. 20 leaves generous headroom while turning a hang
+    # into a red in minutes rather than burning a runner for a quarter of a day.
+    timeout-minutes: 20
     steps:
       # fetch-depth: 0 because the coverage ratchet's NO-DROP rule resolves
       # `git merge-base HEAD <base>` to prove the committed baseline was not
@@ -75,9 +80,36 @@ jobs:
           COVERAGE_BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
         run: pnpm run coverage:check
 
+      # `if: always()` deliberately, NOT failure-only. The report is most needed
+      # exactly when the ratchet just went red — that step prints which metric
+      # broke, not which lines are bare — and it is also the only way to read the
+      # number on a green run without reproducing the whole suite locally.
+      # `coverage:check` writes coverage/ (html + lcov + json-summary, per
+      # vite.config.ts) before the ratchet runs, so the report exists either way.
+      #
+      # Not a gate: a missing report warns and moves on rather than reddening the
+      # build for its own reasons. If coverage/ is ever absent the log says so.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
       # Runs AFTER the tests, so a failure lands on the cheapest step first.
       - name: Build
         run: pnpm run build
+
+      # The trust re-bundling tripwire, run on the build we just produced.
+      #
+      # It previously ran ONLY in pages.yml, which fires on deploy. A pull request
+      # that re-introduced `import ... from '@attestto/trust'` into the trust path
+      # therefore passed CI green and was caught, if at all, after merge — the
+      # control guarding the repo's central architectural rule was not guarding
+      # pull requests at all. It runs here, on `dist/`, before the tarball check.
+      - name: Bundle-size tripwire (no bundled trust)
+        run: pnpm run check:bundle-size
 
       # This package is published to npm. A tarball that omits dist/ breaks every
       # consumer, and `npm publish` is the wrong place to discover it.
