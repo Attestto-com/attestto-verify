@@ -47,6 +47,32 @@ const METRICS = ['statements', 'branches', 'functions', 'lines']
 /** How far above the baseline coverage may drift before the baseline is stale. */
 const DRIFT_PP = 2.0
 
+/**
+ * Jitter absorbed by the FLOOR rule, in percentage points.
+ *
+ * V8 coverage is not perfectly reproducible here. `chain-validator.ts` loads
+ * pkijs through a cached dynamic import, and depending on cache state V8
+ * reports either 102/118 or 103/119 branches for it, moving the project total
+ * between 69.23% and 69.27%. Measured across repeated identical runs on an
+ * unchanged tree: all 225 tests pass every time, so this is instrumentation
+ * variance, not a flaky test.
+ *
+ * A baseline pinned to the high reading therefore reddens roughly one run in
+ * three, and a gate that fails at random is a gate people learn to bypass.
+ *
+ * The value is CALIBRATED, not guessed, and the margin is genuinely narrow:
+ *   observed instrumentation jitter ... 0.04pp  (absorbed)
+ *   deleting ONE test from a spec .... 0.08pp  (still caught, measured)
+ *   the gate-self-test seed file ..... >0.5pp  (still caught)
+ * A larger tolerance was tried first and rejected: at 0.10pp, deleting a test
+ * passed silently. If the jitter ever exceeds this, fix the non-determinism
+ * rather than widening the tolerance, or this gate stops meaning anything.
+ *
+ * Generate baselines with `pnpm coverage:update`, which records whatever the
+ * run reports; combined with this tolerance the low reading is safe.
+ */
+const FLOOR_TOLERANCE_PP = 0.05
+
 const update = process.argv.includes('--update')
 
 if (!existsSync(SUMMARY)) {
@@ -117,9 +143,10 @@ if (engineMismatch) {
 for (const m of METRICS) {
   const now = current[m]
   const floor = round(baseline[m] ?? 0)
-  if (now + 1e-9 >= floor) continue
+  if (now + FLOOR_TOLERANCE_PP + 1e-9 >= floor) continue
   failures.push(
-    `${m} dropped ${(floor - now).toFixed(2)}pp: ${now.toFixed(2)}% < baseline ${floor.toFixed(2)}%`,
+    `${m} dropped ${(floor - now).toFixed(2)}pp: ${now.toFixed(2)}% < baseline ${floor.toFixed(2)}% ` +
+      `(tolerance ${FLOOR_TOLERANCE_PP}pp)`,
   )
 }
 

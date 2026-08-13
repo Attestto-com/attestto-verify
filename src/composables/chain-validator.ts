@@ -595,6 +595,12 @@ function isSameCertificate(
 ): boolean {
   const av = new Uint8Array(a.tbsView)
   const bv = new Uint8Array(b.tbsView)
+  // Fail CLOSED on a missing or empty tbsView. `new Uint8Array(undefined)`
+  // yields an empty array, so without this an object with no tbsView would
+  // compare equal to any other such object and the guard would wave it
+  // through. "I could not identify either certificate" must never read as
+  // "they are the same certificate".
+  if (av.length === 0 || bv.length === 0) return false
   if (av.length !== bv.length) return false
   for (let i = 0; i < av.length; i++) {
     if (av[i] !== bv[i]) return false
