@@ -5,3 +5,10 @@ coverage
 data
 *.local
 .DS_Store
+
+# BMAD scaffolding — regenerate with `pnpm dlx bmad-method install`.
+# Ignored while we evaluate it: .claude/skills alone is ~13 MB of vendored
+# agent files, which does not belong in a public package repo.
+_bmad
+_bmad-output
+.claude/skills
