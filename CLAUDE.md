@@ -2,36 +2,12 @@
 
 > Web Components for document verification and signing. Zero-trust, client-side PDF verification built on W3C Web Components (Lit). No framework, no backend — drop a PDF to verify.
 
-## Stack
-
-- TypeScript + Lit Web Components (W3C standard)
-- Build: Vite
-- Testing: Vitest, with a coverage ratchet (`pnpm coverage:check`) enforced pre-push and in CI
-- PDF: pdf-lib (parsing), pkijs (PKCS#7/X.509 crypto)
-- Trust: resolved at runtime via did:pki — the FE bundles NO certs (see "No bundled fallback")
-- DID: did:pki resolution via resolver.attestto.com
-
-## Commands
-
-- `pnpm install` — install deps
-- `pnpm build` — build for production (tsc + vite)
-- `pnpm build:pages` — build GitHub Pages deployment
-- `pnpm test` — run tests
-- `pnpm lint` — lint
-- `pnpm format:check` — check formatting
+The stack, the runnable scripts and the `src/` layout are deliberately NOT copied here.
+Read them from `package.json`, `vite.config.ts` and the tree — an agent derives them more
+accurately first-hand, and a copy drifts silently the moment a script is renamed. This file
+carries only what the code cannot say.
 
 ## Architecture
-
-### Components
-- `<attestto-verify>` — document verification (SHA-256, PAdES/PKCS#7, forensic scan)
-- `<attestto-sign>` — document signing (browser key or DID wallet)
-
-### Directory structure
-- `src/components/` — Lit Web Components
-- `src/composables/` — framework-agnostic logic (PKI, PDF, signing)
-- `src/plugins/` — plugin implementations (did:pki, did:web, did:jwk, did:sns)
-- `src/styles/` — component CSS
-- `src/i18n.ts` — internationalization
 
 ### did:pki integration (key architectural decision)
 
@@ -89,12 +65,19 @@ knowing: a PDF that embeds only the signer leaf has no candidate anchor at all, 
 - **Coverage measures execution, not checking.** Removing all 25 assertions from
   `asn1-parser.spec.ts` leaves coverage byte-identical with every test still passing.
   Use it as a lower bound, never as evidence of correctness
-- Run CI locally before pushing, in CI's order, under the Node version in `.nvmrc` (22):
-  changelog gate, `pnpm install --frozen-lockfile`, `pnpm gate-self-test`, `pnpm run lint`,
-  `pnpm test`, `COVERAGE_BASE_REF=origin/main pnpm run coverage:check`, `pnpm run build`,
-  the `pnpm pack` tarball check, and `git merge-tree` against `origin/main`
+- Run CI locally before pushing with `./scripts/ci-local.sh`. It holds the order, so it does
+  not get retyped and drift the way the prose list here did. It refuses to run on the wrong
+  Node major rather than warning: `nvm use` fails silently when `NVM_DIR` is unexported, and
+  `coverage-baseline.json` was generated under 22, so a ratchet result from another major is
+  not evidence. `ci.yml` and `pages.yml` honour `.nvmrc`, but `changelog.yml` pins Node 20
+  in the workflow — that one step does not run on 22
 - Any new quality gate must be registered in `package.json` under `gateSelfTest` with a
   seed that violates it. An unregistered gate is the decorative control that file exists
-  to prevent
+  to prevent. Two gates currently CANNOT be registered, and the reason is the seed model,
+  not neglect: `check:bundle-size` reads build output while seeds write source (a seeded
+  run exits 0), and the changelog gate diffs against a base ref, which an untracked seed
+  never appears in. Do not "fix" this by inventing a seed that does not really violate
+  them — extending the model means changing `gate-self-test.mjs`, which is byte-identical
+  across every Attestto repo and must not drift locally
 - Do not run `pnpm dev` — user owns the dev server
 - CSS uses `::part()` for external styling — don't break part names
