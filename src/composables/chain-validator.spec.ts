@@ -19,22 +19,34 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // pkijs / asn1js are heavy native modules. We mock them so we can test the
 // wrapper logic deterministically without crafting real CMS structures.
+// NOTE (vitest 4): every mock below is invoked with `new` by the code under
+// test, so its implementation MUST be a `function` (or class), never an arrow.
+// Arrows are not constructible, and vitest 4 stopped silently tolerating them:
+// it warns "The vi.fn() mock did not use 'function' or 'class' in its
+// implementation" and the constructed value comes back empty, which surfaces as
+// `integrityValid: null` rather than as a mocking error. That failure mode looks
+// exactly like a real verification regression, so keep these as `function`.
 vi.mock('pkijs', () => {
   return {
     setEngine: vi.fn(),
     CryptoEngine: vi.fn(),
-    Certificate: vi.fn().mockImplementation(() => ({
-      subject: { typesAndValues: [] },
-    })),
-    CertificateChainValidationEngine: vi.fn().mockImplementation(() => ({
-      verify: vi.fn(),
-    })),
-    ContentInfo: vi.fn().mockImplementation(({ schema }) => ({
-      content: schema,
-    })),
-    SignedData: vi.fn().mockImplementation(() => ({
-      verify: vi.fn(),
-    })),
+    // `tbsView` matters: validateChainWithDynamicAnchor proves the validated
+    // path begins at the signer by comparing raw DER, and that check fails
+    // CLOSED on an empty view. A mock cert with no tbsView would therefore be
+    // unidentifiable, so every constructed cert here carries SIGNER_TBS and a
+    // test that wants a different certificate supplies its own bytes.
+    Certificate: vi.fn().mockImplementation(function () {
+      return { subject: { typesAndValues: [] }, tbsView: new Uint8Array([1, 2, 3]) }
+    }),
+    CertificateChainValidationEngine: vi.fn().mockImplementation(function () {
+      return { verify: vi.fn() }
+    }),
+    ContentInfo: vi.fn().mockImplementation(function ({ schema }: { schema: unknown }) {
+      return { content: schema }
+    }),
+    SignedData: vi.fn().mockImplementation(function () {
+      return { verify: vi.fn() }
+    }),
   }
 })
 
@@ -70,9 +82,26 @@ import {
   _resetChainValidatorCache,
 } from './chain-validator'
 
+/**
+ * The DER bytes every mocked certificate carries by default, so the
+ * leaf-identity guard in validateChainWithDynamicAnchor can identify them.
+ * A test that needs a DIFFERENT or an UNIDENTIFIABLE certificate overrides the
+ * `Certificate` implementation, which is why it gets reset below.
+ */
+const MOCK_SIGNER_TBS = new Uint8Array([1, 2, 3])
+
 beforeEach(() => {
   _resetChainValidatorCache()
   vi.clearAllMocks()
+  // `clearAllMocks` clears recorded calls but KEEPS implementations, so an
+  // override set by one test silently leaks into the next. Re-establish the
+  // default here rather than relying on every test to clean up after itself.
+  vi.mocked(pkijs.Certificate).mockImplementation(function () {
+    return {
+      subject: { typesAndValues: [] },
+      tbsView: MOCK_SIGNER_TBS,
+    } as unknown as InstanceType<typeof pkijs.Certificate>
+  })
 })
 
 // ── reconstructSignedBytes ────────────────────────────────────────
@@ -131,7 +160,9 @@ describe('verifyDocumentIntegrity', () => {
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: true })
     vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+      function () {
+        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+      },
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
@@ -155,7 +186,9 @@ describe('verifyDocumentIntegrity', () => {
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: false })
     vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+      function () {
+        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+      },
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
@@ -171,7 +204,9 @@ describe('verifyDocumentIntegrity', () => {
 
     const verifyMock = vi.fn().mockResolvedValue(true)
     vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+      function () {
+        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+      },
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
@@ -206,7 +241,9 @@ describe('verifyDocumentIntegrity', () => {
 
     const verifyMock = vi.fn().mockRejectedValue(new Error('verify exploded'))
     vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+      function () {
+        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+      },
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
@@ -224,7 +261,9 @@ describe('verifyDocumentIntegrity', () => {
 
     const verifyMock = vi.fn().mockResolvedValue({ signatureVerified: false })
     vi.mocked(pkijs.SignedData).mockImplementationOnce(
-      () => ({ verify: verifyMock }) as unknown as InstanceType<typeof pkijs.SignedData>,
+      function () {
+        return { verify: verifyMock } as unknown as InstanceType<typeof pkijs.SignedData>
+      },
     )
 
     const r = await verifyDocumentIntegrity(fakeHex, fakeData)
@@ -243,6 +282,7 @@ describe('validateChainWithResolver', () => {
     resultMessage?: string
     certificatePath?: Array<{
       subject: { typesAndValues: Array<{ type: string; value: { valueBlock: { value: string } } }> }
+      tbsView?: Uint8Array
     }>
   }) {
     vi.mocked(asn1js.fromBER).mockReturnValue({
@@ -250,11 +290,20 @@ describe('validateChainWithResolver', () => {
       result: { mock: 'cert' },
     } as unknown as ReturnType<typeof asn1js.fromBER>)
 
+    // Default every path entry to the signer's DER, so the leaf-identity guard
+    // sees a path that legitimately starts at the signer. A test exercising the
+    // guard passes its own `tbsView` to say "this leaf is somebody else".
+    const path = engineResult.certificatePath?.map((c) => ({
+      ...c,
+      tbsView: c.tbsView ?? new Uint8Array([1, 2, 3]),
+    }))
+
     vi.mocked(pkijs.CertificateChainValidationEngine).mockImplementation(
-      () =>
-        ({
-          verify: vi.fn().mockResolvedValue(engineResult),
-        }) as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>,
+      function () {
+        return {
+          verify: vi.fn().mockResolvedValue({ ...engineResult, certificatePath: path }),
+        } as unknown as InstanceType<typeof pkijs.CertificateChainValidationEngine>
+      },
     )
   }
 
@@ -364,6 +413,83 @@ describe('validateChainWithResolver', () => {
     expect(r.trustSource).toBeUndefined()
     expect(r.error).toMatch(/no issuing did:pki/i)
     expect(resolveAndMatchChain).not.toHaveBeenCalled()
+  })
+
+  it('refuses to trust a path that does not begin at the signer, even when pkijs says OK', async () => {
+    // THE LEAF-IDENTITY GUARD. pkijs selects the end entity POSITIONALLY, from
+    // the last element of [...trustedCerts, ...certs], and that behaviour is
+    // undocumented. If a version bump ever shifts it, pkijs will happily
+    // validate some OTHER certificate against the anchor and report success:
+    // measured against real CR certs, anchoring one level up returns
+    // result:true for a FORGED signer, and for a pool with no signer in it at
+    // all. `cryptographicallyVerified` is the input every downstream trust
+    // floor keys off, so this must be caught here and not further down.
+    //
+    // Simulated by having pkijs return success with a certificatePath whose
+    // leaf carries different DER to the signer.
+    vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
+      matched: true,
+      matchedCertIndex: 0,
+      matchedKey: {
+        keyId: '#key-2023',
+        publicKeyJwk: { kty: 'RSA' },
+        fingerprint: 'abc123',
+        status: 'active',
+      },
+      resolution: {
+        did: 'did:pki:cr:sinpe:persona-fisica',
+        keys: [],
+        metadata: { country: 'CR', level: 'issuing' },
+      },
+    } as unknown as Awaited<ReturnType<typeof resolveAndMatchChain>>)
+
+    setupPkijsForChainValidation({
+      result: true,
+      certificatePath: [
+        {
+          subject: { typesAndValues: [] },
+          // NOT the signer's DER: some other certificate entirely.
+          tbsView: new Uint8Array([9, 9, 9]),
+        },
+      ],
+    })
+
+    const r = await validateChainWithResolver('aabb', ['ccdd'], 'did:pki:cr:sinpe:persona-fisica')
+
+    expect(r.trusted).toBe(false)
+    expect(r.error).toMatch(/does not begin at the signer/i)
+  })
+
+  it('refuses to trust when the leaf certificate cannot be identified at all', async () => {
+    // Fail CLOSED on an unidentifiable certificate. `new Uint8Array(undefined)`
+    // produces an EMPTY array, so a naive byte comparison would find two
+    // unidentifiable certs "equal" and wave the chain through. "I could not
+    // identify either certificate" must never be reported as "they match".
+    vi.mocked(resolveAndMatchChain).mockResolvedValueOnce({
+      matched: true,
+      matchedCertIndex: 0,
+      matchedKey: { keyId: '#key-2023', fingerprint: 'abc123', status: 'active' },
+      resolution: { did: 'did:pki:cr:sinpe:persona-fisica', keys: [], metadata: {} },
+    } as unknown as Awaited<ReturnType<typeof resolveAndMatchChain>>)
+
+    setupPkijsForChainValidation({
+      result: true,
+      certificatePath: [{ subject: { typesAndValues: [] }, tbsView: new Uint8Array([]) }],
+    })
+    // BOTH sides unidentifiable: the parsed signer must also come back with an
+    // empty view, otherwise the length comparison rejects it for the wrong
+    // reason and this test would pass without the fail-closed check present.
+    vi.mocked(pkijs.Certificate).mockImplementation(function () {
+      return {
+        subject: { typesAndValues: [] },
+        tbsView: new Uint8Array([]),
+      } as unknown as InstanceType<typeof pkijs.Certificate>
+    })
+
+    const r = await validateChainWithResolver('aabb', ['ccdd'], 'did:pki:cr:sinpe:persona-fisica')
+
+    expect(r.trusted).toBe(false)
+    expect(r.error).toMatch(/does not begin at the signer/i)
   })
 
   it('tries the parent DID when the issuing CA fingerprint does not match', async () => {
