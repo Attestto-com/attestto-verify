@@ -65,11 +65,11 @@ knowing: a PDF that embeds only the signer leaf has no candidate anchor at all, 
 - **Coverage measures execution, not checking.** Removing all 25 assertions from
   `asn1-parser.spec.ts` leaves coverage byte-identical with every test still passing.
   Use it as a lower bound, never as evidence of correctness
-- Run CI locally before pushing, in CI's order, under the Node version in `.nvmrc` (22):
-  changelog gate, `pnpm install --frozen-lockfile`, `pnpm gate-self-test`, `pnpm run lint`,
-  `pnpm test`, `COVERAGE_BASE_REF=origin/main pnpm run coverage:check`, `pnpm run build`,
-  `pnpm run check:bundle-size`, the `pnpm pack` tarball check, and `git merge-tree` against
-  `origin/main`. `ci.yml` and `pages.yml` honour `.nvmrc`, but `changelog.yml` pins Node 20
+- Run CI locally before pushing with `./scripts/ci-local.sh`. It holds the order, so it does
+  not get retyped and drift the way the prose list here did. It refuses to run on the wrong
+  Node major rather than warning: `nvm use` fails silently when `NVM_DIR` is unexported, and
+  `coverage-baseline.json` was generated under 22, so a ratchet result from another major is
+  not evidence. `ci.yml` and `pages.yml` honour `.nvmrc`, but `changelog.yml` pins Node 20
   in the workflow — that one step does not run on 22
 - Any new quality gate must be registered in `package.json` under `gateSelfTest` with a
   seed that violates it. An unregistered gate is the decorative control that file exists
